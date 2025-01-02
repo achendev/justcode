@@ -88,7 +88,9 @@ def generate_context_from_path(project_path, include_patterns, exclude_patterns)
                 content = f.read()
             
             # For the command sent to the LLM, always use Unix-style paths.
-            output_parts.append(f"cat > ./{rel_path} << '{here_doc_value}'\n")
+            # Quote the path to handle spaces correctly.
+            quoted_path = shlex.quote('./' + rel_path)
+            output_parts.append(f"cat > {quoted_path} << '{here_doc_value}'\n")
             output_parts.append(content)
             output_parts.append(f"\n{here_doc_value}\n\n\n\n\n")
 

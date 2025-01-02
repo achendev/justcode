@@ -35,12 +35,13 @@ def deploy_code():
                 if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                 
                 full_path = os.path.join(project_path, relative_path)
+                quoted_rel_path = shlex.quote('./' + relative_path)
                 if os.path.isfile(full_path):
                     with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
                         original_content = f.read()
-                    rollback_cmd = f"cat > ./{relative_path} << '{here_doc_value}'\n{original_content}\n{here_doc_value}"
+                    rollback_cmd = f"cat > {quoted_rel_path} << '{here_doc_value}'\n{original_content}\n{here_doc_value}"
                 else:
-                    rollback_cmd = f"rm -f ./{relative_path}"
+                    rollback_cmd = f"rm -f {quoted_rel_path}"
                 rollback_commands.insert(0, rollback_cmd)
 
                 while i < len(lines) and lines[i] != here_doc_value: i += 1
@@ -56,13 +57,13 @@ def deploy_code():
                     relative_path = arg.lstrip('./')
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                     if not os.path.isdir(os.path.join(project_path, relative_path)):
-                        rollback_commands.insert(0, f"rmdir ./{relative_path}")
+                        rollback_commands.insert(0, f"rmdir {shlex.quote('./' + relative_path)}")
             elif command == 'touch':
                 for arg in args:
                     relative_path = arg.lstrip('./')
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                     if not os.path.exists(os.path.join(project_path, relative_path)):
-                        rollback_commands.insert(0, f"rm -f ./{relative_path}")
+                        rollback_commands.insert(0, f"rm -f {shlex.quote('./' + relative_path)}")
             elif command == 'rm':
                 # Check for any unsupported flags.
                 for arg in args:
@@ -77,26 +78,26 @@ def deploy_code():
                 if not file_paths:
                     raise ValueError("'rm' command requires at least one file path.")
 
-                for relative_path in file_paths:
-                    relative_path = relative_path.lstrip('./')
+                for relative_path_arg in file_paths:
+                    relative_path = relative_path_arg.lstrip('./')
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                     full_path = os.path.join(project_path, relative_path)
                     if os.path.isfile(full_path):
                         with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
                             original_content = f.read()
-                        rollback_cmd = f"cat > ./{relative_path} << '{here_doc_value}'\n{original_content}\n{here_doc_value}"
+                        rollback_cmd = f"cat > {shlex.quote('./' + relative_path)} << '{here_doc_value}'\n{original_content}\n{here_doc_value}"
                         rollback_commands.insert(0, rollback_cmd)
             elif command == 'rmdir':
                 for arg in args:
                     relative_path = arg.lstrip('./')
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                     if os.path.isdir(os.path.join(project_path, relative_path)):
-                        rollback_commands.insert(0, f"mkdir ./{relative_path}")
+                        rollback_commands.insert(0, f"mkdir {shlex.quote('./' + relative_path)}")
             elif command == 'mv':
                 if len(args) != 2: raise ValueError("'mv' requires two arguments.")
                 src, dest = args[0].lstrip('./'), args[1].lstrip('./')
                 if not is_safe_path(project_path, src) or not is_safe_path(project_path, dest): raise PermissionError(f"Traversal: {src} or {dest}")
-                rollback_commands.insert(0, f"mv ./{dest} ./{src}")
+                rollback_commands.insert(0, f"mv {shlex.quote('./' + dest)} {shlex.quote('./' + src)}")
             else:
                 raise ValueError(f"Unsupported command: '{command}'")
     except (ValueError, PermissionError, OSError) as e:
