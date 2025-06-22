@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JustCode</title>
+    <style>
+        body { font-family: Arial, sans-serif; width: 300px; padding: 10px; }
+        label { display: block; margin-bottom: 5px; }
+        input { width: 100%; padding: 5px; margin-bottom: 10px; }
+        button { width: 48%; padding: 8px; margin: 1%; }
+        .error { color: red; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <label for="projectPath">Project Path:</label>
+    <input type="text" id="projectPath" placeholder="/path/to/project">
+    <button id="getCode">Get Code</button>
+    <button id="deployCode">Deploy Code</button>
+    <div id="error" class="error"></div>
+    <script src="popup.js"></script>
+</body>
+</html>

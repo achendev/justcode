@@ -1,0 +1,20 @@
+{
+    "manifest_version": 3,
+    "name": "JustCode Extension",
+    "version": "1.0",
+    "description": "A Chrome extension for JustCode to fetch and deploy project code.",
+    "permissions": [
+        "storage",
+        "clipboardWrite",
+        "activeTab",
+        "scripting"
+    ],
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
+        }
+    }
+}
