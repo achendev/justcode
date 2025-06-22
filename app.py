@@ -7,6 +7,9 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
+def bash(cmd):
+    return subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, executable='/bin/bash').communicate()[0].decode('utf8').strip()
+
 @app.route('/getcode', methods=['GET'])
 def get_code():
     path = request.args.get('path')
@@ -18,20 +21,29 @@ def get_code():
     print(f"Set project path to: {project_path}")
     # Command to find all relevant project files
     command = r"""
-        tree -I '\.git' -I 'venv' -I 'tmp' -I 'log' -I '*.env' -I '*secrets*' -I 'data' -I '*access/users*' -I '*access/groups*' -I 'creds';
-        tail -n 10000 $(find . -type f -not -path '*/\.git/*' -not -path '*/venv/*' -not -path '*/tmp/*' -not -path '*/log/*' -not -path '*.env' -not -path '*secrets*' -not -path '*/data/*' -not -path '*access/users*' -not -path '*access/groups*' -not -path '*/creds/*' -exec grep -Il '.' {} \; -print | sort -u) | sed -e 's#==> #EOPROJECTFILE\ncat > #g' -e 's# <==# << '\''EOPROJECTFILE'\''#g' | tail -n +2 | grep -v "^$" | cat - <(echo EOPROJECTFILE) | sed 's#^EOPROJECTFILE$#&\n\n\n\n\n#g'
+files=$(find . -type f \
+  -not -path '*/\.git/*' \
+  -not -path '*/venv/*' \
+  -not -path '*/tmp/*' \
+  -not -path '*/log/*' \
+  -not -path '*.env' \
+  -not -path '*secrets*' \
+  -not -path '*/data/*' \
+  -not -path '*access/users*' \
+  -not -path '*access/groups*' \
+  -not -path '*/creds/*' \
+  -exec grep -Il . {} + | sort -u)
+
+for file in $files; do
+  [ -r "$file" ] || continue
+  echo "cat > $file << 'EOPROJECTFILE'"
+  tail -n 100000 "$file"
+  echo -e "EOPROJECTFILE\n\n\n\n\n"
+done
     """
     
     try:
-        proc = subprocess.run(
-            command,
-            shell=True,
-            capture_output=True,
-            cwd=project_path,
-            check=True,
-            executable='/bin/bash'
-        )
-        file_contents = proc.stdout.decode('utf-8', errors='ignore')
+        file_contents = bash(command)
         doc_page_value = 'EOCHANGEDFILE'
         prompt_template = f"""This is current state of project files:
 {'```'}bash
@@ -63,6 +75,7 @@ rm -f ./path/to/old_file_to_remove.txt
 rmdir ./path/to/empty_directory_to_remove
 {'```'}
 """
+        print(prompt_template)
         return Response(prompt_template, mimetype='text/plain')
         
     except subprocess.CalledProcessError as e:
