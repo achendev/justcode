@@ -10,7 +10,7 @@
             font-family: Arial, sans-serif; 
             width: 350px; 
             padding: 15px; 
-            background-color: #f8f9fa;
+            transition: background-color 0.3s, color 0.3s;
         }
         .container { 
             padding: 0; 
@@ -27,11 +27,11 @@
             min-height: 1.5rem;
         }
         .profile-card {
-            border: 1px solid #dee2e6;
+            border: 1px solid;
             border-radius: 0.25rem;
             padding: 10px;
             margin-bottom: 10px;
-            background-color: #fff;
+            transition: background-color 0.3s, color 0.3s, border-color 0.3s;
         }
         .profile-header {
             display: flex;
@@ -42,6 +42,7 @@
             width: 100%;
             padding: 4px;
             font-size: 1rem;
+            transition: background-color 0.3s, color 0.3s, border-color 0.3s;
         }
         .nav-tabs {
             margin-bottom: 10px;
@@ -49,9 +50,9 @@
         .nav-link {
             padding: 5px 10px;
             font-size: 0.875rem;
+            transition: background-color 0.3s, color 0.3s;
         }
         .nav-link.active {
-            background-color: #fff;
             border-bottom: none;
         }
         .tab-content {
@@ -59,6 +60,74 @@
         }
         .tab-content.active {
             display: block;
+        }
+        /* Light theme (default) */
+        body {
+            background-color: #f8f9fa;
+            color: #212529;
+        }
+        .profile-card {
+            background-color: #fff;
+            border-color: #dee2e6;
+        }
+        .profile-name-input {
+            background-color: #fff;
+            color: #212529;
+            border: 1px solid #ced4da;
+        }
+        .nav-link.active {
+            background-color: #fff;
+            color: #212529;
+        }
+        /* Dark theme */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #212529;
+                color: #f8f9fa;
+            }
+            .profile-card {
+                background-color: #343a40;
+                border-color: #495057;
+            }
+            .profile-name-input {
+                background-color: #495057;
+                color: #f8f9fa;
+                border: 1px solid #6c757d;
+            }
+            .nav-link {
+                color: #f8f9fa;
+            }
+            .nav-link.active {
+                background-color: #343a40;
+                color: #f8f9fa;
+            }
+            .form-control {
+                background-color: #495057;
+                color: #f8f9fa;
+                border-color: #6c757d;
+            }
+            .form-control:focus {
+                background-color: #495057;
+                color: #f8f9fa;
+                border-color: #80bdff;
+                box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+            }
+            .btn-outline-primary {
+                color: #80bdff;
+                border-color: #80bdff;
+            }
+            .btn-outline-primary:hover {
+                background-color: #80bdff;
+                color: #212529;
+            }
+            .btn-outline-danger {
+                color: #ff6b6b;
+                border-color: #ff6b6b;
+            }
+            .btn-outline-danger:hover {
+                background-color: #ff6b6b;
+                color: #212529;
+            }
         }
     </style>
 </head>
