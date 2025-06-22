@@ -22,7 +22,7 @@ The system consists of two main components:
 ## Setup
 1. Clone the Repository
    Run these commands:
-   git clone https://github.com/your-username/justcode.git
+   git clone https://github.com/achendev/justcode.git
    cd justcode
 
 2. Set Up Python Environment
