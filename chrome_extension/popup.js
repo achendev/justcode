@@ -2,11 +2,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const projectPathInput = document.getElementById('projectPath');
     const getCodeButton = document.getElementById('getCode');
     const deployCodeButton = document.getElementById('deployCode');
+    const copyToClipboardCheckbox = document.getElementById('copyToClipboard');
     const errorDiv = document.getElementById('error');
-    // Load saved project path
-    chrome.storage.local.get('projectPath', (data) => {
+    // Load saved project path and checkbox state
+    chrome.storage.local.get(['projectPath', 'copyToClipboard'], (data) => {
         if (data.projectPath) {
             projectPathInput.value = data.projectPath;
+        }
+        if (data.copyToClipboard !== undefined) {
+            copyToClipboardCheckbox.checked = data.copyToClipboard;
         }
     });
     // Save project path on input
@@ -14,6 +18,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const path = projectPathInput.value.trim();
         chrome.storage.local.set({ projectPath: path }, () => {
             console.log('JustCode: Project path saved:', path);
+        });
+    });
+    // Save checkbox state
+    copyToClipboardCheckbox.addEventListener('change', () => {
+        const isChecked = copyToClipboardCheckbox.checked;
+        chrome.storage.local.set({ copyToClipboard: isChecked }, () => {
+            console.log('JustCode: Copy to clipboard setting saved:', isChecked);
         });
     });
     getCodeButton.addEventListener('click', async () => {
@@ -29,6 +40,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const responseText = await response.text();
             if (!response.ok) {
                 throw new Error(`Server error: ${response.status} ${responseText}`);
+            }
+            // Copy to clipboard if checkbox is checked
+            if (copyToClipboardCheckbox.checked) {
+                await navigator.clipboard.writeText(responseText);
+                console.log('JustCode: Project state copied to clipboard.');
             }
             // Inject script to set textarea content
             chrome.scripting.executeScript({
@@ -59,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 args: [responseText]
             });
-            errorDiv.textContent = 'Code loaded successfully!';
+            errorDiv.textContent = copyToClipboardCheckbox.checked ? 'Code loaded and copied to clipboard!' : 'Code loaded successfully!';
         } catch (error) {
             errorDiv.textContent = `Error: ${error.message}`;
             console.error('JustCode Error:', error);
