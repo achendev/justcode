@@ -26,23 +26,50 @@
             font-size: 0.875rem; 
             min-height: 1.5rem;
         }
+        .profile-card {
+            border: 1px solid #dee2e6;
+            border-radius: 0.25rem;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #fff;
+        }
+        .profile-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .profile-name-input {
+            width: 100%;
+            padding: 4px;
+            font-size: 1rem;
+        }
+        .nav-tabs {
+            margin-bottom: 10px;
+        }
+        .nav-link {
+            padding: 5px 10px;
+            font-size: 0.875rem;
+        }
+        .nav-link.active {
+            background-color: #fff;
+            border-bottom: none;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h5 class="mb-3">JustCode</h5>
-        <div class="mb-3">
-            <label for="projectPath" class="form-label">Project Path:</label>
-            <input type="text" class="form-control form-control-sm" id="projectPath" placeholder="/path/to/project">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">JustCode</h5>
+            <button id="addProfile" class="btn btn-outline-primary btn-sm">+</button>
         </div>
-        <div class="form-check mb-3">
-            <input type="checkbox" class="form-check-input" id="copyToClipboard" checked>
-            <label class="form-check-label" for="copyToClipboard">Copy to clipboard on Get Code</label>
-        </div>
-        <div class="d-flex gap-2 mb-3">
-            <button id="getCode" class="btn btn-primary btn-sm flex-grow-1">Get Code</button>
-            <button id="deployCode" class="btn btn-success btn-sm flex-grow-1">Deploy Code</button>
-        </div>
+        <ul class="nav nav-tabs" id="profileTabs"></ul>
+        <div id="profilesContainer"></div>
         <div id="error" class="error"></div>
     </div>
     <script src="popup.js"></script>
