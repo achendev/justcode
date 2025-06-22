@@ -28,7 +28,7 @@ export function renderProfiles(profiles, activeProfileId, profilesContainer, pro
             </div>
             <div class="mb-3">
                 <label for="excludePatterns-${profile.id}" class="form-label">Exclude Patterns (comma-separated):</label>
-                <input type="text" class="form-control form-control-sm exclude-patterns" id="excludePatterns-${profile.id}" placeholder="*/.git/*,*/venv/*,*.env" value="${profile.excludePatterns}">
+                <input type="text" class="form-control form-control-sm exclude-patterns" id="excludePatterns-${profile.id}" placeholder="*/.git/*,*/venv/*,*.env,*/log/*,*/logs/*,*/tmp/*" value="${profile.excludePatterns}">
             </div>
             <div class="mb-3">
                 <label for="includePatterns-${profile.id}" class="form-label">Include Patterns (comma-separated, optional):</label>
@@ -81,7 +81,7 @@ export function renderProfiles(profiles, activeProfileId, profilesContainer, pro
             const id = parseInt(e.target.id.split('-')[1]);
             loadProfiles((profiles, activeProfileId) => {
                 const profile = profiles.find(p => p.id === id);
-                profile.excludePatterns = e.target.value.trim() || '*/.git/*,*/venv/*,*.env';
+                profile.excludePatterns = e.target.value.trim() || '*/.git/*,*/venv/*,*.env,*/log/*,*/logs/*,*/tmp/*';
                 saveProfiles(profiles, activeProfileId);
             });
         });
@@ -149,7 +149,7 @@ export function initUI(profilesContainer, profileTabs, addProfileButton, errorDi
                 name: `Profile ${profiles.length + 1}`,
                 projectPath: '',
                 copyToClipboard: true,
-                excludePatterns: '*/.git/*,*/venv/*,*.env',
+                excludePatterns: '*/.git/*,*/venv/*,*.env,*/log/*,*/logs/*,*/tmp/*',
                 includePatterns: ''
             };
             profiles.push(newProfile);

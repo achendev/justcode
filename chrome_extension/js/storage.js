@@ -1,6 +1,6 @@
 export function loadProfiles(callback) {
     chrome.storage.local.get(['profiles', 'activeProfileId'], (data) => {
-        const defaultExcludePatterns = '*/.git/*,*/venv/*,*.env';
+        const defaultExcludePatterns = '*/.git/*,*/venv/*,*.env,*/log/*,*/logs/*,*/tmp/*';
         const profiles = data.profiles || [{ 
             id: Date.now(), 
             name: 'Default', 
