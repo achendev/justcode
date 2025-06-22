@@ -15,30 +15,44 @@ def get_code():
     path = request.args.get('path')
     exclude_patterns = request.args.get('exclude', '').split(',')
     include_patterns = request.args.get('include', '').split(',')
-    if not path:
+    if not path.strip():
         return Response("Error: 'path' parameter is missing.", status=400, mimetype='text/plain')
     if not os.path.isdir(path):
         return Response(f"Error: Provided path '{path}' is not a valid directory.", status=400, mimetype='text/plain')
-    project_path = os.path.abspath(path)
+    project_path = os.path.abspath(path.strip())
     print(f"Set project path to: {project_path}")
-    # Construct find command with dynamic include and exclude patterns
-    exclude_args = ' '.join([f"-not -path '{pattern.strip()}'" for pattern in exclude_patterns if pattern.strip()])
-    if include_patterns and include_patterns[0].strip():
-        include_args = ' '.join([f"-name '{pattern.strip()}'" for pattern in include_patterns if pattern.strip()])
-        command = f"""
-files=$(find . -type f \
-  {include_args} \
-  {exclude_args} \
+    # Construct tree and find commands with dynamic include and exclude patterns
+    # Remove */ and /* from patterns for tree command
+    cleaned_exclude_patterns = [re.sub(r'(\*/|/\*)', '', pattern.strip()) for pattern in exclude_patterns if pattern.strip()]
+    exclude_args = ' '.join([f"-I '{pattern}'" for pattern in cleaned_exclude_patterns])
+    find_exclude_args = ' '.join([f"-not -path '{pattern.strip()}'" for pattern in exclude_patterns if pattern.strip()])
+    # Handle include patterns for tree and find commands
+    cleaned_include_patterns = [pattern.strip() for pattern in include_patterns if pattern.strip()]
+    include_args = ' '.join([f"-P '{pattern}'" for pattern in cleaned_include_patterns]) if cleaned_include_patterns else ''
+    if cleaned_include_patterns:
+        if len(cleaned_include_patterns) == 1:
+            find_include_args = f"-name '{cleaned_include_patterns[0]}'"
+        else:
+            find_include_args = f"\\( {' -o '.join([f"-name '{pattern}'" for pattern in cleaned_include_patterns])} \\)"
+        find_command = f"""
+cd {project_path} && files=$(find . -type f \
+  {find_include_args} \
+  {find_exclude_args} \
   -exec grep -Il . {{}} + | sort -u)
 """
     else:
-        command = f"""
-files=$(find . -type f \
-  {exclude_args} \
+        find_command = f"""
+cd {project_path} && files=$(find . -type f \
+  {find_exclude_args} \
   -exec grep -Il . {{}} + | sort -u)
 """
-    command += """
-for file in $files; do
+    tree_command = f"""
+cd {project_path} && tree -I '{cleaned_exclude_patterns[0] if cleaned_exclude_patterns else ''}' {exclude_args} {include_args}
+"""
+    command = f"""
+{tree_command}
+{find_command}
+cd {project_path} && for file in $files; do
   [ -r "$file" ] || continue
   echo "cat > $file << 'EOPROJECTFILE'"
   tail -n 100000 "$file"
@@ -79,7 +93,6 @@ rm -f ./path/to/old_file_to_remove.txt
 rmdir ./path/to/empty_directory_to_remove
 {'```'}
 """
-        print(prompt_template)
         return Response(prompt_template, mimetype='text/plain')
         
     except subprocess.CalledProcessError as e:
@@ -93,11 +106,11 @@ rmdir ./path/to/empty_directory_to_remove
 @app.route('/deploycode', methods=['POST'])
 def deploy_code():
     path = request.args.get('path')
-    if not path:
+    if not path.strip():
         return Response("Error: 'path' parameter is missing.", status=400, mimetype='text/plain')
     if not os.path.isdir(path):
         return Response(f"Error: Provided path '{path}' is not a valid directory.", status=400, mimetype='text/plain')
-    project_path = os.path.abspath(path)
+    project_path = os.path.abspath(path.strip())
     script_content = request.get_data(as_text=True)
     if not script_content:
         return Response("Error: No deploy script provided in the request body.", status=400, mimetype='text/plain')
@@ -122,4 +135,4 @@ if __name__ == '__main__':
     print("Starting JustCode server on http://127.0.0.1:5010")
     print("CORS is enabled for all origins.")
     print("WARNING: This server can read and write files on your system. Use with caution.")
-    app.run(host='127.0.0.1', port=5010)
+    app.run(host='127.0.0.1', port=5010, debug=True)
