@@ -6,11 +6,15 @@ export function loadProfiles(callback) {
             name: 'Default', 
             projectPath: '', 
             copyToClipboard: true, 
-            excludePatterns: defaultExcludePatterns 
+            excludePatterns: defaultExcludePatterns,
+            includePatterns: ''
         }];
         profiles.forEach(profile => {
             if (!profile.excludePatterns) {
                 profile.excludePatterns = defaultExcludePatterns;
+            }
+            if (!profile.includePatterns) {
+                profile.includePatterns = '';
             }
         });
         const activeProfileId = data.activeProfileId || profiles[0].id;

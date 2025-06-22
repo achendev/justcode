@@ -14,19 +14,30 @@ def bash(cmd):
 def get_code():
     path = request.args.get('path')
     exclude_patterns = request.args.get('exclude', '').split(',')
+    include_patterns = request.args.get('include', '').split(',')
     if not path:
         return Response("Error: 'path' parameter is missing.", status=400, mimetype='text/plain')
     if not os.path.isdir(path):
         return Response(f"Error: Provided path '{path}' is not a valid directory.", status=400, mimetype='text/plain')
     project_path = os.path.abspath(path)
     print(f"Set project path to: {project_path}")
-    # Construct find command with dynamic exclude patterns
+    # Construct find command with dynamic include and exclude patterns
     exclude_args = ' '.join([f"-not -path '{pattern.strip()}'" for pattern in exclude_patterns if pattern.strip()])
-    command = f"""
+    if include_patterns and include_patterns[0].strip():
+        include_args = ' '.join([f"-name '{pattern.strip()}'" for pattern in include_patterns if pattern.strip()])
+        command = f"""
+files=$(find . -type f \
+  {include_args} \
+  {exclude_args} \
+  -exec grep -Il . {{}} + | sort -u)
+"""
+    else:
+        command = f"""
 files=$(find . -type f \
   {exclude_args} \
   -exec grep -Il . {{}} + | sort -u)
-
+"""
+    command += """
 for file in $files; do
   [ -r "$file" ] || continue
   echo "cat > $file << 'EOPROJECTFILE'"

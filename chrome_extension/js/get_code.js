@@ -1,11 +1,15 @@
 export async function getCode(profile, errorDiv) {
     const path = profile.projectPath;
     const excludePatterns = profile.excludePatterns || '';
+    const includePatterns = profile.includePatterns || '';
     if (!path) {
         errorDiv.textContent = 'Error: Please enter a project path.';
         return;
     }
-    const endpoint = `http://127.0.0.1:5010/getcode?path=${encodeURIComponent(path)}&exclude=${encodeURIComponent(excludePatterns)}`;
+    let endpoint = `http://127.0.0.1:5010/getcode?path=${encodeURIComponent(path)}&exclude=${encodeURIComponent(excludePatterns)}`;
+    if (includePatterns) {
+        endpoint += `&include=${encodeURIComponent(includePatterns)}`;
+    }
     console.log('JustCode: Fetching project state...');
     try {
         const response = await fetch(endpoint);
@@ -23,7 +27,7 @@ export async function getCode(profile, errorDiv) {
                 const selectors = [
                     'textarea[aria-label="Start typing a prompt"]',
                     'textarea[aria-label="Ask Grok anything"]',
-                    'textarea[aria-label="Type something or tab to choose an example prompt"]',
+                    'textarea[aria-label="Type something or choose an example prompt"]',
                     'p[placeholder="data-placeholder"]',
                     'textarea[placeholder="Ask anything"]'
                 ];

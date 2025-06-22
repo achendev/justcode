@@ -3,7 +3,6 @@ import { deployCode } from './deploy_code.js';
 import { loadProfiles, saveProfiles } from './storage.js';
 
 export function renderProfiles(profiles, activeProfileId, profilesContainer, profileTabs, errorDiv) {
-    // Render tabs
     profileTabs.innerHTML = '';
     profiles.forEach(profile => {
         const tab = document.createElement('li');
@@ -13,7 +12,6 @@ export function renderProfiles(profiles, activeProfileId, profilesContainer, pro
         `;
         profileTabs.appendChild(tab);
     });
-    // Render profile content
     profilesContainer.innerHTML = '';
     profiles.forEach(profile => {
         const profileCard = document.createElement('div');
@@ -32,6 +30,10 @@ export function renderProfiles(profiles, activeProfileId, profilesContainer, pro
                 <label for="excludePatterns-${profile.id}" class="form-label">Exclude Patterns (comma-separated):</label>
                 <input type="text" class="form-control form-control-sm exclude-patterns" id="excludePatterns-${profile.id}" placeholder="*/.git/*,*/venv/*,*.env" value="${profile.excludePatterns}">
             </div>
+            <div class="mb-3">
+                <label for="includePatterns-${profile.id}" class="form-label">Include Patterns (comma-separated, optional):</label>
+                <input type="text" class="form-control form-control-sm include-patterns" id="includePatterns-${profile.id}" placeholder="*.py,*.js,*.html" value="${profile.includePatterns}">
+            </div>
             <div class="form-check mb-3">
                 <input type="checkbox" class="form-check-input copy-to-clipboard" id="copyToClipboard-${profile.id}" ${profile.copyToClipboard ? 'checked' : ''}>
                 <label class="form-check-label" for="copyToClipboard-${profile.id}">Copy to clipboard on Get Code</label>
@@ -43,7 +45,6 @@ export function renderProfiles(profiles, activeProfileId, profilesContainer, pro
         `;
         profilesContainer.appendChild(profileCard);
     });
-    // Add event listeners
     document.querySelectorAll('.nav-link').forEach(tab => {
         tab.addEventListener('click', (e) => {
             e.preventDefault();
@@ -81,6 +82,16 @@ export function renderProfiles(profiles, activeProfileId, profilesContainer, pro
             loadProfiles((profiles, activeProfileId) => {
                 const profile = profiles.find(p => p.id === id);
                 profile.excludePatterns = e.target.value.trim() || '*/.git/*,*/venv/*,*.env';
+                saveProfiles(profiles, activeProfileId);
+            });
+        });
+    });
+    document.querySelectorAll('.include-patterns').forEach(input => {
+        input.addEventListener('change', (e) => {
+            const id = parseInt(e.target.id.split('-')[1]);
+            loadProfiles((profiles, activeProfileId) => {
+                const profile = profiles.find(p => p.id === id);
+                profile.includePatterns = e.target.value.trim();
                 saveProfiles(profiles, activeProfileId);
             });
         });
@@ -138,14 +149,14 @@ export function initUI(profilesContainer, profileTabs, addProfileButton, errorDi
                 name: `Profile ${profiles.length + 1}`,
                 projectPath: '',
                 copyToClipboard: true,
-                excludePatterns: '*/.git/*,*/venv/*,*.env'
+                excludePatterns: '*/.git/*,*/venv/*,*.env',
+                includePatterns: ''
             };
             profiles.push(newProfile);
             saveProfiles(profiles, newProfile.id);
             renderProfiles(profiles, newProfile.id, profilesContainer, profileTabs, errorDiv);
         });
     });
-    // Initial render
     loadProfiles((profiles, activeProfileId) => {
         renderProfiles(profiles, activeProfileId, profilesContainer, profileTabs, errorDiv);
     });
