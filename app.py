@@ -13,26 +13,19 @@ def bash(cmd):
 @app.route('/getcode', methods=['GET'])
 def get_code():
     path = request.args.get('path')
+    exclude_patterns = request.args.get('exclude', '').split(',')
     if not path:
         return Response("Error: 'path' parameter is missing.", status=400, mimetype='text/plain')
     if not os.path.isdir(path):
         return Response(f"Error: Provided path '{path}' is not a valid directory.", status=400, mimetype='text/plain')
     project_path = os.path.abspath(path)
     print(f"Set project path to: {project_path}")
-    # Command to find all relevant project files
-    command = r"""
+    # Construct find command with dynamic exclude patterns
+    exclude_args = ' '.join([f"-not -path '{pattern.strip()}'" for pattern in exclude_patterns if pattern.strip()])
+    command = f"""
 files=$(find . -type f \
-  -not -path '*/\.git/*' \
-  -not -path '*/venv/*' \
-  -not -path '*/tmp/*' \
-  -not -path '*/log/*' \
-  -not -path '*.env' \
-  -not -path '*secrets*' \
-  -not -path '*/data/*' \
-  -not -path '*access/users*' \
-  -not -path '*access/groups*' \
-  -not -path '*/creds/*' \
-  -exec grep -Il . {} + | sort -u)
+  {exclude_args} \
+  -exec grep -Il . {{}} + | sort -u)
 
 for file in $files; do
   [ -r "$file" ] || continue

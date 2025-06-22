@@ -28,6 +28,10 @@ export function renderProfiles(profiles, activeProfileId, profilesContainer, pro
                 <label for="projectPath-${profile.id}" class="form-label">Project Path:</label>
                 <input type="text" class="form-control form-control-sm project-path" id="projectPath-${profile.id}" placeholder="/path/to/project" value="${profile.projectPath}">
             </div>
+            <div class="mb-3">
+                <label for="excludePatterns-${profile.id}" class="form-label">Exclude Patterns (comma-separated):</label>
+                <input type="text" class="form-control form-control-sm exclude-patterns" id="excludePatterns-${profile.id}" placeholder="*/.git/*,*/venv/*,*.env" value="${profile.excludePatterns}">
+            </div>
             <div class="form-check mb-3">
                 <input type="checkbox" class="form-check-input copy-to-clipboard" id="copyToClipboard-${profile.id}" ${profile.copyToClipboard ? 'checked' : ''}>
                 <label class="form-check-label" for="copyToClipboard-${profile.id}">Copy to clipboard on Get Code</label>
@@ -67,6 +71,16 @@ export function renderProfiles(profiles, activeProfileId, profilesContainer, pro
             loadProfiles((profiles, activeProfileId) => {
                 const profile = profiles.find(p => p.id === id);
                 profile.projectPath = e.target.value.trim();
+                saveProfiles(profiles, activeProfileId);
+            });
+        });
+    });
+    document.querySelectorAll('.exclude-patterns').forEach(input => {
+        input.addEventListener('change', (e) => {
+            const id = parseInt(e.target.id.split('-')[1]);
+            loadProfiles((profiles, activeProfileId) => {
+                const profile = profiles.find(p => p.id === id);
+                profile.excludePatterns = e.target.value.trim() || '*/.git/*,*/venv/*,*.env';
                 saveProfiles(profiles, activeProfileId);
             });
         });
@@ -123,7 +137,8 @@ export function initUI(profilesContainer, profileTabs, addProfileButton, errorDi
                 id: Date.now(),
                 name: `Profile ${profiles.length + 1}`,
                 projectPath: '',
-                copyToClipboard: true
+                copyToClipboard: true,
+                excludePatterns: '*/.git/*,*/venv/*,*.env'
             };
             profiles.push(newProfile);
             saveProfiles(profiles, newProfile.id);

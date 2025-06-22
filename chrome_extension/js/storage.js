@@ -1,6 +1,18 @@
 export function loadProfiles(callback) {
     chrome.storage.local.get(['profiles', 'activeProfileId'], (data) => {
-        const profiles = data.profiles || [{ id: Date.now(), name: 'Default', projectPath: '', copyToClipboard: true }];
+        const defaultExcludePatterns = '*/.git/*,*/venv/*,*.env';
+        const profiles = data.profiles || [{ 
+            id: Date.now(), 
+            name: 'Default', 
+            projectPath: '', 
+            copyToClipboard: true, 
+            excludePatterns: defaultExcludePatterns 
+        }];
+        profiles.forEach(profile => {
+            if (!profile.excludePatterns) {
+                profile.excludePatterns = defaultExcludePatterns;
+            }
+        });
         const activeProfileId = data.activeProfileId || profiles[0].id;
         if (!data.profiles) {
             chrome.storage.local.set({ profiles, activeProfileId }, () => callback(profiles, activeProfileId));

@@ -1,10 +1,11 @@
 export async function getCode(profile, errorDiv) {
     const path = profile.projectPath;
+    const excludePatterns = profile.excludePatterns || '';
     if (!path) {
         errorDiv.textContent = 'Error: Please enter a project path.';
         return;
     }
-    const endpoint = `http://127.0.0.1:5010/getcode?path=${encodeURIComponent(path)}`;
+    const endpoint = `http://127.0.0.1:5010/getcode?path=${encodeURIComponent(path)}&exclude=${encodeURIComponent(excludePatterns)}`;
     console.log('JustCode: Fetching project state...');
     try {
         const response = await fetch(endpoint);
