@@ -18,7 +18,8 @@ def get_code():
     print(f"Set project path to: {project_path}")
     # Command to find all relevant project files
     command = r"""
-        find . -type f -not -path '*/\.git/*' -not -path '*/venv/*' -not -path '*/tmp/*' -not -path '*/log/*' -not -path '*.env' -not -path '*secrets*' -not -path '*/data/*' -not -path '*access/users*' -not -path '*access/groups*' -not -path '*/creds/*' -print0 | xargs -0 tail -n 10000 | sed -e 's#==> #EOPROJECTFILE\ncat > #g' -e 's# <==# << '\''EOPROJECTFILE'\''#g' | tail -n +2 | grep -v "^$" | cat - <(echo EOPROJECTFILE) | sed 's#^EOPROJECTFILE$#&\n\n\n\n\n#g'
+        tree -I '\.git' -I 'venv' -I 'tmp' -I 'log' -I '*.env' -I '*secrets*' -I 'data' -I '*access/users*' -I '*access/groups*' -I 'creds';
+        tail -n 10000 $(find . -type f -not -path '*/\.git/*' -not -path '*/venv/*' -not -path '*/tmp/*' -not -path '*/log/*' -not -path '*.env' -not -path '*secrets*' -not -path '*/data/*' -not -path '*access/users*' -not -path '*access/groups*' -not -path '*/creds/*' -exec grep -Il '.' {} \; -print | sort -u) | sed -e 's#==> #EOPROJECTFILE\ncat > #g' -e 's# <==# << '\''EOPROJECTFILE'\''#g' | tail -n +2 | grep -v "^$" | cat - <(echo EOPROJECTFILE) | sed 's#^EOPROJECTFILE$#&\n\n\n\n\n#g'
     """
     
     try:

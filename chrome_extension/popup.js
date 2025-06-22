@@ -123,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Wait for clipboard to update
             await new Promise(resolve => setTimeout(resolve, 100));
             const codeToDeploy = await navigator.clipboard.readText();
-            if (!codeToDeploy || !codeToDeploy.includes("EOCHANGEDFILE")) {
+            if (!codeToDeploy || (!codeToDeploy.includes("EOCHANGEDFILE") && !codeToDeploy.includes("EOPROJECTFILE"))) {
                 errorDiv.textContent = 'Error: Clipboard content is not a valid deploy script.';
                 return;
             }
