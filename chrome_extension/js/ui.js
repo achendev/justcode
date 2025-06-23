@@ -38,6 +38,10 @@ export function renderProfiles(profiles, activeProfileId, profilesContainer, pro
                 <input type="checkbox" class="form-check-input copy-to-clipboard" id="copyToClipboard-${profile.id}" ${profile.copyToClipboard ? 'checked' : ''}>
                 <label class="form-check-label" for="copyToClipboard-${profile.id}">Copy to clipboard on Get Code</label>
             </div>
+            <div class="form-check mb-3">
+                <input type="checkbox" class="form-check-input deploy-from-clipboard" id="deployFromClipboard-${profile.id}" ${profile.deployFromClipboard ? 'checked' : ''}>
+                <label class="form-check-label" for="deployFromClipboard-${profile.id}">Deploy from clipboard</label>
+            </div>
             <div class="d-flex gap-2 mb-3">
                 <button class="btn btn-primary btn-sm flex-grow-1 get-code" data-id="${profile.id}">Get Code</button>
                 <button class="btn btn-success btn-sm flex-grow-1 deploy-code" data-id="${profile.id}">Deploy Code</button>
@@ -106,6 +110,16 @@ export function renderProfiles(profiles, activeProfileId, profilesContainer, pro
             });
         });
     });
+    document.querySelectorAll('.deploy-from-clipboard').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+            const id = parseInt(e.target.id.split('-')[1]);
+            loadProfiles((profiles, activeProfileId) => {
+                const profile = profiles.find(p => p.id === id);
+                profile.deployFromClipboard = e.target.checked;
+                saveProfiles(profiles, activeProfileId);
+            });
+        });
+    });
     document.querySelectorAll('.get-code').forEach(button => {
         button.addEventListener('click', async (e) => {
             const id = parseInt(e.target.dataset.id);
@@ -149,6 +163,7 @@ export function initUI(profilesContainer, profileTabs, addProfileButton, errorDi
                 name: `Profile ${profiles.length + 1}`,
                 projectPath: '',
                 copyToClipboard: true,
+                deployFromClipboard: false,
                 excludePatterns: '*/.git/*,*/venv/*,*.env,*/log/*,*/logs/*,*/tmp/*',
                 includePatterns: ''
             };

@@ -6,6 +6,7 @@ export function loadProfiles(callback) {
             name: 'Default', 
             projectPath: '', 
             copyToClipboard: true, 
+            deployFromClipboard: false,
             excludePatterns: defaultExcludePatterns,
             includePatterns: ''
         }];
@@ -15,6 +16,9 @@ export function loadProfiles(callback) {
             }
             if (!profile.includePatterns) {
                 profile.includePatterns = '';
+            }
+            if (profile.deployFromClipboard === undefined) {
+                profile.deployFromClipboard = false;
             }
         });
         const activeProfileId = data.activeProfileId || profiles[0].id;
