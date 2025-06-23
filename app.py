@@ -62,7 +62,7 @@ done
     
     try:
         file_contents = bash(command)
-        here_doc_value = 'EOCHANGEDFILE'
+        here_doc_value = 'EOPROJECTFILE'
         prompt_template = f"""This is current state of project files:
 {'```'}bash
 {file_contents}
