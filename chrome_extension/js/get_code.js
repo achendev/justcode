@@ -27,7 +27,7 @@ export async function getCode(profile, errorDiv) {
                 const selectors = [
                     'textarea[aria-label="Start typing a prompt"]',
                     'textarea[aria-label="Ask Grok anything"]',
-                    'textarea[aria-label="Type something or choose an example prompt"]',
+                    'textarea[aria-label^="Type something"]',
                     'p[placeholder="data-placeholder"]',
                     'textarea[placeholder="Ask anything"]'
                 ];

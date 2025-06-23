@@ -53,7 +53,21 @@ The system consists of two main components:
     *   Enable "Developer mode".
     *   Click "Load unpacked" and select the `chrome_extension` folder.
 
-5.  **Run the Server**
+5.  **Grant Clipboard Permission**
+
+    Just Code requires permission to read from and write to your clipboard. This must be enabled manually in the extension's settings.
+
+    **How to enable:**
+    1.  In Chrome, go to **Settings**.
+    2.  Navigate to **Extensions** on the left menu.
+    3.  Find the **JustCode Extension** and click on the **Details** button.
+    4.  On the details page, click on **Site settings**.
+    5.  Find **Clipboard** in the permissions list and change its value to **Allow**.
+
+    *This is a critical one-time setup step to allow the extension to read the code provided by the LLM.*
+ 
+
+6.  **Run the Server**
 
         python app.py
 
