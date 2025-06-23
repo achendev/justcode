@@ -80,7 +80,8 @@ def generate_context_from_path(project_path, include_patterns, exclude_patterns)
             if d[name] is not None:  # It's a directory, so recurse
                 extension = '│   ' if pointer == '├── ' else '    '
                 build_tree_str(d[name], prefix + extension)
-
+    
+    build_tree_str(tree_dict)
     tree_str = "\n".join(tree_lines)
     
     # 3. Read file contents and format the final output string.
