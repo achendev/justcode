@@ -24,6 +24,24 @@ export async function getCode(profile, errorDiv) {
         chrome.scripting.executeScript({
             target: { tabId: (await chrome.tabs.query({ active: true, currentWindow: true }))[0].id },
             func: (text) => {
+                // Check if we're on chatgpt.com by inspecting the URL
+                if (window.location.hostname === 'chatgpt.com' || window.location.hostname === 'www.chatgpt.com') {
+                    const promptContainer = document.querySelector("#prompt-textarea");
+                    if (promptContainer) {
+                        const pElement = promptContainer.querySelector('p');
+                        if (pElement) {
+                            // Use innerText to preserve newlines in <p> element
+                            pElement.innerText = text;
+                            pElement.dispatchEvent(new Event('input', { bubbles: true }));
+                            pElement.dispatchEvent(new Event('change', { bubbles: true }));
+                            pElement.focus();
+                            console.log('JustCode: Project state loaded into ChatGPT p element with newlines preserved.');
+                            return;
+                        }
+                    }
+                    console.error('JustCode Error: Could not find target p element within #prompt-textarea.');
+                }
+                // Fallback for other LLM sites
                 const selectors = [
                     'textarea[aria-label="Start typing a prompt"]',
                     'textarea[aria-label="Ask Grok anything"]',
