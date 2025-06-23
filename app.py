@@ -81,17 +81,18 @@ def generate_context_from_path(project_path, include_patterns, exclude_patterns)
                 extension = '│   ' if pointer == '├── ' else '    '
                 build_tree_str(d[name], prefix + extension)
 
-    build_tree_str(tree_dict)
     tree_str = "\n".join(tree_lines)
     
     # 3. Read file contents and format the final output string.
     output_parts = [tree_str, "\n\n"]
     for rel_path in matching_files:
+        # For reading, use the OS-specific path.
         full_path = os.path.join(project_path, rel_path.replace('/', os.sep))
         try:
             with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
             
+            # For the command sent to the LLM, always use Unix-style paths.
             output_parts.append(f"cat > ./{rel_path} << '{here_doc_value}'\n")
             output_parts.append(content)
             output_parts.append(f"\n{here_doc_value}\n\n\n\n\n")
@@ -123,6 +124,8 @@ def get_code():
     try:
         file_contents = generate_context_from_path(project_path, include_patterns, exclude_patterns)
         
+        # The prompt will always use Unix-style paths for simplicity and consistency for the LLM.
+        # The server-side deploy logic will handle the conversion to the correct OS path separator.
         prompt_template = f"""This is current state of project files:
 {three_brackets}bash
 {file_contents}
@@ -166,6 +169,7 @@ rmdir ./path/to/empty_directory_to_remove
 def is_safe_path(base_dir, target_path):
     """
     Checks if a target path is safely within a base directory to prevent path traversal.
+    `os.path.join` handles converting '/' from the LLM to the correct OS separator.
     """
     base_dir_abs = os.path.abspath(base_dir)
     target_path_abs = os.path.abspath(os.path.join(base_dir, target_path))
@@ -202,10 +206,12 @@ def deploy_code():
                 if not match:
                     raise ValueError(f"Invalid or unsupported 'cat' command format: {line}")
                 
+                # relative_path comes from LLM with '/' separators
                 relative_path = match.group('path').strip("'\"")
                 if not is_safe_path(project_path, relative_path):
                     raise PermissionError(f"Path traversal attempt detected: {relative_path}")
-
+                
+                # os.path.join correctly handles the path separators for the current OS.
                 full_path = os.path.join(project_path, relative_path)
                 
                 content_lines = []
