@@ -31,7 +31,7 @@ export function renderProfiles(profiles, activeProfileId, profilesContainer, pro
                 <input type="text" class="form-control form-control-sm exclude-patterns" id="excludePatterns-${profile.id}" placeholder="*/.git/*,*/venv/*,*.env,*/log/*,*/logs/*,*/tmp/*" value="${profile.excludePatterns}">
             </div>
             <div class="mb-3">
-                <label for="includePatterns-${profile.id}" class="form-label">Include Patterns (comma-separated, optional):</label>
+                <label for="includePatterns-${profile.id}" class="form-label">Include Patterns (comma-separated):</label>
                 <input type="text" class="form-control form-control-sm include-patterns" id="includePatterns-${profile.id}" placeholder="*.py,*.js,*.html" value="${profile.includePatterns}">
             </div>
             <div class="form-check mb-3">

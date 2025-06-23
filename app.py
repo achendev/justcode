@@ -62,7 +62,7 @@ done
     
     try:
         file_contents = bash(command)
-        doc_page_value = 'EOCHANGEDFILE'
+        here_doc_value = 'EOCHANGEDFILE'
         prompt_template = f"""This is current state of project files:
 {'```'}bash
 {file_contents}
@@ -70,26 +70,27 @@ done
 \n\n\n\n\n
 ### CRITICAL INSTRUCTIONS ###
 You MUST follow these rules without exception. Failure to do so will render the output unusable.
-1.  **NO RECURSIVE DELETION:** You are strictly forbidden from using `rm -r` or `rm -rf`. This is a critical security rule.
+1.  **OUTPUT FORMAT:** The entire response MUST be a single `bash` code block. Do not include any explanations, apologies, or text outside the ````bash...```` block. Do not use canvas mode, just simple markdown code block.
+2.  **NO RECURSIVE DELETION:** You are strictly forbidden from using `rm -r` or `rm -rf`. This is a critical security rule.
     *   **To delete a file:** You MUST use `rm -f ./path/to/file.ext`.
     *   **To delete an empty directory:** You MUST use `rmdir ./path/to/directory`.
-2.  **OUTPUT FORMAT:** The entire response MUST be a single `bash` code block. Do not include any explanations, apologies, or text outside the ````bash...```` block. Do not use canvas mode, just simple markdown code block.
 3.  **ALLOWED COMMANDS:** You MUST ONLY use the following commands: `mkdir`, `rmdir`, `rm -f`, `touch`, `sed`, and `cat`.
 4.  **FILE CONTENT:** All new files or full file modifications MUST be written using a `cat` heredoc in this exact format: `cat > ./path/to/file << 'EOCHANGEDFILE'`.
 5.  **NO NESTED CODE FENCES:** Inside a file's content (between `EOCHANGEDFILE` delimiters), no line can begin with ` ``` ` as it will break the script.
+
 ### EXAMPLE OF A PERFECT RESPONSE ###
 {'```'}bash
 mkdir ./path/to/new_directory
-cat > ./path/to/changed_file.py << '{doc_page_value}'
+cat > ./path/to/changed_file.py << '{here_doc_value}'
 # full content of the changed python file
 # every line is exactly as it should be in the final file
 def new_function():
     pass
-{doc_page_value}
+{here_doc_value}
 sed -i 's#old_text#new_text#g' ./path/to/another_file.txt
-cat > ./path/to/new_file.txt << '{doc_page_value}'
+cat > ./path/to/new_file.txt << '{here_doc_value}'
 This is a new file.
-{doc_page_value}
+{here_doc_value}
 rm -f ./path/to/old_file_to_remove.txt
 rmdir ./path/to/empty_directory_to_remove
 {'```'}
