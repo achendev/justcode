@@ -67,6 +67,7 @@ done
 {'```'}bash
 {file_contents}
 {'```'}
+\n\n\n\n\n
 ### CRITICAL INSTRUCTIONS ###
 You MUST follow these rules without exception. Failure to do so will render the output unusable.
 1.  **NO RECURSIVE DELETION:** You are strictly forbidden from using `rm -r` or `rm -rf`. This is a critical security rule.
@@ -92,6 +93,7 @@ This is a new file.
 rm -f ./path/to/old_file_to_remove.txt
 rmdir ./path/to/empty_directory_to_remove
 {'```'}
+\n\n\n\n\n 
 """
         return Response(prompt_template, mimetype='text/plain')
         
