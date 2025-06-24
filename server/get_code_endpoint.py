@@ -37,9 +37,9 @@ def get_code():
 You MUST follow these rules without exception. Failure to do so will render the output unusable.
 1.  **OUTPUT FORMAT:** The entire response MUST be a single `bash` code block. Do not include any explanations, apologies, or text outside the ````bash...```` block. Do not use canvas mode, just simple markdown code block.
 2.  **NO RECURSIVE DELETION:** You are strictly forbidden from using `rm -r` or `rm -rf`. This is a critical security rule.
-    *   **To delete a file:** You MUST use `rm -f ./path/to/file.ext`.
+    *   **To delete a file:** You MUST use `rm ./path/to/file.ext`. You can optionally use the `-f` flag.
     *   **To delete an empty directory:** You MUST use `rmdir ./path/to/directory`.
-3.  **ALLOWED COMMANDS:** You MUST ONLY use the following commands: `mkdir`, `rmdir`, `rm -f`, `touch`, `cat`, `mv`.
+3.  **ALLOWED COMMANDS:** You MUST ONLY use the following commands: `mkdir`, `rmdir`, `rm`, `touch`, `cat`, `mv`.
 4.  **FILE CONTENT:** All new files or full file modifications MUST be written using a `cat` heredoc in this exact format: `cat > ./path/to/file << '{here_doc_value}'`.
 5.  **NO NESTED CODE FENCES:** Inside a file's content (between `{here_doc_value}` delimiters), no line can begin with ` ``` ` as it will break the script.
 

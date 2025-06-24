@@ -64,8 +64,20 @@ def deploy_code():
                     if not os.path.exists(os.path.join(project_path, relative_path)):
                         rollback_commands.insert(0, f"rm -f ./{relative_path}")
             elif command == 'rm':
-                if args[0] != '-f': raise ValueError("Only 'rm -f' is supported.")
-                for relative_path in args[1:]:
+                # Check for any unsupported flags.
+                for arg in args:
+                    if arg.startswith('-') and arg != '-f':
+                        raise ValueError(f"Unsupported flag for 'rm': '{arg}'. Only '-f' is supported.")
+                
+                if args.count('-f') > 1:
+                    raise ValueError("Multiple '-f' flags are not allowed for 'rm'.")
+
+                file_paths = [arg for arg in args if not arg.startswith('-')]
+
+                if not file_paths:
+                    raise ValueError("'rm' command requires at least one file path.")
+
+                for relative_path in file_paths:
                     relative_path = relative_path.lstrip('./')
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                     full_path = os.path.join(project_path, relative_path)
