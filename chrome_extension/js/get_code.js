@@ -20,6 +20,8 @@ export async function getCode(profile, errorDiv) {
         if (profile.copyToClipboard) {
             await navigator.clipboard.writeText(responseText);
             console.log('JustCode: Project state copied to clipboard.');
+            errorDiv.textContent = 'Code copied to clipboard!';
+            return; // Skip pasting to textarea if copyToClipboard is enabled
         }
         chrome.scripting.executeScript({
             target: { tabId: (await chrome.tabs.query({ active: true, currentWindow: true }))[0].id },
@@ -67,7 +69,7 @@ export async function getCode(profile, errorDiv) {
             },
             args: [responseText]
         });
-        errorDiv.textContent = profile.copyToClipboard ? 'Code loaded and copied to clipboard!' : 'Code loaded successfully!';
+        errorDiv.textContent = 'Code loaded successfully!';
     } catch (error) {
         errorDiv.textContent = `Error: ${error.message}`;
         console.error('JustCode Error:', error);
