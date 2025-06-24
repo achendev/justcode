@@ -24,54 +24,111 @@ The system consists of two main components:
 
 ## ✅ Prerequisites
 
-*   🐍 Python 3.8 or higher
-*   📦 `pip` and `venv`
-*   🐧 A Unix-like environment (`find`, `xargs`, `tail`, `/bin/bash` are used)
-*   🌐 Google Chrome browser
+*   🐍 Python 3.10 or higher
+*   📦 `pip` and `venv` (usually included with Python)
+*   🐙 Git for cloning the repository
+*   🌐 Google Chrome or a Chromium-based browser that supports loading unpacked extensions.
 
 ## 🛠️ Setup
 
-1.  **Clone the Repository**
+The setup process involves three main stages: cloning the code, setting up the local server, and installing the browser extension.
 
-    Run these commands:
+### Stage 1: Clone the Repository
 
-        git clone https://github.com/achendev/justcode.git
-        cd justcode
+Open your terminal or command prompt and run the following command:
 
-2.  **Set Up Python Environment**
+    git clone https://github.com/achendev/justcode.git
+    cd justcode
 
-        python3 -m venv venv
-        source venv/bin/activate
-        pip install -r requirements.txt
+### Stage 2: Set Up and Run the Local Server
 
-3.  **Create Icon Files for the Extension**
-    *   Create three PNG icons (16x16, 48x48, 128x128 pixels) and place them in `chrome_extension/icons/`.
-    *   You can use an online icon generator to create placeholders.
+Follow the instructions for your operating system to set up the Python environment and run the server.
 
-4.  **Load the Chrome Extension**
+#### 🍎 macOS & 🐧 Linux (Ubuntu, AlmaLinux, etc.)
+
+1.  **Create and Activate Virtual Environment**
+    In the `justcode` directory, run:
+    ```bash
+    # Create a Python virtual environment
+    python3 -m venv venv
+
+    # Activate the environment
+    source venv/bin/activate
+    ```
+
+2.  **Install Dependencies**
+    With the environment active, install the required packages:
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+3.  **Run the Server**
+    You can run the server directly with `python app.py`, or use the provided helper script:
+    ```bash
+    # Make the script executable (only needs to be done once)
+    chmod +x app.sh
+
+    # Run the server
+    ./app.sh
+    ```
+    Keep this terminal window open. You should see a message confirming the server is running on `http://127.0.0.1:5010`.
+
+
+#### 🪟 Windows
+
+1.  **Create and Activate Virtual Environment**
+    In the `justcode` directory, open **PowerShell** (recommended) or **Command Prompt (`cmd`)**.
+
+    ```powershell
+    # Create a Python virtual environment
+    # You may need to use 'py' or 'python.exe' if 'python' is not in your PATH
+    python -m venv venv
+
+    # Activate the environment in PowerShell
+    .\venv\Scripts\Activate.ps1
+    ```
+    > **Note for PowerShell:** If you get an error about script execution being disabled, run `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process` and try activating again.
+
+    > If using the classic **Command Prompt (`cmd.exe`)**, activate with this command instead:
+    > `venv\Scripts\activate.bat`
+
+2.  **Install Dependencies**
+    Once the environment is active (your prompt will be prefixed with `(venv)`), run:
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+3.  **Run the Server**
+    You can run the server directly with `python app.py`. Alternatively, you can run the provided batch script from your terminal or by double-clicking it in the file explorer.
+    ```batch
+    app.bat
+    ```
+    Keep this terminal window open. You should see a message confirming the server is running on `http://127.0.0.1:5010`.
+
+### Stage 3: Load and Configure the Chrome Extension
+
+These steps are the same for all operating systems.
+
+1.  **Load the Extension:**
     *   Open Chrome and navigate to `chrome://extensions/`.
-    *   Enable "Developer mode".
-    *   Click "Load unpacked" and select the `chrome_extension` folder.
+    *   Enable **Developer mode** using the toggle switch (usually in the top-right corner).
+    *   Click the **Load unpacked** button.
+    *   In the file dialog, select the `chrome_extension` folder located inside your `justcode` project directory.
 
-5.  **Grant Clipboard Permission**
+2.  **Grant Clipboard Permission:**
+    The "Deploy Code" feature works by reading a script from your clipboard. For this to work seamlessly, you must grant clipboard access to the LLM web page you are using (e.g., `chat.openai.com`).
 
-    Just Code requires permission to read from and write to your clipboard. This must be enabled manually in the extension's settings.
+    **How to enable for a site:**
+    *   Navigate to the LLM website (e.g., `https://chat.openai.com`).
+    *   Click the "lock" icon 🔒 in the address bar.
+    *   Go to **Site settings**.
+    *   Find **Clipboard** in the list of permissions.
+    *   Change its value from "Ask (default)" to **Allow**.
 
-    **How to enable:**
-    1.  In Chrome, go to **Settings**.
-    2.  Navigate to **Extensions** on the left menu.
-    3.  Find the **JustCode Extension** and click on the **Details** button.
-    4.  On the details page, click on **Site settings**.
-    5.  Find **Clipboard** in the permissions list and change its value to **Allow**.
+    You only need to do this once per LLM site you use. This is a critical step for one-click deployment.
 
-    *This is a critical one-time setup step to allow the extension to read the code provided by the LLM.*
- 
-
-6.  **Run the Server**
-
-        python app.py
-
-    You should see a message that the server is running on `http://127.0.0.1:5010`. Keep this terminal open.
+3.  **(Optional) Use Custom Icons:**
+    The repository includes default icons. If you wish to customize them, simply replace the `.png` files inside `chrome_extension/icons/`.
 
 ## 🔄 Usage Workflow
 
@@ -97,7 +154,8 @@ This tool executes code generated by an LLM directly on your machine. This is **
 
     justcode/
     ├── app.py              # Flask server for code retrieval/deployment
-    ├── app                 # Script to activate venv and run app.py
+    ├── app.sh              # Helper script to run server on macOS/Linux
+    ├── app.bat             # Helper script to run server on Windows
     ├── chrome_extension/
     │   ├── icons/          # Extension icons (16, 48, 128)
     │   ├── js/             # JavaScript modules

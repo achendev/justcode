@@ -139,7 +139,7 @@ You MUST follow these rules without exception. Failure to do so will render the 
 2.  **NO RECURSIVE DELETION:** You are strictly forbidden from using `rm -r` or `rm -rf`. This is a critical security rule.
     *   **To delete a file:** You MUST use `rm -f ./path/to/file.ext`.
     *   **To delete an empty directory:** You MUST use `rmdir ./path/to/directory`.
-3.  **ALLOWED COMMANDS:** You MUST ONLY use the following commands: `mkdir`, `rmdir`, `rm -f`, `touch`, and `cat`.
+3.  **ALLOWED COMMANDS:** You MUST ONLY use the following commands: `mkdir`, `rmdir`, `rm -f`, `touch`, `cat`, `mv`.
 4.  **FILE CONTENT:** All new files or full file modifications MUST be written using a `cat` heredoc in this exact format: `cat > ./path/to/file << '{here_doc_value}'`.
 5.  **NO NESTED CODE FENCES:** Inside a file's content (between `{here_doc_value}` delimiters), no line can begin with ` ``` ` as it will break the script.
 
@@ -157,6 +157,7 @@ This is a new file.
 {here_doc_value}
 rm -f ./path/to/old_file_to_remove.txt
 rmdir ./path/to/empty_directory_to_remove
+mv ./path/to/old_name.txt ./path/to/new_name.txt
 {three_brackets}
 """
         return Response(prompt_template, mimetype='text/plain')
@@ -296,9 +297,23 @@ def deploy_code():
                         output_log.append(f"Removed directory: {relative_path}")
                     except OSError as e:
                         raise OSError(f"Could not remove directory '{relative_path}': {e}")
+
+            elif command == 'mv':
+                if len(args) != 2:
+                    raise ValueError("'mv' requires exactly two arguments: source and destination.")
+                src_path, dest_path = args
+                if not is_safe_path(project_path, src_path) or not is_safe_path(project_path, dest_path):
+                    raise PermissionError(f"Path traversal attempt detected: {src_path} or {dest_path}")
+                full_src_path = os.path.join(project_path, src_path)
+                full_dest_path = os.path.join(project_path, dest_path)
+                if not os.path.exists(full_src_path):
+                    raise OSError(f"Source path does not exist: {src_path}")
+                os.makedirs(os.path.dirname(full_dest_path), exist_ok=True)
+                os.rename(full_src_path, full_dest_path)
+                output_log.append(f"Moved: {src_path} to {dest_path}")
             
             else:
-                raise ValueError(f"Unsupported command: '{command}'. Allowed commands are: mkdir, rmdir, rm -f, touch, cat.")
+                raise ValueError(f"Unsupported command: '{command}'. Allowed commands are: mkdir, rmdir, rm -f, touch, cat, mv.")
 
         except (ValueError, PermissionError, OSError, IsADirectoryError) as e:
             import traceback
