@@ -159,6 +159,11 @@ rm -f ./path/to/old_file_to_remove.txt
 rmdir ./path/to/empty_directory_to_remove
 mv ./path/to/old_name.txt ./path/to/new_name.txt
 {three_brackets}
+
+
+
+
+ 
 """
         return Response(prompt_template, mimetype='text/plain')
         
