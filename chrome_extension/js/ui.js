@@ -1,5 +1,6 @@
 import { getCode } from './get_code.js';
 import { deployCode } from './deploy_code.js';
+import { rollbackCode } from './rollback.js';
 import { loadProfiles, saveProfiles } from './storage.js';
 
 export function renderProfiles(profiles, activeProfileId, profilesContainer, profileTabs, errorDiv) {
@@ -22,9 +23,12 @@ export function renderProfiles(profiles, activeProfileId, profilesContainer, pro
                 <input type="text" class="profile-name-input" value="${profile.name}" data-id="${profile.id}">
                 <button class="btn btn-outline-danger btn-sm delete-profile" data-id="${profile.id}">Delete</button>
             </div>
-            <div class="mb-3">
-                <label for="projectPath-${profile.id}" class="form-label">Project Path:</label>
-                <input type="text" class="form-control form-control-sm project-path" id="projectPath-${profile.id}" placeholder="/path/to/project" value="${profile.projectPath}">
+            <div class="d-flex align-items-end gap-2 mb-3">
+                <div class="flex-grow-1">
+                    <label for="projectPath-${profile.id}" class="form-label">Project Path:</label>
+                    <input type="text" class="form-control form-control-sm project-path" id="projectPath-${profile.id}" placeholder="/path/to/project" value="${profile.projectPath}">
+                </div>
+                <button class="btn btn-outline-info btn-sm rollback-code" data-id="${profile.id}" title="Rollback the last deploy for this project">Rollback</button>
             </div>
             <div class="mb-3">
                 <label for="excludePatterns-${profile.id}" class="form-label">Exclude Patterns (comma-separated):</label>
@@ -135,6 +139,15 @@ export function renderProfiles(profiles, activeProfileId, profilesContainer, pro
             loadProfiles(async (profiles, activeProfileId) => {
                 const profile = profiles.find(p => p.id === id);
                 await deployCode(profile, errorDiv);
+            });
+        });
+    });
+    document.querySelectorAll('.rollback-code').forEach(button => {
+        button.addEventListener('click', async (e) => {
+            const id = parseInt(e.target.dataset.id);
+            loadProfiles(async (profiles) => {
+                const profile = profiles.find(p => p.id === id);
+                await rollbackCode(profile, errorDiv);
             });
         });
     });

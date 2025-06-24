@@ -10,7 +10,7 @@ export async function deployCode(profile, errorDiv) {
         if (profile.deployFromClipboard) {
             // Read directly from clipboard if deployFromClipboard is enabled
             codeToDeploy = await navigator.clipboard.readText();
-            if (!codeToDeploy || (!codeToDeploy.includes("EOCHANGEDFILE") && !codeToDeploy.includes("EOPROJECTFILE"))) {
+            if (!codeToDeploy || !codeToDeploy.includes("EOPROJECTFILE")) {
                 errorDiv.textContent = 'Error: Clipboard content is not a valid deploy script.';
                 return;
             }
@@ -63,7 +63,7 @@ export async function deployCode(profile, errorDiv) {
             }
             await new Promise(resolve => setTimeout(resolve, 100));
             codeToDeploy = await navigator.clipboard.readText();
-            if (!codeToDeploy || (!codeToDeploy.includes("EOCHANGEDFILE") && !codeToDeploy.includes("EOPROJECTFILE"))) {
+            if (!codeToDeploy || !codeToDeploy.includes("EOPROJECTFILE")) {
                 errorDiv.textContent = 'Error: Clipboard content is not a valid deploy script.';
                 return;
             }

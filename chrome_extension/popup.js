@@ -5,5 +5,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const profileTabs = document.getElementById('profileTabs');
     const addProfileButton = document.getElementById('addProfile');
     const errorDiv = document.getElementById('error');
+    
     initUI(profilesContainer, profileTabs, addProfileButton, errorDiv);
 });

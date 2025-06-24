@@ -182,20 +182,15 @@ def is_safe_path(base_dir, target_path):
     target_path_abs = os.path.abspath(os.path.join(base_dir, target_path))
     return target_path_abs.startswith(base_dir_abs)
 
-@app.route('/deploycode', methods=['POST'])
-def deploy_code():
-    path = request.args.get('path')
-    if not path or not path.strip():
-        return Response("Error: 'path' parameter is missing.", status=400, mimetype='text/plain')
-    
-    project_path = os.path.abspath(path.strip())
-    if not os.path.isdir(project_path):
-        return Response(f"Error: Provided path '{project_path}' is not a valid directory.", status=400, mimetype='text/plain')
-    
-    script_content = request.get_data(as_text=True)
-    if not script_content:
-        return Response("Error: No deploy script provided in the request body.", status=400, mimetype='text/plain')
-    
+def get_rollback_filepath(project_path):
+    """Creates a safe filepath for the rollback script."""
+    rollback_dir = "rollback_scripts"
+    os.makedirs(rollback_dir, exist_ok=True)
+    sanitized_filename = re.sub(r'[\\/:\s]', '_', project_path).strip('_') + ".sh"
+    return os.path.join(rollback_dir, sanitized_filename)
+
+def execute_script(script_content, project_path):
+    """Parses and executes a deployment script, returning logs."""
     lines = script_content.splitlines()
     i = 0
     output_log = []
@@ -213,12 +208,10 @@ def deploy_code():
                 if not match:
                     raise ValueError(f"Invalid or unsupported 'cat' command format: {line}")
                 
-                # relative_path comes from LLM with '/' separators
-                relative_path = match.group('path').strip("'\"")
+                relative_path = match.group('path').strip("'\"").lstrip('./')
                 if not is_safe_path(project_path, relative_path):
                     raise PermissionError(f"Path traversal attempt detected: {relative_path}")
                 
-                # os.path.join correctly handles the path separators for the current OS.
                 full_path = os.path.join(project_path, relative_path)
                 
                 content_lines = []
@@ -229,8 +222,8 @@ def deploy_code():
                         break
                     content_lines.append(content_line)
                     i += 1
-                else: # Loop finished without break, means EOF was reached before delimiter
-                    raise ValueError(f"Unterminated heredoc for file '{relative_path}' (missing {here_doc_value})")
+                else:
+                    raise ValueError(f"Unterminated heredoc for file '{relative_path}'")
                 
                 file_content = "\n".join(content_lines)
                 
@@ -242,92 +235,201 @@ def deploy_code():
 
             # Handle other commands
             parts = shlex.split(line)
-            if not parts:
-                continue
+            if not parts: continue
             
-            command = parts[0]
-            args = parts[1:]
+            command, args = parts[0], parts[1:]
 
             if command == 'mkdir':
-                if not args: raise ValueError("'mkdir' requires at least one argument.")
                 for arg in args:
-                    relative_path = arg
-                    if not is_safe_path(project_path, relative_path):
-                        raise PermissionError(f"Path traversal attempt detected: {relative_path}")
-                    full_path = os.path.join(project_path, relative_path)
-                    os.makedirs(full_path, exist_ok=True)
+                    relative_path = arg.lstrip('./')
+                    if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
+                    os.makedirs(os.path.join(project_path, relative_path), exist_ok=True)
                     output_log.append(f"Created directory: {relative_path}")
 
             elif command == 'touch':
-                if not args: raise ValueError("'touch' requires at least one argument.")
                 for arg in args:
-                    relative_path = arg
-                    if not is_safe_path(project_path, relative_path):
-                        raise PermissionError(f"Path traversal attempt detected: {relative_path}")
+                    relative_path = arg.lstrip('./')
+                    if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                     full_path = os.path.join(project_path, relative_path)
-                    dir_name = os.path.dirname(full_path)
-                    if dir_name:
-                        os.makedirs(dir_name, exist_ok=True)
-                    with open(full_path, 'a'):
-                        os.utime(full_path, None)
+                    os.makedirs(os.path.dirname(full_path), exist_ok=True)
+                    with open(full_path, 'a'): os.utime(full_path, None)
                     output_log.append(f"Touched file: {relative_path}")
 
             elif command == 'rm':
-                if not args or args[0] != '-f':
-                    raise ValueError("Only 'rm -f' is supported for file deletion.")
-                
-                paths_to_remove = args[1:]
-                if not paths_to_remove: raise ValueError("'rm -f' requires a file path.")
-                for relative_path in paths_to_remove:
-                    if not is_safe_path(project_path, relative_path):
-                        raise PermissionError(f"Path traversal attempt detected: {relative_path}")
+                if args[0] != '-f': raise ValueError("Only 'rm -f' is supported.")
+                for relative_path in args[1:]:
+                    relative_path = relative_path.lstrip('./')
+                    if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                     full_path = os.path.join(project_path, relative_path)
                     try:
-                        if os.path.isdir(full_path):
-                             raise IsADirectoryError(f"Cannot remove directory with 'rm -f': {relative_path}. Use 'rmdir'.")
+                        if os.path.isdir(full_path): raise IsADirectoryError(f"Cannot 'rm -f' a directory: {relative_path}")
                         os.remove(full_path)
                         output_log.append(f"Removed file: {relative_path}")
                     except FileNotFoundError:
-                        output_log.append(f"File not found, skipped removal: {relative_path}")
+                        output_log.append(f"Skipped removal (not found): {relative_path}")
 
             elif command == 'rmdir':
-                if not args: raise ValueError("'rmdir' requires at least one argument.")
                 for arg in args:
-                    relative_path = arg
-                    if not is_safe_path(project_path, relative_path):
-                        raise PermissionError(f"Path traversal attempt detected: {relative_path}")
+                    relative_path = arg.lstrip('./')
+                    if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                     full_path = os.path.join(project_path, relative_path)
                     try:
                         os.rmdir(full_path)
                         output_log.append(f"Removed directory: {relative_path}")
                     except OSError as e:
-                        raise OSError(f"Could not remove directory '{relative_path}': {e}")
+                        raise OSError(f"Could not rmdir '{relative_path}': {e}")
 
             elif command == 'mv':
-                if len(args) != 2:
-                    raise ValueError("'mv' requires exactly two arguments: source and destination.")
-                src_path, dest_path = args
-                if not is_safe_path(project_path, src_path) or not is_safe_path(project_path, dest_path):
-                    raise PermissionError(f"Path traversal attempt detected: {src_path} or {dest_path}")
-                full_src_path = os.path.join(project_path, src_path)
-                full_dest_path = os.path.join(project_path, dest_path)
-                if not os.path.exists(full_src_path):
-                    raise OSError(f"Source path does not exist: {src_path}")
-                os.makedirs(os.path.dirname(full_dest_path), exist_ok=True)
-                os.rename(full_src_path, full_dest_path)
-                output_log.append(f"Moved: {src_path} to {dest_path}")
+                if len(args) != 2: raise ValueError("'mv' requires two arguments.")
+                src, dest = args[0].lstrip('./'), args[1].lstrip('./')
+                if not is_safe_path(project_path, src) or not is_safe_path(project_path, dest): raise PermissionError(f"Traversal: {src} or {dest}")
+                full_src = os.path.join(project_path, src)
+                full_dest = os.path.join(project_path, dest)
+                os.makedirs(os.path.dirname(full_dest), exist_ok=True)
+                os.rename(full_src, full_dest)
+                output_log.append(f"Moved: {src} to {dest}")
             
             else:
-                raise ValueError(f"Unsupported command: '{command}'. Allowed commands are: mkdir, rmdir, rm -f, touch, cat, mv.")
+                raise ValueError(f"Unsupported command: '{command}'")
 
         except (ValueError, PermissionError, OSError, IsADirectoryError) as e:
-            import traceback
-            error_details = f"Error during deployment on line {i}: '{line}'\n{str(e)}\n{traceback.format_exc()}"
-            print(error_details)
-            return Response(error_details, status=500, mimetype='text/plain')
+            raise type(e)(f"Failed on line {i}: '{line}'\n{str(e)}") from e
 
-    success_message = f"Successfully deployed code.\n--- LOG ---\n" + "\n".join(output_log)
-    return Response(success_message, mimetype='text/plain')
+    return output_log
+
+@app.route('/deploycode', methods=['POST'])
+def deploy_code():
+    path = request.args.get('path')
+    if not path or not path.strip():
+        return Response("Error: 'path' parameter is missing.", status=400, mimetype='text/plain')
+    
+    project_path = os.path.abspath(path.strip())
+    if not os.path.isdir(project_path):
+        return Response(f"Error: Provided path '{project_path}' is not a valid directory.", status=400, mimetype='text/plain')
+    
+    script_content = request.get_data(as_text=True)
+    if not script_content:
+        return Response("Error: No deploy script provided in the request body.", status=400, mimetype='text/plain')
+    
+    # --- Pass 1: Generate Rollback Script ---
+    rollback_commands = []
+    lines = script_content.splitlines()
+    i = 0
+    try:
+        while i < len(lines):
+            line = lines[i].strip()
+            i += 1
+            if not line: continue
+
+            if line.startswith('cat >'):
+                match = re.match(r"cat >\s+(?P<path>.*?)\s+<<\s+'" + re.escape(here_doc_value) + r"'", line)
+                if not match: raise ValueError(f"Invalid 'cat' format: {line}")
+                relative_path = match.group('path').strip("'\"").lstrip('./')
+                if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
+                
+                full_path = os.path.join(project_path, relative_path)
+                if os.path.isfile(full_path):
+                    with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        original_content = f.read()
+                    rollback_cmd = f"cat > ./{relative_path} << '{here_doc_value}'\n{original_content}\n{here_doc_value}"
+                else:
+                    rollback_cmd = f"rm -f ./{relative_path}"
+                rollback_commands.insert(0, rollback_cmd)
+
+                while i < len(lines) and lines[i] != here_doc_value: i += 1
+                if i < len(lines): i += 1
+                continue
+
+            parts = shlex.split(line)
+            if not parts: continue
+            command, args = parts[0], parts[1:]
+
+            if command == 'mkdir':
+                for arg in args:
+                    relative_path = arg.lstrip('./')
+                    if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
+                    if not os.path.isdir(os.path.join(project_path, relative_path)):
+                        rollback_commands.insert(0, f"rmdir ./{relative_path}")
+            elif command == 'touch':
+                for arg in args:
+                    relative_path = arg.lstrip('./')
+                    if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
+                    if not os.path.exists(os.path.join(project_path, relative_path)):
+                        rollback_commands.insert(0, f"rm -f ./{relative_path}")
+            elif command == 'rm':
+                if args[0] != '-f': raise ValueError("Only 'rm -f' is supported.")
+                for relative_path in args[1:]:
+                    relative_path = relative_path.lstrip('./')
+                    if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
+                    full_path = os.path.join(project_path, relative_path)
+                    if os.path.isfile(full_path):
+                        with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
+                            original_content = f.read()
+                        rollback_cmd = f"cat > ./{relative_path} << '{here_doc_value}'\n{original_content}\n{here_doc_value}"
+                        rollback_commands.insert(0, rollback_cmd)
+            elif command == 'rmdir':
+                for arg in args:
+                    relative_path = arg.lstrip('./')
+                    if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
+                    if os.path.isdir(os.path.join(project_path, relative_path)):
+                        rollback_commands.insert(0, f"mkdir ./{relative_path}")
+            elif command == 'mv':
+                if len(args) != 2: raise ValueError("'mv' requires two arguments.")
+                src, dest = args[0].lstrip('./'), args[1].lstrip('./')
+                if not is_safe_path(project_path, src) or not is_safe_path(project_path, dest): raise PermissionError(f"Traversal: {src} or {dest}")
+                rollback_commands.insert(0, f"mv ./{dest} ./{src}")
+            else:
+                raise ValueError(f"Unsupported command: '{command}'")
+    except (ValueError, PermissionError, OSError) as e:
+        error_details = f"Error during rollback script generation: {str(e)}"
+        print(error_details)
+        return Response(error_details, status=500, mimetype='text/plain')
+
+    rollback_filepath = get_rollback_filepath(project_path)
+    with open(rollback_filepath, 'w', encoding='utf-8') as f:
+        f.write("\n".join(rollback_commands))
+    
+    # --- Pass 2: Execute Deployment Script ---
+    try:
+        output_log = execute_script(script_content, project_path)
+        success_message = f"Successfully deployed code.\n--- LOG ---\n" + "\n".join(output_log)
+        return Response(success_message, mimetype='text/plain')
+    except Exception as e:
+        import traceback
+        error_details = f"Error during deployment:\n{str(e)}\n{traceback.format_exc()}"
+        error_details += f"\n\nNOTE: A rollback script was saved to '{rollback_filepath}'. You can use the 'Rollback' button to undo partial changes."
+        print(error_details)
+        return Response(error_details, status=500, mimetype='text/plain')
+
+@app.route('/rollback', methods=['POST'])
+def rollback():
+    path = request.args.get('path')
+    if not path or not path.strip():
+        return Response("Error: 'path' parameter is missing.", status=400, mimetype='text/plain')
+    
+    project_path = os.path.abspath(path.strip())
+    if not os.path.isdir(project_path):
+        return Response(f"Error: Provided path '{project_path}' is not a valid directory.", status=400, mimetype='text/plain')
+
+    rollback_filepath = get_rollback_filepath(project_path)
+    if not os.path.isfile(rollback_filepath):
+        return Response(f"Error: No rollback script found for project '{project_path}'.", status=404, mimetype='text/plain')
+
+    with open(rollback_filepath, 'r', encoding='utf-8') as f:
+        script_content = f.read()
+    
+    if not script_content.strip():
+        return Response("Rollback script is empty. Nothing to do.", mimetype='text/plain')
+        
+    try:
+        output_log = execute_script(script_content, project_path)
+        success_message = f"Successfully rolled back changes.\n--- LOG ---\n" + "\n".join(output_log)
+        return Response(success_message, mimetype='text/plain')
+    except Exception as e:
+        import traceback
+        error_details = f"Error during rollback:\n{str(e)}\n{traceback.format_exc()}"
+        print(error_details)
+        return Response(error_details, status=500, mimetype='text/plain')
 
 if __name__ == '__main__':
     print("Starting JustCode server on http://127.0.0.1:5010")

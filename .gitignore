@@ -9,6 +9,7 @@ env/
 ENV/
 env.bak/
 venv.bak/
+rollback_scripts/
 
 # Editor and IDE files
 .vscode/
