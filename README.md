@@ -82,7 +82,7 @@ Follow the instructions for your operating system to set up the Python environme
     ```powershell
     # Create a Python virtual environment
     # You may need to use 'py' or 'python.exe' if 'python' is not in your PATH
-    python -m venv venv
+    python3.exe -m venv venv
 
     # Activate the environment in PowerShell
     .\venv\Scripts\Activate.ps1
