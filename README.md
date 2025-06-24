@@ -65,9 +65,6 @@ Follow the instructions for your operating system to set up the Python environme
 3.  **Run the Server**
     You can run the server directly with `python app.py`, or use the provided helper script:
     ```bash
-    # Make the script executable (only needs to be done once)
-    chmod +x app.sh
-
     # Run the server
     ./app.sh
     ```
@@ -101,7 +98,7 @@ Follow the instructions for your operating system to set up the Python environme
 3.  **Run the Server**
     You can run the server directly with `python app.py`. Alternatively, you can run the provided batch script from your terminal or by double-clicking it in the file explorer.
     ```batch
-    app.bat
+    .\app.bat
     ```
     Keep this terminal window open. You should see a message confirming the server is running on `http://127.0.0.1:5010`.
 
