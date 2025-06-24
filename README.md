@@ -81,8 +81,8 @@ Follow the instructions for your operating system to set up the Python environme
 
     ```powershell
     # Create a Python virtual environment
-    # You may need to use 'py' or 'python.exe' if 'python' is not in your PATH
-    python3.exe -m venv venv
+    # You may need to use 'py', 'python.exe' or 'python3.exe' if 'python' is not in your PATH
+    python -m venv venv
 
     # Activate the environment in PowerShell
     .\venv\Scripts\Activate.ps1
@@ -115,25 +115,28 @@ These steps are the same for all operating systems.
     *   Click the **Load unpacked** button.
     *   In the file dialog, select the `chrome_extension` folder located inside your `justcode` project directory.
 
-2.  **Grant Clipboard Permission:**
-    The "Deploy Code" feature works by reading a script from your clipboard. For this to work seamlessly, you must grant clipboard access to the LLM web page you are using (e.g., `chat.openai.com`).
+2.  **Pin the Extension for Easy Access:**
+    *   After loading, click the puzzle piece icon 🧩 in the Chrome toolbar to see your list of extensions.
+    *   Find the **JustCode Extension** and click the **pin** icon next to it.
+    *   This will keep the JustCode icon visible in your toolbar for one-click access.
 
-    **How to enable for a site:**
-    *   Navigate to the LLM website (e.g., `https://chat.openai.com`).
-    *   Click the "lock" icon 🔒 in the address bar.
-    *   Go to **Site settings**.
-    *   Find **Clipboard** in the list of permissions.
-    *   Change its value from "Ask (default)" to **Allow**.
+5.  **Grant Clipboard Permission**
 
-    You only need to do this once per LLM site you use. This is a critical step for one-click deployment.
+    Just Code requires permission to read from and write to your clipboard. This must be enabled manually in the extension's settings.
 
-3.  **(Optional) Use Custom Icons:**
-    The repository includes default icons. If you wish to customize them, simply replace the `.png` files inside `chrome_extension/icons/`.
+    **How to enable:**
+    1.  In Chrome, go to **Settings**.
+    2.  Navigate to **Extensions** on the left menu.
+    3.  Find the **JustCode Extension** and click on the **Details** button.
+    4.  On the details page, click on **Site settings**.
+    5.  Find **Clipboard** in the permissions list and change its value to **Allow**.
+
+    *This is a critical one-time setup step to allow the extension to read the code provided by the LLM.*
 
 ## 🔄 Usage Workflow
 
 1.  **Start the Server:** Ensure the local Flask server is running.
-2.  **Open Popup:** Click the JustCode extension icon.
+2.  **Open Popup:** Click the JustCode extension icon in your browser toolbar.
 3.  **Set Path:** Enter the absolute path to your project.
 4.  **Go to LLM:** Navigate to your preferred LLM chat interface.
 5.  **Get Code:** Click the `Get Code` button. Your project context will be loaded into the prompt area.
