@@ -21,7 +21,7 @@ The system consists of two main components:
 
 *   **🧩 Chrome Extension (`chrome_extension/`):** A user-friendly popup interface.
     *   **Popup Interface:** Contains an input for the project path and two buttons: "Get Code" and "Deploy Code".
-    *   **Shortcuts:** Use `Ctrl+O` to open the extension. Inside the popup, use `Ctrl+←` to Get Code and `Ctrl+→` to Deploy Code.
+    *   **Shortcuts:** Use `Alt+O` to open the extension. Inside the popup, use `Alt+←` to Get Code and `Alt+→` to Deploy Code.
 
 ## ✅ Prerequisites
 
@@ -134,13 +134,13 @@ These steps are the same for all operating systems.
 ## 🔄 Usage Workflow
 
 1.  **Start the Server:** Ensure the local Flask server is running.
-2.  **Open Popup:** Click the JustCode extension icon in your browser toolbar or press `Ctrl+O`.
+2.  **Open Popup:** Click the JustCode extension icon in your browser toolbar or press `Alt+O`.
 3.  **Set Path:** Enter the absolute path to your project.
 4.  **Go to LLM:** Navigate to your preferred LLM chat interface.
-5.  **Get Code:** Click the `Get Code` button or press `Ctrl+←`. Your project context will be loaded into the prompt area.
+5.  **Get Code:** Click the `Get Code` button or press `Alt+←`. Your project context will be loaded into the prompt area.
 6.  **Prompt LLM:** Add your instructions and submit.
 7.  **Get Response:** The LLM will respond with a bash script.
-8.  **Deploy Code:** Click the `Deploy Code` button or press `Ctrl+→`.
+8.  **Deploy Code:** Click the `Deploy Code` button or press `Alt+→`.
 9.  **Verify:** Your local files are now updated.
 
 ## ⚠️ Security Warning

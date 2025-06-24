@@ -10,8 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Add keyboard shortcuts for actions within the popup
     document.addEventListener('keydown', (event) => {
-        // We only care about Ctrl key combinations, not Command on Mac.
-        if (!event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
+        // We only care about Alt/Option key combinations.
+        if (!event.altKey || event.metaKey || event.ctrlKey || event.shiftKey) {
             return;
         }
 
