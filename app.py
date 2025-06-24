@@ -413,16 +413,18 @@ def rollback():
 
     rollback_filepath = get_rollback_filepath(project_path)
     if not os.path.isfile(rollback_filepath):
-        return Response(f"Error: No rollback script found for project '{project_path}'.", status=404, mimetype='text/plain')
+        return Response("nothing to rollback deploy something first", status=404, mimetype='text/plain')
 
     with open(rollback_filepath, 'r', encoding='utf-8') as f:
         script_content = f.read()
     
     if not script_content.strip():
-        return Response("Rollback script is empty. Nothing to do.", mimetype='text/plain')
+        os.remove(rollback_filepath)
+        return Response("nothing to rollback deploy something first", status=404, mimetype='text/plain')
         
     try:
         output_log = execute_script(script_content, project_path)
+        os.remove(rollback_filepath)
         success_message = f"Successfully rolled back changes.\n--- LOG ---\n" + "\n".join(output_log)
         return Response(success_message, mimetype='text/plain')
     except Exception as e:
