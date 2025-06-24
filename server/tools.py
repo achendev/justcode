@@ -41,10 +41,8 @@ def generate_context_from_path(project_path, include_patterns, exclude_patterns)
                 if not any(fnmatch.fnmatch(filename, pat) for pat in include_patterns):
                     continue
             
-            # Skip empty files and non-text files
+            # Skip non-text files, but allow empty text files (like __init__.py)
             try:
-                if os.path.getsize(file_full_path) == 0:
-                    continue
                 # Simple check to avoid including binary files by trying to read it as text
                 with open(file_full_path, 'r', encoding='utf-8') as f:
                     f.read(1024) # Try reading a small chunk
