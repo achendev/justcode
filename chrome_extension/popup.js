@@ -1,4 +1,5 @@
-import { initUI } from './js/ui.js';
+import { initUI, renderProfiles } from './js/ui.js';
+import { loadProfiles, saveProfiles } from './js/storage.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const profilesContainer = document.getElementById('profilesContainer');
@@ -30,6 +31,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 deployCodeButton.click();
                 actionTaken = true;
             }
+        } else if (event.code === 'KeyA') { // Switch profile left
+            actionTaken = true;
+            loadProfiles((profiles, activeProfileId) => {
+                if (profiles.length <= 1) return;
+                const currentIndex = profiles.findIndex(p => p.id === activeProfileId);
+                const newIndex = (currentIndex - 1 + profiles.length) % profiles.length;
+                const newActiveProfileId = profiles[newIndex].id;
+                saveProfiles(profiles, newActiveProfileId);
+                renderProfiles(profiles, newActiveProfileId, profilesContainer, profileTabs, errorDiv);
+            });
+        } else if (event.code === 'KeyS') { // Switch profile right
+            actionTaken = true;
+            loadProfiles((profiles, activeProfileId) => {
+                if (profiles.length <= 1) return;
+                const currentIndex = profiles.findIndex(p => p.id === activeProfileId);
+                const newIndex = (currentIndex + 1) % profiles.length;
+                const newActiveProfileId = profiles[newIndex].id;
+                saveProfiles(profiles, newActiveProfileId);
+                renderProfiles(profiles, newActiveProfileId, profilesContainer, profileTabs, errorDiv);
+            });
         }
 
         if (actionTaken) {

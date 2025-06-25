@@ -23,7 +23,16 @@ The system consists of two main components:
 
 *   **🧩 Chrome Extension (`chrome_extension/`):** A user-friendly popup interface.
     *   **Popup Interface:** Contains an input for the project path and three main buttons: "Get Code," "Deploy Code," and "Rollback."
-    *   **Shortcuts:** Use `Alt+O` to open the extension. Inside the popup, use `Alt+←` to Get Code and `Alt+→` to Deploy Code.
+    *   **Shortcuts:** 
+        *   `Alt + O`: Open the extension popup.
+        *   When the popup is open:
+            *   `Alt + ←`: Trigger "Get Code" for the active profile.
+            *   `Alt + →`: Trigger "Deploy Code" for the active profile.
+            *   `Alt + R`: Trigger "Rollback" for the active profile.
+            *   `Alt + A`: Switch to the profile tab on the left (loops around).
+            *   `Alt + S`: Switch to the profile tab on the right (loops around).
+    
+    > **Note on Shortcuts:** If the `Alt + O` shortcut to open the extension doesn't work, you may need to set or reset it. Go to `chrome://extensions/shortcuts` in your browser, find the "JustCode Extension", and assign your preferred shortcut for the "Open JustCode Popup" action.
 
 ## ↩️ Automatic Rollback
 
@@ -98,7 +107,7 @@ Follow the instructions for your operating system to set up the Python environme
     ```
     > **Note for PowerShell:** If you get an error about script execution being disabled, run `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process` and try activating again.
 
-    > If using the classic **Command Prompt (`cmd.exe`)**, activate with this command instead:
+    > If using the classic **Command Prompt (`cmd.exe`)**, activate with this command instead of:
     > `venv\Scripts\activate.bat`
 
 2.  **Install Dependencies**

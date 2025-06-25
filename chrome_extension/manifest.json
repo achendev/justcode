@@ -21,8 +21,7 @@
     "commands": {
         "_execute_action": {
             "suggested_key": {
-                "default": "Alt+O",
-                "mac": "Alt+O"
+                "default": "Alt + O"
             },
             "description": "Open JustCode Popup"
         }
