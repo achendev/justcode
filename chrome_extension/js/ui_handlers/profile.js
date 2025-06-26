@@ -10,7 +10,10 @@ export function handleAddProfile(reRenderCallback) {
             deployFromClipboard: false,
             excludePatterns: '.git/,venv/,.env,log/,logs/,tmp/',
             includePatterns: '',
-            serverUrl: 'http://127.0.0.1:5010'
+            serverUrl: 'http://127.0.0.1:5010',
+            isAuthEnabled: false,
+            username: '',
+            password: ''
         };
         profiles.push(newProfile);
         const newActiveProfileId = newProfile.id;

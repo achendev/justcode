@@ -10,7 +10,10 @@ export function loadProfiles(callback) {
             deployFromClipboard: false,
             excludePatterns: defaultExcludePatterns,
             includePatterns: '',
-            serverUrl: defaultServerUrl
+            serverUrl: defaultServerUrl,
+            isAuthEnabled: false,
+            username: '',
+            password: ''
         }];
         profiles.forEach(profile => {
             if (!profile.excludePatterns) {
@@ -24,6 +27,15 @@ export function loadProfiles(callback) {
             }
             if (!profile.serverUrl) {
                 profile.serverUrl = defaultServerUrl;
+            }
+            if (profile.isAuthEnabled === undefined) {
+                profile.isAuthEnabled = false;
+            }
+            if (profile.username === undefined) {
+                profile.username = '';
+            }
+            if (profile.password === undefined) {
+                profile.password = '';
             }
         });
         const activeProfileId = data.activeProfileId || profiles[0].id;

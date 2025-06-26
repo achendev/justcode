@@ -15,7 +15,16 @@ export async function getContext(profile, errorDiv) {
     }
     console.log('JustCode: Fetching project state...');
     try {
-        const response = await fetch(endpoint);
+        const headers = {};
+        if (profile.isAuthEnabled && profile.username) {
+            headers['Authorization'] = 'Basic ' + btoa(`${profile.username}:${profile.password}`);
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'GET',
+            headers: headers
+        });
+
         const responseText = await response.text();
         if (!response.ok) {
             throw new Error(`Server error: ${response.status} ${responseText}`);

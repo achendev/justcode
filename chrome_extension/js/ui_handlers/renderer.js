@@ -46,6 +46,19 @@ function getProfileCardHTML(profile) {
             <label for="serverUrl-${profile.id}" class="form-label">JustCode Server URL:</label>
             <input type="text" class="form-control form-control-sm server-url" id="serverUrl-${profile.id}" placeholder="http://127.0.0.1:5010" value="${profile.serverUrl}">
         </div>
+        <hr>
+        <div class="form-check mb-2">
+            <input type="checkbox" class="form-check-input auth-enabled" id="authEnabled-${profile.id}" ${profile.isAuthEnabled ? 'checked' : ''}>
+            <label class="form-check-label" for="authEnabled-${profile.id}">Enable Basic Authentication</label>
+        </div>
+        <div class="mb-2">
+            <label for="username-${profile.id}" class="form-label">Username:</label>
+            <input type="text" class="form-control form-control-sm username" id="username-${profile.id}" value="${profile.username}">
+        </div>
+        <div class="mb-3">
+            <label for="password-${profile.id}" class="form-label">Password:</label>
+            <input type="password" class="form-control form-control-sm password" id="password-${profile.id}" value="${profile.password}">
+        </div>
     </div>
     `;
 }

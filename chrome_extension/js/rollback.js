@@ -11,9 +11,14 @@ export async function rollbackCode(profile, errorDiv) {
         const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
         const endpoint = `${serverUrl}/rollback?path=${encodeURIComponent(path)}`;
 
+        const headers = { 'Content-Type': 'text/plain' };
+        if (profile.isAuthEnabled && profile.username) {
+            headers['Authorization'] = 'Basic ' + btoa(`${profile.username}:${profile.password}`);
+        }
+
         const response = await fetch(endpoint, {
             method: 'POST',
-            headers: { 'Content-Type': 'text/plain' }
+            headers: headers
         });
 
         const resultText = await response.text();

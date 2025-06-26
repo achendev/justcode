@@ -49,6 +49,15 @@ export function attachAllEventListeners(reRenderCallback, errorDiv) {
     document.querySelectorAll('.server-url').forEach(input => {
         input.addEventListener('change', (e) => settingsHandlers.handleServerUrlChange(e));
     });
+    document.querySelectorAll('.auth-enabled').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => inputHandlers.handleCheckboxChange(e, 'isAuthEnabled'));
+    });
+    document.querySelectorAll('.username').forEach(input => {
+        input.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'username'));
+    });
+    document.querySelectorAll('.password').forEach(input => {
+        input.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'password'));
+    });
     document.querySelectorAll('.settings-button').forEach(button => {
         button.addEventListener('click', settingsHandlers.handleOpenSettingsClick);
     });
