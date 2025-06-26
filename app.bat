@@ -1,7 +1,34 @@
 @echo off
-REM This script activates the Python virtual environment and starts the Flask server.
-REM If the server fails, it attempts to install dependencies and retries.
+REM This script automates the setup and execution of the JustCode server.
+REM It checks for a virtual environment, creates it if missing,
+REM activates it, and installs dependencies if needed.
 
+REM --- Create Virtual Environment if it doesn't exist ---
+IF NOT EXIST "venv" (
+    ECHO Virtual environment 'venv' not found. Creating...
+    REM Use 'py -m venv' if available, as it's more reliable on Windows.
+    REM Otherwise, fall back to 'python -m venv'.
+    WHERE py >nul 2>nul
+    IF %ERRORLEVEL% EQU 0 (
+        py -m venv venv
+    ) ELSE (
+        python -m venv venv
+    )
+    
+    IF %ERRORLEVEL% NEQ 0 (
+        ECHO.
+        ECHO --------------------------------------------------------------------
+        ECHO ERROR: Failed to create the virtual environment.
+        ECHO Please make sure Python 3.10+ is installed and in your PATH.
+        ECHO --------------------------------------------------------------------
+        ECHO.
+        PAUSE
+        EXIT /B 1
+    )
+)
+
+
+REM --- Activate and Run ---
 ECHO Activating virtual environment...
 CALL venv\Scripts\activate.bat
 

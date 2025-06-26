@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 deployCodeButton.click();
                 actionTaken = true;
             }
-        } else if (event.key.toLowerCase() === 'r') {
+        } else if (event.code === 'KeyR') { // Use event.code for reliability
             const rollbackButton = document.querySelector('.profile-card.active .rollback-code');
             if (rollbackButton) {
                 rollbackButton.click();

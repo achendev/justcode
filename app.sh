@@ -1,9 +1,29 @@
 #!/bin/sh
+# This script automates the setup and execution of the JustCode server.
+# It checks for a virtual environment, creates it if missing,
+# activates it, and installs dependencies if needed.
 
-# This script activates the Python virtual environment and starts the Flask server.
-# If the server fails to start, it attempts to install dependencies and retries.
+# --- Create Virtual Environment if it doesn't exist ---
+if [ ! -d "venv" ]; then
+    echo "Virtual environment 'venv' not found. Creating..."
+    # Use python3 if available, otherwise fall back to python
+    if command -v python3 &> /dev/null; then
+        PYTHON_CMD=python3
+    else
+        PYTHON_CMD=python
+    fi
+    
+    $PYTHON_CMD -m venv venv
+    if [ $? -ne 0 ]; then
+        echo "------------------------------------------------------------"
+        echo "ERROR: Failed to create the virtual environment."
+        echo "Please make sure Python 3.10+ is installed and accessible."
+        echo "------------------------------------------------------------"
+        exit 1
+    fi
+fi
 
-# Activate virtual environment
+# --- Activate and Run ---
 source venv/bin/activate
 
 echo "Attempting to start JustCode server..."
