@@ -8,7 +8,10 @@ export async function rollbackCode(profile, errorDiv) {
 
     try {
         errorDiv.textContent = 'Attempting rollback...';
-        const response = await fetch(`http://127.0.0.1:5010/rollback?path=${encodeURIComponent(path)}`, {
+        const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
+        const endpoint = `${serverUrl}/rollback?path=${encodeURIComponent(path)}`;
+
+        const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain' }
         });

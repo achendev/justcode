@@ -1,6 +1,7 @@
 export function loadProfiles(callback) {
     chrome.storage.local.get(['profiles', 'activeProfileId'], (data) => {
         const defaultExcludePatterns = '.git/,venv/,.env,log/,logs/,tmp/';
+        const defaultServerUrl = 'http://127.0.0.1:5010';
         const profiles = data.profiles || [{ 
             id: Date.now(), 
             name: 'Default', 
@@ -8,7 +9,8 @@ export function loadProfiles(callback) {
             copyToClipboard: true, 
             deployFromClipboard: false,
             excludePatterns: defaultExcludePatterns,
-            includePatterns: ''
+            includePatterns: '',
+            serverUrl: defaultServerUrl
         }];
         profiles.forEach(profile => {
             if (!profile.excludePatterns) {
@@ -19,6 +21,9 @@ export function loadProfiles(callback) {
             }
             if (profile.deployFromClipboard === undefined) {
                 profile.deployFromClipboard = false;
+            }
+            if (!profile.serverUrl) {
+                profile.serverUrl = defaultServerUrl;
             }
         });
         const activeProfileId = data.activeProfileId || profiles[0].id;

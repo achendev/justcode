@@ -2,11 +2,14 @@ export async function getCode(profile, errorDiv) {
     const path = profile.projectPath;
     const excludePatterns = profile.excludePatterns || '';
     const includePatterns = profile.includePatterns || '';
+    const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
+    
     if (!path) {
         errorDiv.textContent = 'Error: Please enter a project path.';
         return;
     }
-    let endpoint = `http://127.0.0.1:5010/getcode?path=${encodeURIComponent(path)}&exclude=${encodeURIComponent(excludePatterns)}`;
+    
+    let endpoint = `${serverUrl}/getcode?path=${encodeURIComponent(path)}&exclude=${encodeURIComponent(excludePatterns)}`;
     if (includePatterns) {
         endpoint += `&include=${encodeURIComponent(includePatterns)}`;
     }

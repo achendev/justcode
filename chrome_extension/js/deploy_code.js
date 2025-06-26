@@ -68,7 +68,11 @@ export async function deployCode(profile, errorDiv) {
                 return;
             }
         }
-        const response = await fetch(`http://127.0.0.1:5010/deploycode?path=${encodeURIComponent(path)}`, {
+
+        const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
+        const endpoint = `${serverUrl}/deploycode?path=${encodeURIComponent(path)}`;
+
+        const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain' },
             body: codeToDeploy

@@ -19,36 +19,52 @@ export function renderProfiles(profiles, activeProfileId, profilesContainer, pro
         profileCard.className = `profile-card tab-content ${profile.id === activeProfileId ? 'active' : ''}`;
         profileCard.id = `profile-${profile.id}`;
         profileCard.innerHTML = `
-            <div class="profile-header">
-                <input type="text" class="profile-name-input" value="${profile.name}" data-id="${profile.id}">
-                <button class="btn btn-outline-danger btn-sm delete-profile" data-id="${profile.id}">Delete</button>
-            </div>
-            <div class="d-flex align-items-end gap-2 mb-3">
-                <div class="flex-grow-1">
-                    <label for="projectPath-${profile.id}" class="form-label">Project Path:</label>
-                    <input type="text" class="form-control form-control-sm project-path" id="projectPath-${profile.id}" placeholder="/path/to/project" value="${profile.projectPath}">
+            <!-- Main View for the profile -->
+            <div class="profile-main-view">
+                <div class="profile-header">
+                    <button class="btn btn-outline-secondary btn-sm settings-button" data-id="${profile.id}" title="Profile Settings"><i class="bi bi-gear-wide-connected"></i></button>
+                    <input type="text" class="profile-name-input" value="${profile.name}" data-id="${profile.id}">
+                    <button class="btn btn-outline-danger btn-sm delete-profile" data-id="${profile.id}" title="Delete Profile"><i class="bi bi-trash"></i></button>
                 </div>
-                <button class="btn btn-outline-info btn-sm rollback-code" data-id="${profile.id}" title="Rollback the last deploy for this project">Rollback</button>
+                <div class="d-flex align-items-end gap-2 mb-3">
+                    <div class="flex-grow-1">
+                        <label for="projectPath-${profile.id}" class="form-label">Project Path:</label>
+                        <input type="text" class="form-control form-control-sm project-path" id="projectPath-${profile.id}" placeholder="/path/to/project" value="${profile.projectPath}">
+                    </div>
+                    <button class="btn btn-outline-info btn-sm rollback-code" data-id="${profile.id}" title="Rollback the last deploy for this project">Rollback</button>
+                </div>
+                <div class="mb-3">
+                    <label for="excludePatterns-${profile.id}" class="form-label">Exclude Patterns (comma-separated):</label>
+                    <input type="text" class="form-control form-control-sm exclude-patterns" id="excludePatterns-${profile.id}" placeholder=".git/,venv/,.env,log/,logs/,tmp/" value="${profile.excludePatterns}">
+                </div>
+                <div class="mb-3">
+                    <label for="includePatterns-${profile.id}" class="form-label">Include Patterns (comma-separated):</label>
+                    <input type="text" class="form-control form-control-sm include-patterns" id="includePatterns-${profile.id}" placeholder="*.py,*.js,*.html" value="${profile.includePatterns}">
+                </div>
+                <div class="form-check mb-3">
+                    <input type="checkbox" class="form-check-input copy-to-clipboard" id="copyToClipboard-${profile.id}" ${profile.copyToClipboard ? 'checked' : ''}>
+                    <label class="form-check-label" for="copyToClipboard-${profile.id}">Copy to clipboard on Get Code</label>
+                </div>
+                <div class="form-check mb-3">
+                    <input type="checkbox" class="form-check-input deploy-from-clipboard" id="deployFromClipboard-${profile.id}" ${profile.deployFromClipboard ? 'checked' : ''}>
+                    <label class="form-check-label" for="deployFromClipboard-${profile.id}">Deploy from clipboard</label>
+                </div>
+                <div class="d-flex gap-2 mb-3">
+                    <button class="btn btn-primary btn-sm flex-grow-1 get-code" data-id="${profile.id}">Get Code</button>
+                    <button class="btn btn-success btn-sm flex-grow-1 deploy-code" data-id="${profile.id}">Deploy Code</button>
+                </div>
             </div>
-            <div class="mb-3">
-                <label for="excludePatterns-${profile.id}" class="form-label">Exclude Patterns (comma-separated):</label>
-                <input type="text" class="form-control form-control-sm exclude-patterns" id="excludePatterns-${profile.id}" placeholder=".git/,venv/,.env,log/,logs/,tmp/" value="${profile.excludePatterns}">
-            </div>
-            <div class="mb-3">
-                <label for="includePatterns-${profile.id}" class="form-label">Include Patterns (comma-separated):</label>
-                <input type="text" class="form-control form-control-sm include-patterns" id="includePatterns-${profile.id}" placeholder="*.py,*.js,*.html" value="${profile.includePatterns}">
-            </div>
-            <div class="form-check mb-3">
-                <input type="checkbox" class="form-check-input copy-to-clipboard" id="copyToClipboard-${profile.id}" ${profile.copyToClipboard ? 'checked' : ''}>
-                <label class="form-check-label" for="copyToClipboard-${profile.id}">Copy to clipboard on Get Code</label>
-            </div>
-            <div class="form-check mb-3">
-                <input type="checkbox" class="form-check-input deploy-from-clipboard" id="deployFromClipboard-${profile.id}" ${profile.deployFromClipboard ? 'checked' : ''}>
-                <label class="form-check-label" for="deployFromClipboard-${profile.id}">Deploy from clipboard</label>
-            </div>
-            <div class="d-flex gap-2 mb-3">
-                <button class="btn btn-primary btn-sm flex-grow-1 get-code" data-id="${profile.id}">Get Code</button>
-                <button class="btn btn-success btn-sm flex-grow-1 deploy-code" data-id="${profile.id}">Deploy Code</button>
+
+            <!-- Settings View for the profile (hidden by default) -->
+            <div class="profile-settings-view" style="display: none;">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">Settings</h5>
+                    <button type="button" class="btn-close close-settings" data-id="${profile.id}" aria-label="Close"></button>
+                </div>
+                <div class="mb-3">
+                    <label for="serverUrl-${profile.id}" class="form-label">JustCode Server URL:</label>
+                    <input type="text" class="form-control form-control-sm server-url" id="serverUrl-${profile.id}" placeholder="http://127.0.0.1:5010" value="${profile.serverUrl}">
+                </div>
             </div>
         `;
         profilesContainer.appendChild(profileCard);
@@ -153,7 +169,7 @@ export function renderProfiles(profiles, activeProfileId, profilesContainer, pro
     });
     document.querySelectorAll('.delete-profile').forEach(button => {
         button.addEventListener('click', (e) => {
-            const id = parseInt(e.target.dataset.id);
+            const id = parseInt(e.currentTarget.closest('.profile-header').querySelector('.delete-profile').dataset.id);
             loadProfiles((profiles, activeProfileId) => {
                 if (profiles.length > 1) {
                     const updatedProfiles = profiles.filter(p => p.id !== id);
@@ -164,6 +180,44 @@ export function renderProfiles(profiles, activeProfileId, profilesContainer, pro
                     errorDiv.textContent = 'Cannot delete the last profile.';
                 }
             });
+        });
+    });
+
+    // --- Settings Listeners ---
+    document.querySelectorAll('.server-url').forEach(input => {
+        input.addEventListener('change', (e) => {
+            const id = parseInt(e.target.id.split('-')[1]);
+            loadProfiles((profiles, activeProfileId) => {
+                const profile = profiles.find(p => p.id === id);
+                let newUrl = e.target.value.trim();
+                if (newUrl.endsWith('/')) {
+                    newUrl = newUrl.slice(0, -1);
+                }
+                profile.serverUrl = newUrl || 'http://127.0.0.1:5010'; // Default if empty
+                saveProfiles(profiles, activeProfileId);
+            });
+        });
+    });
+
+    document.querySelectorAll('.settings-button').forEach(button => {
+        button.addEventListener('click', (e) => {
+            const id = parseInt(e.currentTarget.dataset.id);
+            const profileCard = document.getElementById(`profile-${id}`);
+            if (profileCard) {
+                profileCard.querySelector('.profile-main-view').style.display = 'none';
+                profileCard.querySelector('.profile-settings-view').style.display = 'block';
+            }
+        });
+    });
+
+    document.querySelectorAll('.close-settings').forEach(button => {
+        button.addEventListener('click', (e) => {
+            const id = parseInt(e.currentTarget.dataset.id);
+            const profileCard = document.getElementById(`profile-${id}`);
+            if (profileCard) {
+                profileCard.querySelector('.profile-main-view').style.display = 'block';
+                profileCard.querySelector('.profile-settings-view').style.display = 'none';
+            }
         });
     });
 }
@@ -178,7 +232,8 @@ export function initUI(profilesContainer, profileTabs, addProfileButton, errorDi
                 copyToClipboard: true,
                 deployFromClipboard: false,
                 excludePatterns: '.git/,venv/,.env,log/,logs/,tmp/',
-                includePatterns: ''
+                includePatterns: '',
+                serverUrl: 'http://127.0.0.1:5010'
             };
             profiles.push(newProfile);
             saveProfiles(profiles, newProfile.id);
