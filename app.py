@@ -26,12 +26,14 @@ if __name__ == '__main__':
     # Enable debug mode only for local development for security reasons
     debug_mode = (host == '127.0.0.1')
     
-    print(f"Starting JustCode server on http://{host}:{port}")
-    print("CORS is enabled for all origins.")
-    if not debug_mode:
-        print("Production mode is enabled (debug mode is off).")
-    else:
-        print("Debug mode is on.")
-    print("WARNING: This server can read and write files on your system. Use with caution.")
+    # This check prevents the startup message from printing twice when the reloader is active.
+    if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
+        print(f"Starting JustCode server on http://{host}:{port}")
+        print("CORS is enabled for all origins.")
+        if not debug_mode:
+            print("Production mode is enabled (debug mode is off).")
+        else:
+            print("Debug mode is on.")
+        print("WARNING: This server can read and write files on your system. Use with caution.")
     
     app.run(host=host, port=port, debug=debug_mode)
