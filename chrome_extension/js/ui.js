@@ -31,7 +31,7 @@ export function renderProfiles(profiles, activeProfileId, profilesContainer, pro
                         <label for="projectPath-${profile.id}" class="form-label">Project Path:</label>
                         <input type="text" class="form-control form-control-sm project-path" id="projectPath-${profile.id}" placeholder="/path/to/project" value="${profile.projectPath}">
                     </div>
-                    <button class="btn btn-outline-info btn-sm rollback-code" data-id="${profile.id}" title="Rollback the last deploy for this project">Rollback</button>
+                    <button class="btn btn-outline-info btn-sm rollback-code" data-id="${profile.id}" title="Rollback the last deploy for this project"><i class="bi bi-arrow-counterclockwise"></i> Rollback</button>
                 </div>
                 <div class="mb-3">
                     <label for="excludePatterns-${profile.id}" class="form-label">Exclude Patterns (comma-separated):</label>
@@ -50,8 +50,8 @@ export function renderProfiles(profiles, activeProfileId, profilesContainer, pro
                     <label class="form-check-label" for="deployFromClipboard-${profile.id}">Deploy from clipboard</label>
                 </div>
                 <div class="d-flex gap-2 mb-3">
-                    <button class="btn btn-primary btn-sm flex-grow-1 get-context" data-id="${profile.id}">Get Context</button>
-                    <button class="btn btn-success btn-sm flex-grow-1 deploy-code" data-id="${profile.id}">Deploy Code</button>
+                    <button class="btn btn-primary btn-sm flex-grow-1 get-context" data-id="${profile.id}"><i class="bi bi-box-arrow-in-down"></i> Get Context</button>
+                    <button class="btn btn-success btn-sm flex-grow-1 deploy-code" data-id="${profile.id}"><i class="bi bi-box-arrow-up"></i> Deploy Code</button>
                 </div>
             </div>
 
