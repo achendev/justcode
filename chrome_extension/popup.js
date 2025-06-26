@@ -1,5 +1,6 @@
 import { initUI, renderUI } from './js/ui.js';
 import { loadData, saveData } from './js/storage.js';
+import { handleGetContextClick } from './js/ui_handlers/actions.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const profilesContainer = document.getElementById('profilesContainer');
@@ -19,10 +20,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let actionTaken = false;
         if (event.key === 'ArrowLeft') {
-            // Find and click the "Get Context" button for the active profile
             const getContextButton = document.querySelector('.profile-card.active .get-context');
             if (getContextButton) {
-                getContextButton.click();
+                const mockEvent = { currentTarget: getContextButton };
+                handleGetContextClick(mockEvent, errorDiv, true);
                 actionTaken = true;
             }
         } else if (event.key === 'ArrowRight') {
