@@ -31,6 +31,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 deployCodeButton.click();
                 actionTaken = true;
             }
+        } else if (event.key.toLowerCase() === 'r') {
+            const rollbackButton = document.querySelector('.profile-card.active .rollback-code');
+            if (rollbackButton) {
+                rollbackButton.click();
+                actionTaken = true;
+            }
         } else if (event.code === 'KeyA') { // Switch profile left
             actionTaken = true;
             loadProfiles((profiles, activeProfileId) => {
