@@ -17,6 +17,14 @@ export function attachAllEventListeners(reRenderCallback, errorDiv) {
         button.addEventListener('click', (e) => profileHandlers.handleArchiveProfile(e, errorDiv, reRenderCallback));
     });
 
+    document.querySelectorAll('.move-profile-left').forEach(button => {
+        button.addEventListener('click', (e) => profileHandlers.handleMoveProfileLeft(e, reRenderCallback));
+    });
+
+    document.querySelectorAll('.move-profile-right').forEach(button => {
+        button.addEventListener('click', (e) => profileHandlers.handleMoveProfileRight(e, reRenderCallback));
+    });
+
     // Input changes that don't require a re-render
     document.querySelectorAll('.project-path').forEach(input => {
         input.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'projectPath'));

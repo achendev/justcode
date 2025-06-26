@@ -5,6 +5,8 @@ function getProfileCardHTML(profile) {
         <div class="profile-header">
             <button class="btn btn-outline-secondary btn-sm settings-button" data-id="${profile.id}" title="Profile Settings"><i class="bi bi-gear-wide-connected"></i></button>
             <input type="text" class="form-control form-control-sm profile-name-input" value="${profile.name}" data-id="${profile.id}">
+            <button class="btn btn-outline-secondary btn-sm move-profile-left" data-id="${profile.id}" title="Move Left"><i class="bi bi-arrow-bar-left"></i></button>
+            <button class="btn btn-outline-secondary btn-sm move-profile-right" data-id="${profile.id}" title="Move Right"><i class="bi bi-arrow-bar-right"></i></button>
             <button class="btn btn-outline-warning btn-sm archive-profile" data-id="${profile.id}" title="Archive Profile"><i class="bi bi-archive"></i></button>
         </div>
         <div class="d-flex align-items-end gap-2 mb-3">

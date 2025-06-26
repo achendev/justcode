@@ -61,6 +61,34 @@ export function handleArchiveProfile(event, errorDiv, reRenderCallback) {
     });
 }
 
+function moveProfile(id, direction, reRenderCallback) {
+    loadData((profiles, activeProfileId, archivedProfiles) => {
+        if (profiles.length <= 1) {
+            return; // Cannot move if there's only one or zero profiles
+        }
+        const currentIndex = profiles.findIndex(p => p.id === id);
+        if (currentIndex === -1) {
+            return; // Profile not found
+        }
+        const newProfiles = [...profiles];
+        const [movedProfile] = newProfiles.splice(currentIndex, 1);
+        const newIndex = (currentIndex + direction + profiles.length) % profiles.length;
+        newProfiles.splice(newIndex, 0, movedProfile);
+        saveData(newProfiles, activeProfileId, archivedProfiles);
+        reRenderCallback(newProfiles, activeProfileId, archivedProfiles);
+    });
+}
+
+export function handleMoveProfileLeft(event, reRenderCallback) {
+    const id = parseInt(event.currentTarget.dataset.id);
+    moveProfile(id, -1, reRenderCallback);
+}
+
+export function handleMoveProfileRight(event, reRenderCallback) {
+    const id = parseInt(event.currentTarget.dataset.id);
+    moveProfile(id, 1, reRenderCallback);
+}
+
 export function handleRestoreProfile(event, reRenderCallback) {
     const id = parseInt(event.currentTarget.dataset.id);
     loadData((profiles, activeProfileId, archivedProfiles) => {
