@@ -4,7 +4,7 @@ function getProfileCardHTML(profile) {
     <div class="profile-main-view">
         <div class="profile-header">
             <button class="btn btn-outline-secondary btn-sm settings-button" data-id="${profile.id}" title="Profile Settings"><i class="bi bi-gear-wide-connected"></i></button>
-            <input type="text" class="profile-name-input" value="${profile.name}" data-id="${profile.id}">
+            <input type="text" class="form-control form-control-sm profile-name-input" value="${profile.name}" data-id="${profile.id}">
             <button class="btn btn-outline-danger btn-sm delete-profile" data-id="${profile.id}" title="Delete Profile"><i class="bi bi-trash"></i></button>
         </div>
         <div class="d-flex align-items-end gap-2 mb-3">
