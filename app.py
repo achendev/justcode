@@ -1,5 +1,5 @@
 import os
-from flask import Flask
+from flask import Flask, request
 from flask_cors import CORS
 from dotenv import load_dotenv
 
@@ -16,7 +16,7 @@ CORS(app)
 # Register routes from endpoint modules
 app.add_url_rule('/getcontext', 'get_context', get_context, methods=['GET'])
 app.add_url_rule('/deploycode', 'deploy_code', deploy_code, methods=['POST'])
-app.add_url_rule('/rollback', 'rollback', rollback, methods=['POST'])
+app.add_url_rule('/rollback', 'rollback', rollback, methods=['GET', 'POST'])
 
 if __name__ == '__main__':
     # Get host and port from environment variables or use defaults

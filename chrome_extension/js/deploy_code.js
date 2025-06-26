@@ -1,3 +1,5 @@
+import { refreshRollbackCount } from './ui.js';
+
 export async function deployCode(profile, errorDiv) {
     errorDiv.textContent = '';
     const path = profile.projectPath;
@@ -87,6 +89,8 @@ export async function deployCode(profile, errorDiv) {
         if (!response.ok) {
             throw new Error(`Deploy failed: ${resultText}`);
         }
+        
+        refreshRollbackCount(profile);
         errorDiv.textContent = 'Code deployed successfully!';
         console.log('JustCode Deploy Result:', resultText);
     } catch (error) {

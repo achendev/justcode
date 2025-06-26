@@ -3,7 +3,7 @@ import re
 import shlex
 import traceback
 from flask import request, Response
-from .tools import is_safe_path, get_rollback_filepath, execute_script, here_doc_value
+from .tools import is_safe_path, create_new_rollback_filepath, get_sorted_rollback_files, execute_script, here_doc_value
 
 def deploy_code():
     path = request.args.get('path')
@@ -104,9 +104,19 @@ def deploy_code():
         print(error_details)
         return Response(error_details, status=500, mimetype='text/plain')
 
-    rollback_filepath = get_rollback_filepath(project_path)
+    # Create the new rollback script.
+    rollback_filepath = create_new_rollback_filepath(project_path)
     with open(rollback_filepath, 'w', encoding='utf-8') as f:
         f.write("\n".join(rollback_commands))
+
+    # Clean up old rollback scripts if there are more than 10.
+    all_rollbacks = get_sorted_rollback_files(project_path)
+    if len(all_rollbacks) > 10:
+        for old_script in all_rollbacks[:-10]: # Keep the 10 newest
+            try:
+                os.remove(old_script)
+            except OSError as e:
+                print(f"Warning: Could not delete old rollback script '{old_script}': {e}")
     
     # --- Pass 2: Execute Deployment Script ---
     try:

@@ -2,6 +2,8 @@ import os
 import re
 import fnmatch
 import shlex
+import time
+import glob
 
 here_doc_value = 'EOPROJECTFILE'
 
@@ -106,12 +108,33 @@ def is_safe_path(base_dir, target_path):
     target_path_abs = os.path.abspath(os.path.join(base_dir, target_path))
     return target_path_abs.startswith(base_dir_abs)
 
-def get_rollback_filepath(project_path):
-    """Creates a safe filepath for the rollback script."""
+def _get_rollback_base_name(project_path):
+    """Creates a sanitized, unique base name for a project's rollback scripts."""
     rollback_dir = "rollback_scripts"
     os.makedirs(rollback_dir, exist_ok=True)
-    sanitized_filename = re.sub(r'[\\/:\s]', '_', project_path).strip('_') + ".sh"
+    sanitized_filename = re.sub(r'[\\/:\s]', '_', project_path).strip('_')
     return os.path.join(rollback_dir, sanitized_filename)
+
+def create_new_rollback_filepath(project_path):
+    """Generates a new, timestamped filepath for a rollback script."""
+    base_name = _get_rollback_base_name(project_path)
+    timestamp = int(time.time() * 1000)
+    return f"{base_name}__{timestamp}.sh"
+
+def get_sorted_rollback_files(project_path):
+    """Gets a list of all rollback scripts for a project, sorted oldest to newest."""
+    base_name = _get_rollback_base_name(project_path)
+    pattern = f"{base_name}__*.sh"
+    files = glob.glob(pattern)
+    
+    # Sort files based on the timestamp in their names
+    try:
+        files.sort(key=lambda f: int(f.split('__')[-1].split('.')[0]))
+    except (IndexError, ValueError):
+        # Handle cases where a file might not match the expected pattern
+        return []
+    return files
+
 
 def execute_script(script_content, project_path):
     """Parses and executes a deployment script, returning logs."""

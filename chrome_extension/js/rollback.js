@@ -1,3 +1,5 @@
+import { refreshRollbackCount } from './ui.js';
+
 export async function rollbackCode(profile, errorDiv) {
     errorDiv.textContent = '';
     const path = profile.projectPath;
@@ -26,6 +28,7 @@ export async function rollbackCode(profile, errorDiv) {
             throw new Error(`Rollback failed: ${resultText}`);
         }
 
+        refreshRollbackCount(profile);
         errorDiv.textContent = 'Rollback successful!';
         console.log('JustCode Rollback Result:', resultText);
 

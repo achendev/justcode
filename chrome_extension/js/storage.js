@@ -13,7 +13,8 @@ export function loadData(callback) {
             serverUrl: defaultServerUrl,
             isAuthEnabled: false,
             username: '',
-            password: ''
+            password: '',
+            rollbackCount: 0
         }];
         profiles.forEach(profile => {
             if (!profile.excludePatterns) {
@@ -36,6 +37,9 @@ export function loadData(callback) {
             }
             if (profile.password === undefined) {
                 profile.password = '';
+            }
+            if (profile.rollbackCount === undefined) {
+                profile.rollbackCount = 0;
             }
         });
         const activeProfileId = data.activeProfileId || profiles[0].id;

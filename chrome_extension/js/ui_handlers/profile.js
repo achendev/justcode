@@ -13,7 +13,8 @@ export function handleAddProfile(reRenderCallback) {
             serverUrl: 'http://127.0.0.1:5010',
             isAuthEnabled: false,
             username: '',
-            password: ''
+            password: '',
+            rollbackCount: 0
         };
         profiles.push(newProfile);
         const newActiveProfileId = newProfile.id;

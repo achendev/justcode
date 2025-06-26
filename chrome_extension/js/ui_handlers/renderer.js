@@ -1,4 +1,9 @@
 function getProfileCardHTML(profile) {
+    // Render the stack based on the cached rollbackCount
+    const rollbackStackItems = [...Array(10)].map((_, i) => 
+        `<div class="rollback-stack-item ${i < profile.rollbackCount ? 'available' : ''}"></div>`
+    ).join('');
+
     return `
     <!-- Main View for the profile -->
     <div class="profile-main-view">
@@ -9,12 +14,15 @@ function getProfileCardHTML(profile) {
             <button class="btn btn-outline-secondary btn-sm move-profile-right" data-id="${profile.id}" title="Move Right"><i class="bi bi-arrow-bar-right"></i></button>
             <button class="btn btn-outline-warning btn-sm archive-profile" data-id="${profile.id}" title="Archive Profile"><i class="bi bi-archive"></i></button>
         </div>
-        <div class="d-flex align-items-end gap-2 mb-3">
+        <div class="d-flex align-items-end gap-2 mb-2">
             <div class="flex-grow-1">
                 <label for="projectPath-${profile.id}" class="form-label">Project Path:</label>
                 <input type="text" class="form-control form-control-sm project-path" id="projectPath-${profile.id}" placeholder="/path/to/project" value="${profile.projectPath}">
             </div>
             <button class="btn btn-outline-info btn-sm rollback-code" data-id="${profile.id}" title="Rollback the last deploy for this project"><i class="bi bi-arrow-counterclockwise"></i> Rollback</button>
+        </div>
+        <div class="rollback-stack-container mb-3" data-id="${profile.id}">
+            ${rollbackStackItems}
         </div>
         <div class="mb-3">
             <label for="excludePatterns-${profile.id}" class="form-label">Exclude Patterns (comma-separated):</label>

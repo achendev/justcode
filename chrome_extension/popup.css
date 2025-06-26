@@ -51,6 +51,20 @@ body {
 .tab-content.active {
     display: block;
 }
+.rollback-stack-container {
+    display: flex;
+    gap: 2px;
+    height: 5px;
+}
+.rollback-stack-item {
+    flex-grow: 1;
+    background-color: #e9ecef;
+    border-radius: 1px;
+    transition: background-color 0.2s;
+}
+.rollback-stack-item.available {
+    background-color: #6c757d;
+}
 /* Light theme (default) */
 body {
     background-color: #f8f9fa;
@@ -110,5 +124,11 @@ body {
     }
     .text-muted {
         color: #adb5bd !important;
+    }
+    .rollback-stack-item {
+        background-color: #495057;
+    }
+    .rollback-stack-item.available {
+        background-color: #adb5bd;
     }
 }
