@@ -1,5 +1,5 @@
-export function loadProfiles(callback) {
-    chrome.storage.local.get(['profiles', 'activeProfileId'], (data) => {
+export function loadData(callback) {
+    chrome.storage.local.get(['profiles', 'activeProfileId', 'archivedProfiles'], (data) => {
         const defaultExcludePatterns = '.git/,venv/,.env,log/,logs/,tmp/';
         const defaultServerUrl = 'http://127.0.0.1:5010';
         const profiles = data.profiles || [{ 
@@ -39,16 +39,18 @@ export function loadProfiles(callback) {
             }
         });
         const activeProfileId = data.activeProfileId || profiles[0].id;
+        const archivedProfiles = data.archivedProfiles || [];
+        
         if (!data.profiles) {
-            chrome.storage.local.set({ profiles, activeProfileId }, () => callback(profiles, activeProfileId));
+            chrome.storage.local.set({ profiles, activeProfileId, archivedProfiles }, () => callback(profiles, activeProfileId, archivedProfiles));
         } else {
-            callback(profiles, activeProfileId);
+            callback(profiles, activeProfileId, archivedProfiles);
         }
     });
 }
 
-export function saveProfiles(profiles, activeProfileId) {
-    chrome.storage.local.set({ profiles, activeProfileId }, () => {
-        console.log('JustCode: Profiles saved:', profiles, 'Active Profile ID:', activeProfileId);
+export function saveData(profiles, activeProfileId, archivedProfiles) {
+    chrome.storage.local.set({ profiles, activeProfileId, archivedProfiles }, () => {
+        console.log('JustCode: Data saved.');
     });
 }

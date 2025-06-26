@@ -1,7 +1,7 @@
-import { loadProfiles, saveProfiles } from '../storage.js';
+import { loadData, saveData } from '../storage.js';
 
 export function handleAddProfile(reRenderCallback) {
-    loadProfiles((profiles) => {
+    loadData((profiles, activeProfileId, archivedProfiles) => {
         const newProfile = {
             id: Date.now(),
             name: `Profile ${profiles.length + 1}`,
@@ -17,40 +17,71 @@ export function handleAddProfile(reRenderCallback) {
         };
         profiles.push(newProfile);
         const newActiveProfileId = newProfile.id;
-        saveProfiles(profiles, newActiveProfileId);
-        reRenderCallback(profiles, newActiveProfileId);
+        saveData(profiles, newActiveProfileId, archivedProfiles);
+        reRenderCallback(profiles, newActiveProfileId, archivedProfiles);
     });
 }
 
 export function handleTabSwitch(event, reRenderCallback) {
     event.preventDefault();
     const id = parseInt(event.target.dataset.id);
-    loadProfiles((profiles) => {
-        saveProfiles(profiles, id);
-        reRenderCallback(profiles, id);
+    loadData((profiles, activeProfileId, archivedProfiles) => {
+        saveData(profiles, id, archivedProfiles);
+        reRenderCallback(profiles, id, archivedProfiles);
     });
 }
 
 export function handleProfileNameChange(event, reRenderCallback) {
     const id = parseInt(event.target.dataset.id);
-    loadProfiles((profiles, activeProfileId) => {
+    loadData((profiles, activeProfileId, archivedProfiles) => {
         const profile = profiles.find(p => p.id === id);
         profile.name = event.target.value.trim() || 'Unnamed';
-        saveProfiles(profiles, activeProfileId);
-        reRenderCallback(profiles, activeProfileId);
+        saveData(profiles, activeProfileId, archivedProfiles);
+        reRenderCallback(profiles, activeProfileId, archivedProfiles);
     });
 }
 
-export function handleDeleteProfile(event, errorDiv, reRenderCallback) {
+export function handleArchiveProfile(event, errorDiv, reRenderCallback) {
     const id = parseInt(event.currentTarget.dataset.id);
-    loadProfiles((profiles, activeProfileId) => {
+    loadData((profiles, activeProfileId, archivedProfiles) => {
         if (profiles.length <= 1) {
-            errorDiv.textContent = 'Cannot delete the last profile.';
+            errorDiv.textContent = 'Cannot archive the last profile.';
             return;
         }
+        const profileToArchive = profiles.find(p => p.id === id);
+        if (!profileToArchive) return;
+
         const updatedProfiles = profiles.filter(p => p.id !== id);
+        const updatedArchivedProfiles = [...archivedProfiles, profileToArchive];
+
         const newActiveProfileId = activeProfileId === id ? updatedProfiles[0].id : activeProfileId;
-        saveProfiles(updatedProfiles, newActiveProfileId);
-        reRenderCallback(updatedProfiles, newActiveProfileId);
+        
+        saveData(updatedProfiles, newActiveProfileId, updatedArchivedProfiles);
+        reRenderCallback(updatedProfiles, newActiveProfileId, updatedArchivedProfiles);
+    });
+}
+
+export function handleRestoreProfile(event, reRenderCallback) {
+    const id = parseInt(event.currentTarget.dataset.id);
+    loadData((profiles, activeProfileId, archivedProfiles) => {
+        const profileToRestore = archivedProfiles.find(p => p.id === id);
+        if (!profileToRestore) return;
+
+        const updatedArchivedProfiles = archivedProfiles.filter(p => p.id !== id);
+        const updatedProfiles = [...profiles, profileToRestore];
+        
+        const newActiveProfileId = profileToRestore.id;
+
+        saveData(updatedProfiles, newActiveProfileId, updatedArchivedProfiles);
+        reRenderCallback(updatedProfiles, newActiveProfileId, updatedArchivedProfiles);
+    });
+}
+
+export function handlePermanentDeleteProfile(event, reRenderCallback) {
+    const id = parseInt(event.currentTarget.dataset.id);
+    loadData((profiles, activeProfileId, archivedProfiles) => {
+        const updatedArchivedProfiles = archivedProfiles.filter(p => p.id !== id);
+        saveData(profiles, activeProfileId, updatedArchivedProfiles);
+        reRenderCallback(profiles, activeProfileId, updatedArchivedProfiles);
     });
 }

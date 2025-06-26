@@ -1,13 +1,14 @@
-import { initUI, renderProfiles } from './js/ui.js';
-import { loadProfiles, saveProfiles } from './js/storage.js';
+import { initUI, renderUI } from './js/ui.js';
+import { loadData, saveData } from './js/storage.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const profilesContainer = document.getElementById('profilesContainer');
     const profileTabs = document.getElementById('profileTabs');
     const addProfileButton = document.getElementById('addProfile');
+    const archiveListContainer = document.getElementById('archiveListContainer');
     const errorDiv = document.getElementById('error');
     
-    initUI(profilesContainer, profileTabs, addProfileButton, errorDiv);
+    initUI(profilesContainer, profileTabs, addProfileButton, archiveListContainer, errorDiv);
 
     // Add keyboard shortcuts for actions within the popup
     document.addEventListener('keydown', (event) => {
@@ -39,23 +40,23 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else if (event.code === 'KeyA') { // Switch profile left
             actionTaken = true;
-            loadProfiles((profiles, activeProfileId) => {
+            loadData((profiles, activeProfileId, archivedProfiles) => {
                 if (profiles.length <= 1) return;
                 const currentIndex = profiles.findIndex(p => p.id === activeProfileId);
                 const newIndex = (currentIndex - 1 + profiles.length) % profiles.length;
                 const newActiveProfileId = profiles[newIndex].id;
-                saveProfiles(profiles, newActiveProfileId);
-                renderProfiles(profiles, newActiveProfileId, profilesContainer, profileTabs, errorDiv);
+                saveData(profiles, newActiveProfileId, archivedProfiles);
+                renderUI(profiles, newActiveProfileId, archivedProfiles, profilesContainer, profileTabs, archiveListContainer, errorDiv);
             });
         } else if (event.code === 'KeyS') { // Switch profile right
             actionTaken = true;
-            loadProfiles((profiles, activeProfileId) => {
+            loadData((profiles, activeProfileId, archivedProfiles) => {
                 if (profiles.length <= 1) return;
                 const currentIndex = profiles.findIndex(p => p.id === activeProfileId);
                 const newIndex = (currentIndex + 1) % profiles.length;
                 const newActiveProfileId = profiles[newIndex].id;
-                saveProfiles(profiles, newActiveProfileId);
-                renderProfiles(profiles, newActiveProfileId, profilesContainer, profileTabs, errorDiv);
+                saveData(profiles, newActiveProfileId, archivedProfiles);
+                renderUI(profiles, newActiveProfileId, archivedProfiles, profilesContainer, profileTabs, archiveListContainer, errorDiv);
             });
         }
 

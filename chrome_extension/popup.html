@@ -122,12 +122,28 @@
 </head>
 <body>
     <div class="container">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0">JustCode</h5>
-            <button id="addProfile" class="btn btn-outline-primary btn-sm">+</button>
+        <!-- Main View Wrapper -->
+        <div id="mainView">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">JustCode</h5>
+                <div class="d-flex gap-2">
+                    <button id="archiveButton" class="btn btn-outline-secondary btn-sm" title="Archived Profiles"><i class="bi bi-archive"></i></button>
+                    <button id="addProfile" class="btn btn-outline-primary btn-sm">+</button>
+                </div>
+            </div>
+            <ul class="nav nav-tabs" id="profileTabs"></ul>
+            <div id="profilesContainer"></div>
         </div>
-        <ul class="nav nav-tabs" id="profileTabs"></ul>
-        <div id="profilesContainer"></div>
+
+        <!-- Archive View Wrapper (hidden by default) -->
+        <div id="archiveView" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Archived Profiles</h5>
+                <button id="closeArchive" type="button" class="btn-close" aria-label="Close"></button>
+            </div>
+            <div id="archiveListContainer"></div>
+        </div>
+
         <div id="error" class="error"></div>
     </div>
     <script type="module" src="popup.js"></script>

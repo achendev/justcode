@@ -1,4 +1,4 @@
-import { loadProfiles, saveProfiles } from '../storage.js';
+import { loadData, saveData } from '../storage.js';
 
 export function handleOpenSettingsClick(event) {
     const id = parseInt(event.currentTarget.dataset.id);
@@ -20,13 +20,13 @@ export function handleCloseSettingsClick(event) {
 
 export function handleServerUrlChange(event) {
     const id = parseInt(event.target.id.split('-')[1]);
-    loadProfiles((profiles, activeProfileId) => {
+    loadData((profiles, activeProfileId, archivedProfiles) => {
         const profile = profiles.find(p => p.id === id);
         let newUrl = event.target.value.trim();
         if (newUrl.endsWith('/')) {
             newUrl = newUrl.slice(0, -1);
         }
         profile.serverUrl = newUrl || 'http://127.0.0.1:5010'; // Default if empty
-        saveProfiles(profiles, activeProfileId);
+        saveData(profiles, activeProfileId, archivedProfiles);
     });
 }

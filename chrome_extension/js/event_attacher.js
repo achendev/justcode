@@ -13,8 +13,8 @@ export function attachAllEventListeners(reRenderCallback, errorDiv) {
         input.addEventListener('change', (e) => profileHandlers.handleProfileNameChange(e, reRenderCallback));
     });
     
-    document.querySelectorAll('.delete-profile').forEach(button => {
-        button.addEventListener('click', (e) => profileHandlers.handleDeleteProfile(e, errorDiv, reRenderCallback));
+    document.querySelectorAll('.archive-profile').forEach(button => {
+        button.addEventListener('click', (e) => profileHandlers.handleArchiveProfile(e, errorDiv, reRenderCallback));
     });
 
     // Input changes that don't require a re-render
@@ -63,5 +63,13 @@ export function attachAllEventListeners(reRenderCallback, errorDiv) {
     });
     document.querySelectorAll('.close-settings').forEach(button => {
         button.addEventListener('click', settingsHandlers.handleCloseSettingsClick);
+    });
+
+    // Archive-related events
+    document.querySelectorAll('.restore-profile').forEach(button => {
+        button.addEventListener('click', (e) => profileHandlers.handleRestoreProfile(e, reRenderCallback));
+    });
+    document.querySelectorAll('.permanent-delete-profile').forEach(button => {
+        button.addEventListener('click', (e) => profileHandlers.handlePermanentDeleteProfile(e, reRenderCallback));
     });
 }

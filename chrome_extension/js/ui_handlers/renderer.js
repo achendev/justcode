@@ -5,7 +5,7 @@ function getProfileCardHTML(profile) {
         <div class="profile-header">
             <button class="btn btn-outline-secondary btn-sm settings-button" data-id="${profile.id}" title="Profile Settings"><i class="bi bi-gear-wide-connected"></i></button>
             <input type="text" class="form-control form-control-sm profile-name-input" value="${profile.name}" data-id="${profile.id}">
-            <button class="btn btn-outline-danger btn-sm delete-profile" data-id="${profile.id}" title="Delete Profile"><i class="bi bi-trash"></i></button>
+            <button class="btn btn-outline-warning btn-sm archive-profile" data-id="${profile.id}" title="Archive Profile"><i class="bi bi-archive"></i></button>
         </div>
         <div class="d-flex align-items-end gap-2 mb-3">
             <div class="flex-grow-1">
@@ -31,8 +31,8 @@ function getProfileCardHTML(profile) {
             <label class="form-check-label" for="deployFromClipboard-${profile.id}">Deploy from clipboard</label>
         </div>
         <div class="d-flex gap-2 mb-3">
-            <button class="btn btn-primary btn-sm flex-grow-1 get-context" data-id="${profile.id}"><i class="bi bi-box-arrow-in-down"></i> Get Context</button>
-            <button class="btn btn-success btn-sm flex-grow-1 deploy-code" data-id="${profile.id}"><i class="bi bi-box-arrow-up"></i> Deploy Code</button>
+            <button class="btn btn-primary btn-sm flex-grow-1 get-context" data-id="${profile.id}"><i class="bi bi-box-arrow-up"></i> Get Context</button>
+            <button class="btn btn-success btn-sm flex-grow-1 deploy-code" data-id="${profile.id}"><i class="bi bi-box-arrow-in-down"></i> Deploy Code</button>
         </div>
     </div>
 
@@ -63,6 +63,22 @@ function getProfileCardHTML(profile) {
     `;
 }
 
+function getArchivedProfileHTML(profile) {
+    const projectPathDisplay = profile.projectPath || 'No path set';
+    return `
+    <div class="d-flex justify-content-between align-items-center p-2 mb-2" style="border: 1px solid #6c757d; border-radius: 0.25rem;">
+        <div class="flex-grow-1" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 10px;">
+            <strong title="${profile.name}">${profile.name}</strong><br>
+            <small class="text-muted" title="${projectPathDisplay}">${projectPathDisplay}</small>
+        </div>
+        <div class="d-flex gap-2 ms-auto">
+            <button class="btn btn-outline-success btn-sm restore-profile" data-id="${profile.id}" title="Restore Profile"><i class="bi bi-upload"></i></button>
+            <button class="btn btn-outline-danger btn-sm permanent-delete-profile" data-id="${profile.id}" title="Delete Permanently"><i class="bi bi-trash"></i></button>
+        </div>
+    </div>
+    `;
+}
+
 export function renderDOM(profiles, activeProfileId, profilesContainer, profileTabs) {
     profileTabs.innerHTML = '';
     profiles.forEach(profile => {
@@ -79,5 +95,16 @@ export function renderDOM(profiles, activeProfileId, profilesContainer, profileT
         profileCard.id = `profile-${profile.id}`;
         profileCard.innerHTML = getProfileCardHTML(profile);
         profilesContainer.appendChild(profileCard);
+    });
+}
+
+export function renderArchiveView(archivedProfiles, archiveListContainer) {
+    archiveListContainer.innerHTML = '';
+    if (archivedProfiles.length === 0) {
+        archiveListContainer.innerHTML = '<p class="text-center text-muted" style="margin-top: 20px;">No archived profiles.</p>';
+        return;
+    }
+    archivedProfiles.forEach(profile => {
+        archiveListContainer.innerHTML += getArchivedProfileHTML(profile);
     });
 }
