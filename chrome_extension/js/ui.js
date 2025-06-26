@@ -43,14 +43,14 @@ export function renderProfiles(profiles, activeProfileId, profilesContainer, pro
                 </div>
                 <div class="form-check mb-3">
                     <input type="checkbox" class="form-check-input copy-to-clipboard" id="copyToClipboard-${profile.id}" ${profile.copyToClipboard ? 'checked' : ''}>
-                    <label class="form-check-label" for="copyToClipboard-${profile.id}">Copy to clipboard on Get Code</label>
+                    <label class="form-check-label" for="copyToClipboard-${profile.id}">Copy to clipboard on Get Context</label>
                 </div>
                 <div class="form-check mb-3">
                     <input type="checkbox" class="form-check-input deploy-from-clipboard" id="deployFromClipboard-${profile.id}" ${profile.deployFromClipboard ? 'checked' : ''}>
                     <label class="form-check-label" for="deployFromClipboard-${profile.id}">Deploy from clipboard</label>
                 </div>
                 <div class="d-flex gap-2 mb-3">
-                    <button class="btn btn-primary btn-sm flex-grow-1 get-code" data-id="${profile.id}">Get Code</button>
+                    <button class="btn btn-primary btn-sm flex-grow-1 get-code" data-id="${profile.id}">Get Context</button>
                     <button class="btn btn-success btn-sm flex-grow-1 deploy-code" data-id="${profile.id}">Deploy Code</button>
                 </div>
             </div>

@@ -22,11 +22,11 @@ The system consists of two main components:
     *   `/rollback`: Executes the last generated rollback script, undoing the previous deployment for a specific project.
 
 *   **🧩 Chrome Extension (`chrome_extension/`):** A user-friendly popup interface.
-    *   **Popup Interface:** Contains an input for the project path and three main buttons: "Get Code," "Deploy Code," and "Rollback."
+    *   **Popup Interface:** Contains an input for the project path and three main buttons: "Get Context," "Deploy Code," and "Rollback."
     *   **Shortcuts:** 
         *   `Alt + O`: Open the extension popup.
         *   When the popup is open:
-            *   `Alt + ←`: Trigger "Get Code" for the active profile.
+            *   `Alt + ←`: Trigger "Get Context" for the active profile.
             *   `Alt + →`: Trigger "Deploy Code" for the active profile.
             *   `Alt + R`: Trigger "Rollback" for the active profile.
             *   `Alt + A`: Switch to the profile tab on the left (loops around).
@@ -157,7 +157,7 @@ These steps are the same for all operating systems.
 2.  **Open Popup:** Click the JustCode extension icon in your browser toolbar or press `Alt+O`.
 3.  **Set Path:** Enter the absolute path to your project.
 4.  **Go to LLM:** Navigate to your preferred LLM chat interface.
-5.  **Get Code:** Click the `Get Code` button or press `Alt+←`. Your project context will be loaded into the prompt area.
+5.  **Get Context:** Click the `Get Context` button or press `Alt+←`. Your project context will be loaded into the prompt area.
 6.  **Prompt LLM:** Add your instructions and submit.
 7.  **Get Response:** The LLM will respond with a bash script.
 8.  **Deploy Code:** Click the `Deploy Code` button or press `Alt+→`.

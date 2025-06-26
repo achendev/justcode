@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let actionTaken = false;
         if (event.key === 'ArrowLeft') {
-            // Find and click the "Get Code" button for the active profile
+            // Find and click the "Get Context" button for the active profile
             const getCodeButton = document.querySelector('.profile-card.active .get-code');
             if (getCodeButton) {
                 getCodeButton.click();
