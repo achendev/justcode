@@ -1,4 +1,4 @@
-export async function getCode(profile, errorDiv) {
+export async function getContext(profile, errorDiv) {
     const path = profile.projectPath;
     const excludePatterns = profile.excludePatterns || '';
     const includePatterns = profile.includePatterns || '';
@@ -9,7 +9,7 @@ export async function getCode(profile, errorDiv) {
         return;
     }
     
-    let endpoint = `${serverUrl}/getcode?path=${encodeURIComponent(path)}&exclude=${encodeURIComponent(excludePatterns)}`;
+    let endpoint = `${serverUrl}/getcontext?path=${encodeURIComponent(path)}&exclude=${encodeURIComponent(excludePatterns)}`;
     if (includePatterns) {
         endpoint += `&include=${encodeURIComponent(includePatterns)}`;
     }
@@ -22,8 +22,8 @@ export async function getCode(profile, errorDiv) {
         }
         if (profile.copyToClipboard) {
             await navigator.clipboard.writeText(responseText);
-            console.log('JustCode: Project state copied to clipboard.');
-            errorDiv.textContent = 'Code copied to clipboard!';
+            console.log('JustCode: Project context copied to clipboard.');
+            errorDiv.textContent = 'Context copied to clipboard!';
             return; // Skip pasting to textarea if copyToClipboard is enabled
         }
         chrome.scripting.executeScript({
@@ -72,7 +72,7 @@ export async function getCode(profile, errorDiv) {
             },
             args: [responseText]
         });
-        errorDiv.textContent = 'Code loaded successfully!';
+        errorDiv.textContent = 'Context loaded successfully!';
     } catch (error) {
         errorDiv.textContent = `Error: ${error.message}`;
         console.error('JustCode Error:', error);

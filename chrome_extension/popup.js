@@ -19,9 +19,9 @@ document.addEventListener('DOMContentLoaded', () => {
         let actionTaken = false;
         if (event.key === 'ArrowLeft') {
             // Find and click the "Get Context" button for the active profile
-            const getCodeButton = document.querySelector('.profile-card.active .get-code');
-            if (getCodeButton) {
-                getCodeButton.click();
+            const getContextButton = document.querySelector('.profile-card.active .get-context');
+            if (getContextButton) {
+                getContextButton.click();
                 actionTaken = true;
             }
         } else if (event.key === 'ArrowRight') {

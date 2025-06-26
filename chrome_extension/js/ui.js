@@ -1,4 +1,4 @@
-import { getCode } from './get_code.js';
+import { getContext } from './get_context.js';
 import { deployCode } from './deploy_code.js';
 import { rollbackCode } from './rollback.js';
 import { loadProfiles, saveProfiles } from './storage.js';
@@ -50,7 +50,7 @@ export function renderProfiles(profiles, activeProfileId, profilesContainer, pro
                     <label class="form-check-label" for="deployFromClipboard-${profile.id}">Deploy from clipboard</label>
                 </div>
                 <div class="d-flex gap-2 mb-3">
-                    <button class="btn btn-primary btn-sm flex-grow-1 get-code" data-id="${profile.id}">Get Context</button>
+                    <button class="btn btn-primary btn-sm flex-grow-1 get-context" data-id="${profile.id}">Get Context</button>
                     <button class="btn btn-success btn-sm flex-grow-1 deploy-code" data-id="${profile.id}">Deploy Code</button>
                 </div>
             </div>
@@ -140,12 +140,12 @@ export function renderProfiles(profiles, activeProfileId, profilesContainer, pro
             });
         });
     });
-    document.querySelectorAll('.get-code').forEach(button => {
+    document.querySelectorAll('.get-context').forEach(button => {
         button.addEventListener('click', async (e) => {
             const id = parseInt(e.target.dataset.id);
             loadProfiles(async (profiles, activeProfileId) => {
                 const profile = profiles.find(p => p.id === id);
-                await getCode(profile, errorDiv);
+                await getContext(profile, errorDiv);
             });
         });
     });

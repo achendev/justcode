@@ -5,7 +5,7 @@ from .tools import generate_context_from_path, here_doc_value
 
 three_brackets = '```'
 
-def get_code():
+def get_context():
     path = request.args.get('path')
     exclude_str = request.args.get('exclude', '')
     include_str = request.args.get('include', '')
