@@ -20,7 +20,7 @@ def get_context():
     if not os.path.isdir(project_path):
         return Response(f"Error: Provided path '{project_path}' is not a valid directory.", status=400, mimetype='text/plain')
 
-    print(f"Set project path to: {project_path}")More actions
+    print(f"Set project path to: {project_path}")
 
     exclude_patterns = [p.strip() for p in exclude_str.split(',') if p.strip()]
     include_patterns = [p.strip() for p in include_str.split(',') if p.strip()]
@@ -29,7 +29,7 @@ def get_context():
         # Check if the generated context is too large
         if len(file_contents) > context_size_limit:
             print(f"Context size ({len(file_contents)}) exceeds limit ({context_size_limit}). Generating exclusion suggestion prompt.")
-            tree_with_counts, total_size = generate_tree_with_char_counts(project_path, include_patterns, exclude_patterns)include_patterns, exclude_patterns)
+            tree_with_counts, total_size = generate_tree_with_char_counts(project_path, include_patterns, exclude_patterns)
             
             large_context_prompt = f"""PROJECT FILE TREE (with character counts):
 {three_brackets}bash
