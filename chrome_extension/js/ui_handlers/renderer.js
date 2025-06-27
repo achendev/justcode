@@ -53,6 +53,10 @@ function getProfileCardHTML(profile) {
             <button type="button" class="btn-close close-settings" data-id="${profile.id}" aria-label="Close"></button>
         </div>
         <div class="mb-3">
+            <label for="contextSizeLimit-${profile.id}" class="form-label">Context Size Limit (chars):</label>
+            <input type="number" class="form-control form-control-sm context-size-limit" id="contextSizeLimit-${profile.id}" value="${profile.contextSizeLimit}">
+        </div>
+        <div class="mb-3">
             <label for="serverUrl-${profile.id}" class="form-label">JustCode Server URL:</label>
             <input type="text" class="form-control form-control-sm server-url" id="serverUrl-${profile.id}" placeholder="http://127.0.0.1:5010" value="${profile.serverUrl}">
         </div>

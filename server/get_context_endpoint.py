@@ -4,12 +4,12 @@ from flask import request, Response
 from .tools import generate_context_from_path, generate_tree_with_char_counts, here_doc_value
 
 three_brackets = '```'
-CONTEXT_SIZE_LIMIT = 3000000
 
 def get_context():
     path = request.args.get('path')
     exclude_str = request.args.get('exclude', '')
     include_str = request.args.get('include', '')
+    context_size_limit = int(request.args.get('limit', 3000000))
 
     if not path or not path.strip():
         return Response("Error: 'path' parameter is missing.", status=400, mimetype='text/plain')
@@ -27,49 +27,47 @@ def get_context():
         file_contents = generate_context_from_path(project_path, include_patterns, exclude_patterns)
         print(len(file_contents)) 
         # Check if the generated context is too large
-        if len(file_contents) > CONTEXT_SIZE_LIMIT:
-            print(f"Context size ({len(file_contents)}) exceeds limit ({CONTEXT_SIZE_LIMIT}). Generating exclusion suggestion prompt.")
+        if len(file_contents) > context_size_limit:
+            print(f"Context size ({len(file_contents)}) exceeds limit ({context_size_limit}). Generating exclusion suggestion prompt.")
             tree_with_counts, total_size = generate_tree_with_char_counts(project_path, include_patterns, exclude_patterns)
             
-            large_context_prompt = f"""PROJECT FILE TREE (with character counts):
+            large_context_prompt = f"""This is an auto-generated prompt from the 'JustCode' development tool.
+
+### The Goal ###
+The user is trying to send their project's code to you for assistance using JustCode, a tool that bridges a local IDE with an LLM. However, the project is too large ({total_size:,} characters) to fit into a single prompt, exceeding their configured limit of {context_size_limit:,} characters.
+
+Your task is to act as an expert developer and help the user shrink the project context by suggesting files and directories to exclude. The user will copy your response directly into their JustCode profile's "Exclude Patterns" field.
+
+### Project File Tree ###
+Here is the file tree of the user's project, with character counts for each file and directory. Analyze it carefully.
 {three_brackets}bash
 {tree_with_counts}
 {three_brackets}
 
+### What to Exclude ###
+Focus on excluding items that are not essential for understanding the core logic of the project. Common candidates for exclusion include:
+- **Dependencies:** `node_modules/`, `venv/`, `packages/`
+- **Build Artifacts:** `dist/`, `build/`, `target/`, `.next/`
+- **Large Data/Assets:** `*.csv`, `*.json`, `assets/`, `data/`
+- **Logs & Caches:** `*.log`, `tmp/`, `.cache/`
+- **Configuration:** `.vscode/`, `.idea/`
+- **Tests (if not relevant to the task):** `tests/`, `__tests__/`
+- **Git & Environment:** `.git/`, `.env`
 
-This is auto generated prompt.
-User trying to provide code project context which is too large to be processed at once ({total_size:,} characters).
-Analyze the following file tree and suggest a more effective 'exclude' pattern to reduce the context size and exclude all irrelevant files for coding task.
-
-Focus on excluding directories or file types that are unlikely to be relevant to the code type task, such as:
-- Build artifacts (e.g., 'dist/', 'build/')
-- Large data files (e.g., '*.csv', '*.json', 'large_assets/')
-- Documentation that isn't needed for coding
-- Test data or assets
-- Any type of credentials
-- Any type of logs and sessions
-- Any type of files contains personal information
-- Git files and venv
-- Directories like node modules or any dependencies
-
-The goal is to provide final a comma-separated list of glob patterns appended to the existing exclude list.
-
-CURRENT EXCLUDE PATTERNS:
-{exclude_str}
-
-CURRENT INCLUDE PATTERNS:
-{include_str if include_str else 'All files (no specific include pattern)'}
+### User's Current Settings ###
+The user is already excluding the following patterns. You should build upon this list, not just replace it.
+- **Current Exclude Patterns:** `{exclude_str}`
+- **Current Include Patterns:** `{include_str if include_str else 'All files (no specific include pattern)'}`
 
 ### CRITICAL INSTRUCTIONS ###
 You MUST follow these rules without exception.
-1.  **OUTPUT FORMAT:** Your entire response MUST be a single line of text. It should be a comma-separated list of glob patterns to add to the exclusion list.
-2.  **DO NOT** include any explanations, apologies, or text outside of this list.
-3.  **FINAL LIST**: Provide final list, take CURRENT EXCLUDE PATTERNS as a base and append new patterns to it.
-4.  **CODE BLOCK**: Answer must be in code block.
+1.  **OUTPUT FORMAT:** Your entire response MUST be a single `bash` code block. It should contain a single line of text: a comma-separated list of glob patterns.
+2.  **FINAL LIST:** Provide the complete, final list of patterns. Start with the user's "Current Exclude Patterns" and append your new suggestions.
+3.  **NO EXTRA TEXT:** Do NOT include any explanations, apologies, greetings, or any text outside of the `bash` code block.
 
 ### EXAMPLE OF A PERFECT RESPONSE ###
 {three_brackets}bash
-.gin/,node_modules/,*.log,tmp/,data/,*/data/,assets/
+.git/,venv/,.env,log/,logs/,tmp/,node_modules/,build/,dist/,data/,*.csv,*.log
 {three_brackets}
 """
             return Response(large_context_prompt, mimetype='text/plain')

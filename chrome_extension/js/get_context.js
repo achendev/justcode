@@ -3,13 +3,14 @@ export async function getContext(profile, errorDiv, fromShortcut = false) {
     const excludePatterns = profile.excludePatterns || '';
     const includePatterns = profile.includePatterns || '';
     const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
+    const contextSizeLimit = profile.contextSizeLimit || 3000000;
     
     if (!path) {
         errorDiv.textContent = 'Error: Please enter a project path.';
         return;
     }
     
-    let endpoint = `${serverUrl}/getcontext?path=${encodeURIComponent(path)}&exclude=${encodeURIComponent(excludePatterns)}`;
+    let endpoint = `${serverUrl}/getcontext?path=${encodeURIComponent(path)}&exclude=${encodeURIComponent(excludePatterns)}&limit=${contextSizeLimit}`;
     if (includePatterns) {
         endpoint += `&include=${encodeURIComponent(includePatterns)}`;
     }

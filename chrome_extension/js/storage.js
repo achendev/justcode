@@ -14,7 +14,8 @@ export function loadData(callback) {
             isAuthEnabled: false,
             username: '',
             password: '',
-            rollbackCount: 0
+            rollbackCount: 0,
+            contextSizeLimit: 3000000
         }];
         profiles.forEach(profile => {
             if (!profile.excludePatterns) {
@@ -40,6 +41,9 @@ export function loadData(callback) {
             }
             if (profile.rollbackCount === undefined) {
                 profile.rollbackCount = 0;
+            }
+            if (profile.contextSizeLimit === undefined) {
+                profile.contextSizeLimit = 3000000;
             }
         });
         const activeProfileId = data.activeProfileId || profiles[0].id;

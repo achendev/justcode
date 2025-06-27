@@ -14,7 +14,8 @@ export function handleAddProfile(reRenderCallback) {
             isAuthEnabled: false,
             username: '',
             password: '',
-            rollbackCount: 0
+            rollbackCount: 0,
+            contextSizeLimit: 3000000
         };
         profiles.push(newProfile);
         const newActiveProfileId = newProfile.id;

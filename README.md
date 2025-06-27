@@ -182,6 +182,25 @@ You can configure the server's listening address and port using a `.env` file in
 
 If you change the server URL or port, remember to update it in the extension's profile settings.
 
+## 🗂️ Handling Large Projects: Automatic Context Filtering
+
+LLMs have a context window limit, meaning you can't always send your entire project's source code at once. JustCode has a smart feature to help you manage this.
+
+### Context Size Limit
+
+In each profile's settings (click the ⚙️ button), you can set a **Context Size Limit** in characters. The default is 3,000,000.
+
+### Automatic Exclusion Suggestions
+
+If you click `Get Context` and the tool determines that your project's content exceeds this limit, it won't send the code. Instead, it will do the following:
+
+1.  **Analyze Your Project:** It quickly scans your project's file structure and the size of each file.
+2.  **Generate a Smart Prompt:** It sends this file tree analysis to the LLM, asking it to suggest which files and directories should be excluded to shrink the context size. The prompt is specifically designed to identify common non-essential files like `node_modules`, build artifacts, large data files, and logs.
+3.  **Receive Exclusion Patterns:** The LLM will respond with a comma-separated list of patterns (e.g., `node_modules/,dist/,*.log`).
+4.  **Update and Retry:** You can then copy this list, paste it into your profile's "Exclude Patterns" field, and click `Get Context` again.
+
+This workflow turns the tedious task of manually curating a large project's context into a quick, AI-assisted process.
+
 ## 🔄 Usage Workflow
 
 1.  **Start the Server:** Ensure the local Flask server is running.

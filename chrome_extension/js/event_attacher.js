@@ -57,6 +57,9 @@ export function attachAllEventListeners(reRenderCallback, errorDiv) {
     document.querySelectorAll('.server-url').forEach(input => {
         input.addEventListener('change', (e) => settingsHandlers.handleServerUrlChange(e));
     });
+    document.querySelectorAll('.context-size-limit').forEach(input => {
+        input.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'contextSizeLimit'));
+    });
     document.querySelectorAll('.auth-enabled').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => inputHandlers.handleCheckboxChange(e, 'isAuthEnabled'));
     });
