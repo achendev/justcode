@@ -15,9 +15,8 @@ export async function getContext(profile, errorDiv, fromShortcut = false) {
     }
     console.log('JustCode: Fetching project state...');
     
-    if (!fromShortcut) {
-        errorDiv.textContent = 'Getting context...';
-    }
+    // Always show the "getting context" message, even for shortcuts.
+    errorDiv.textContent = 'Getting context...';
 
     try {
         const headers = {};
