@@ -99,6 +99,92 @@ def generate_context_from_path(project_path, include_patterns, exclude_patterns)
     return "".join(output_parts)
 
 
+def generate_tree_with_char_counts(project_path, include_patterns, exclude_patterns):
+    """
+    Generates a file tree string with character counts for each file and directory.
+    Returns the formatted tree string and the total character count.
+    """
+    matching_files_data = [] # List of tuples (rel_path_norm, content_length)
+    for dirpath, dirnames, filenames in os.walk(project_path, topdown=True):
+        # Exclude directories by modifying dirnames in place
+        excluded_dirs = []
+        for d in dirnames:
+            dir_rel_path = os.path.relpath(os.path.join(dirpath, d), project_path)
+            dir_rel_path_norm = dir_rel_path.replace('\\', '/')
+            if any(fnmatch.fnmatch(dir_rel_path_norm, pat) or fnmatch.fnmatch(dir_rel_path_norm + '/', pat) for pat in exclude_patterns):
+                excluded_dirs.append(d)
+        for d in excluded_dirs:
+            dirnames.remove(d)
+
+        for filename in filenames:
+            file_full_path = os.path.join(dirpath, filename)
+            file_rel_path = os.path.relpath(file_full_path, project_path)
+            file_rel_path_norm = file_rel_path.replace('\\', '/')
+            
+            if any(fnmatch.fnmatch(file_rel_path_norm, pat) for pat in exclude_patterns):
+                continue
+            if include_patterns and not any(fnmatch.fnmatch(filename, pat) for pat in include_patterns):
+                continue
+            
+            try:
+                with open(file_full_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content_length = len(f.read())
+                matching_files_data.append((file_rel_path_norm, content_length))
+            except (OSError, UnicodeDecodeError):
+                continue
+    
+    file_sizes = dict(matching_files_data)
+    total_size = sum(file_sizes.values())
+    
+    tree_dict = {}
+    dir_sizes = {}
+
+    for path, size in file_sizes.items():
+        parts = path.split('/')
+        current_path_prefix = ''
+        for part in parts[:-1]:
+            if current_path_prefix:
+                current_path_prefix = f"{current_path_prefix}/{part}"
+            else:
+                current_path_prefix = part
+            dir_sizes[current_path_prefix] = dir_sizes.get(current_path_prefix, 0) + size
+        
+        d = tree_dict
+        for part in parts[:-1]:
+            d = d.setdefault(part, {})
+        d[parts[-1]] = None
+
+    def format_size(s):
+        return f"({s:,} chars)"
+    
+    tree_lines = [f". {format_size(total_size)}"]
+
+    def build_tree_str(d, current_dir_path="", prefix=""):
+        # Sort items: directories first, then alphabetically by name
+        items = sorted(d.keys(), key=lambda k: (d[k] is None, k))
+        pointers = ['├── '] * (len(items) - 1) + ['└── ']
+        for i, name in enumerate(items):
+            pointer = pointers[i]
+            
+            if current_dir_path:
+                rel_path = f"{current_dir_path}/{name}"
+            else:
+                rel_path = name
+            
+            if d[name] is not None:  # It's a directory
+                size_str = format_size(dir_sizes.get(rel_path, 0))
+                tree_lines.append(f"{prefix}{pointer}{name}/ {size_str}")
+                extension = '│   ' if pointer == '├── ' else '    '
+                build_tree_str(d[name], rel_path, prefix + extension)
+            else: # It's a file
+                size_str = format_size(file_sizes.get(rel_path, 0))
+                tree_lines.append(f"{prefix}{pointer}{name} {size_str}")
+                
+    build_tree_str(tree_dict)
+    
+    return "\n".join(tree_lines), total_size
+
+
 def is_safe_path(base_dir, target_path):
     """
     Checks if a target path is safely within a base directory to prevent path traversal.

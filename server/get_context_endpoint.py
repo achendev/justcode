@@ -1,9 +1,10 @@
 import os
 import traceback
 from flask import request, Response
-from .tools import generate_context_from_path, here_doc_value
+from .tools import generate_context_from_path, generate_tree_with_char_counts, here_doc_value
 
 three_brackets = '```'
+CONTEXT_SIZE_LIMIT = 3000000
 
 def get_context():
     path = request.args.get('path')
@@ -24,7 +25,55 @@ def get_context():
     include_patterns = [p.strip() for p in include_str.split(',') if p.strip()]
     try:
         file_contents = generate_context_from_path(project_path, include_patterns, exclude_patterns)
-        
+        print(len(file_contents)) 
+        # Check if the generated context is too large
+        if len(file_contents) > CONTEXT_SIZE_LIMIT:
+            print(f"Context size ({len(file_contents)}) exceeds limit ({CONTEXT_SIZE_LIMIT}). Generating exclusion suggestion prompt.")
+            tree_with_counts, total_size = generate_tree_with_char_counts(project_path, include_patterns, exclude_patterns)
+            
+            large_context_prompt = f"""PROJECT FILE TREE (with character counts):
+{three_brackets}bash
+{tree_with_counts}
+{three_brackets}
+
+
+This is auto generated prompt.
+User trying to provide code project context which is too large to be processed at once ({total_size:,} characters).
+Analyze the following file tree and suggest a more effective 'exclude' pattern to reduce the context size and exclude all irrelevant files for coding task.
+
+Focus on excluding directories or file types that are unlikely to be relevant to the code type task, such as:
+- Build artifacts (e.g., 'dist/', 'build/')
+- Large data files (e.g., '*.csv', '*.json', 'large_assets/')
+- Documentation that isn't needed for coding
+- Test data or assets
+- Any type of credentials
+- Any type of logs and sessions
+- Any type of files contains personal information
+- Git files and venv
+- Directories like node modules or any dependencies
+
+The goal is to provide final a comma-separated list of glob patterns appended to the existing exclude list.
+
+CURRENT EXCLUDE PATTERNS:
+{exclude_str}
+
+CURRENT INCLUDE PATTERNS:
+{include_str if include_str else 'All files (no specific include pattern)'}
+
+### CRITICAL INSTRUCTIONS ###
+You MUST follow these rules without exception.
+1.  **OUTPUT FORMAT:** Your entire response MUST be a single line of text. It should be a comma-separated list of glob patterns to add to the exclusion list.
+2.  **DO NOT** include any explanations, apologies, or text outside of this list.
+3.  **FINAL LIST**: Provide final list, take CURRENT EXCLUDE PATTERNS as a base and append new patterns to it.
+4.  **CODE BLOCK**: Answer must be in code block.
+
+### EXAMPLE OF A PERFECT RESPONSE ###
+{three_brackets}bash
+.gin/,node_modules/,*.log,tmp/,data/,*/data/,assets/
+{three_brackets}
+"""
+            return Response(large_context_prompt, mimetype='text/plain')
+
         # The prompt will always use Unix-style paths for simplicity and consistency for the LLM.
         # The server-side deploy logic will handle the conversion to the correct OS path separator.
         prompt_template = f"""This is current state of project files:
