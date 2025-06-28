@@ -1,4 +1,5 @@
 import os
+import platform
 import subprocess
 from flask import Response
 
@@ -32,6 +33,23 @@ def update_app():
              output = "JustCode is already up to date."
         else:
             output = f"Update successful!\n\n{result.stdout}\n\nPlease restart the server for changes to take effect."
+            
+            # On Linux, attempt to restart the systemd service in the background after a successful pull.
+            # This is a fire-and-forget operation and will not affect the response to the user.
+            if platform.system() == "Linux":
+                try:
+                    # Using shell=True to allow `whoami` to be executed by the shell.
+                    restart_command = "systemctl restart justcode@$(whoami)"
+                    subprocess.Popen(
+                        restart_command, 
+                        shell=True, 
+                        stdout=subprocess.DEVNULL, 
+                        stderr=subprocess.DEVNULL
+                    )
+                    print(f"Update hook: Attempted to run '{restart_command}' in the background.")
+                except Exception as e:
+                    # Log any error during process creation, but don't let it affect the user response.
+                    print(f"Update hook: Failed to start service restart command: {e}")
         
         return Response(output, mimetype='text/plain')
 
