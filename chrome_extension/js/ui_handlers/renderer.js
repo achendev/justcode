@@ -11,6 +11,7 @@ function getProfileCardHTML(profile) {
             <div class="input-group flex-grow-1">
                 <button class="btn btn-outline-secondary btn-sm settings-button" type="button" data-id="${profile.id}" title="Profile Settings"><i class="bi bi-gear-wide-connected"></i></button>
                 <input type="text" class="form-control form-control-sm profile-name-input" value="${profile.name}" data-id="${profile.id}">
+                <button class="btn btn-outline-secondary btn-sm update-app-button" type="button" data-id="${profile.id}" title="Update JustCode"><i class="bi bi-download"></i></button>
             </div>
             <div class="btn-group" role="group">
                 <button class="btn btn-outline-secondary btn-sm move-profile-left" data-id="${profile.id}" title="Move Left"><i class="bi bi-arrow-bar-left"></i></button>

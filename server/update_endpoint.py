@@ -31,7 +31,7 @@ def update_app():
         if "Already up to date." in result.stdout:
              output = "JustCode is already up to date."
         else:
-            output = f"Update successful!\n\n{result.stdout}\n\nPlease restart the server for changes to take effect."
+            output = f"Update successful!\n\n{result.stdout}"
         
         return Response(output, mimetype='text/plain')
 

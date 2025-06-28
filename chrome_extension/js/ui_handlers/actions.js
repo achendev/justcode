@@ -66,3 +66,51 @@ export function handleDeployCodeClick(event, errorDiv) {
 export function handleRollbackCodeClick(event, errorDiv) {
     performAction(event, errorDiv, rollbackCode);
 }
+
+export function handleUpdateAppClick(event, errorDiv) {
+    const button = event.currentTarget;
+    const originalButtonHTML = button.innerHTML;
+    
+    button.disabled = true;
+    button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>`;
+    errorDiv.textContent = 'Checking for updates...';
+
+    loadData(async (profiles, activeProfileId) => {
+        const activeProfile = profiles.find(p => p.id === activeProfileId);
+        if (!activeProfile || !activeProfile.serverUrl) {
+            errorDiv.textContent = 'Error: No active profile or server URL configured.';
+            button.disabled = false;
+            button.innerHTML = originalButtonHTML;
+            return;
+        }
+        
+        const serverUrl = activeProfile.serverUrl.endsWith('/') ? activeProfile.serverUrl.slice(0, -1) : activeProfile.serverUrl;
+        const endpoint = `${serverUrl}/update`;
+
+        try {
+            const headers = { 'Content-Type': 'text/plain' };
+            if (activeProfile.isAuthEnabled && activeProfile.username) {
+                headers['Authorization'] = 'Basic ' + btoa(`${activeProfile.username}:${activeProfile.password}`);
+            }
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: headers
+            });
+
+            const resultText = await response.text();
+            if (!response.ok) {
+                throw new Error(resultText);
+            }
+            
+            errorDiv.textContent = resultText;
+
+        } catch (error) {
+            errorDiv.textContent = `Update failed: ${error.message}`;
+            console.error('JustCode Update Error:', error);
+        } finally {
+            button.disabled = false;
+            button.innerHTML = originalButtonHTML;
+        }
+    });
+}

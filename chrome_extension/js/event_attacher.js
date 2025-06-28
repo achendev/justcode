@@ -80,6 +80,9 @@ export function attachAllEventListeners(reRenderCallback, errorDiv) {
     document.querySelectorAll('.settings-button').forEach(button => {
         button.addEventListener('click', settingsHandlers.handleOpenSettingsClick);
     });
+    document.querySelectorAll('.update-app-button').forEach(button => {
+        button.addEventListener('click', (e) => actionHandlers.handleUpdateAppClick(e, errorDiv));
+    });
     document.querySelectorAll('.close-settings').forEach(button => {
         button.addEventListener('click', settingsHandlers.handleCloseSettingsClick);
     });
