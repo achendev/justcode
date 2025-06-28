@@ -4,7 +4,6 @@ from flask import request, Response
 from .tools import generate_context_from_path, generate_tree_with_char_counts, here_doc_value
 
 three_brackets = '```'
-CONTEXT_SIZE_LIMIT = 3000000
 
 def get_context():
     path = request.args.get('path')

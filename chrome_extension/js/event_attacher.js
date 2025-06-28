@@ -17,6 +17,10 @@ export function attachAllEventListeners(reRenderCallback, errorDiv) {
         button.addEventListener('click', (e) => profileHandlers.handleArchiveProfile(e, errorDiv, reRenderCallback));
     });
 
+    document.querySelectorAll('.permanent-delete-direct').forEach(button => {
+        button.addEventListener('click', (e) => profileHandlers.handleDirectPermanentDeleteProfile(e, errorDiv, reRenderCallback));
+    });
+
     document.querySelectorAll('.move-profile-left').forEach(button => {
         button.addEventListener('click', (e) => profileHandlers.handleMoveProfileLeft(e, reRenderCallback));
     });

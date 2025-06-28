@@ -12,7 +12,8 @@ function getProfileCardHTML(profile) {
             <input type="text" class="form-control form-control-sm profile-name-input" value="${profile.name}" data-id="${profile.id}">
             <button class="btn btn-outline-secondary btn-sm move-profile-left" data-id="${profile.id}" title="Move Left"><i class="bi bi-arrow-bar-left"></i></button>
             <button class="btn btn-outline-secondary btn-sm move-profile-right" data-id="${profile.id}" title="Move Right"><i class="bi bi-arrow-bar-right"></i></button>
-            <button class="btn btn-outline-warning btn-sm archive-profile" data-id="${profile.id}" title="Archive Profile"><i class="bi bi-archive"></i></button>
+            <button class="btn btn-outline-warning btn-sm archive-profile" data-id="${profile.id}" title="Archive Profile (Hold Shift to Delete)"><i class="bi bi-archive"></i></button>
+            <button class="btn btn-outline-danger btn-sm permanent-delete-direct" data-id="${profile.id}" title="Delete Permanently" style="display: none;"><i class="bi bi-trash"></i></button>
         </div>
         <div class="d-flex align-items-end gap-2 mb-2">
             <div class="flex-grow-1">

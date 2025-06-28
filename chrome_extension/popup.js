@@ -12,6 +12,28 @@ document.addEventListener('DOMContentLoaded', () => {
     
     initUI(profilesContainer, profileTabs, addProfileButton, archiveListContainer, errorDiv);
 
+    // Add Shift-key listener to swap Archive/Delete buttons
+    document.addEventListener('keydown', (event) => {
+        // Only act if Shift is pressed and it's the only modifier key
+        if (event.key === 'Shift' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+            document.querySelectorAll('.profile-card.active .archive-profile').forEach(btn => btn.style.display = 'none');
+            document.querySelectorAll('.profile-card.active .permanent-delete-direct').forEach(btn => btn.style.display = 'inline-block');
+        }
+    });
+
+    document.addEventListener('keyup', (event) => {
+        if (event.key === 'Shift') {
+            document.querySelectorAll('.profile-card.active .archive-profile').forEach(btn => btn.style.display = 'inline-block');
+            document.querySelectorAll('.profile-card.active .permanent-delete-direct').forEach(btn => btn.style.display = 'none');
+        }
+    });
+
+    // Also handle window blur to reset button state
+    window.addEventListener('blur', () => {
+        document.querySelectorAll('.profile-card.active .archive-profile').forEach(btn => btn.style.display = 'inline-block');
+        document.querySelectorAll('.profile-card.active .permanent-delete-direct').forEach(btn => btn.style.display = 'none');
+    });
+
     // Add listener for the update button
     updateAppButton.addEventListener('click', () => {
         errorDiv.textContent = 'Checking for updates...';

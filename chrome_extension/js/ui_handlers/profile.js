@@ -63,6 +63,31 @@ export function handleArchiveProfile(event, errorDiv, reRenderCallback) {
     });
 }
 
+export function handleDirectPermanentDeleteProfile(event, errorDiv, reRenderCallback) {
+    errorDiv.textContent = '';
+    const id = parseInt(event.currentTarget.dataset.id);
+    loadData((profiles, activeProfileId, archivedProfiles) => {
+        if (profiles.length <= 1) {
+            errorDiv.textContent = 'Cannot delete the last profile.';
+            return;
+        }
+
+        const profileToDeleteIndex = profiles.findIndex(p => p.id === id);
+        if (profileToDeleteIndex === -1) return;
+
+        const updatedProfiles = profiles.filter(p => p.id !== id);
+        
+        let newActiveProfileId = activeProfileId;
+        if (activeProfileId === id) {
+            const newIndex = Math.max(0, profileToDeleteIndex - 1);
+            newActiveProfileId = updatedProfiles[newIndex].id;
+        }
+        
+        saveData(updatedProfiles, newActiveProfileId, archivedProfiles);
+        reRenderCallback(updatedProfiles, newActiveProfileId, archivedProfiles);
+    });
+}
+
 function moveProfile(id, direction, reRenderCallback) {
     loadData((profiles, activeProfileId, archivedProfiles) => {
         if (profiles.length <= 1) {
