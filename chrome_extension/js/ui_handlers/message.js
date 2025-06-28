@@ -3,11 +3,20 @@ import { loadData, saveData } from '../storage.js';
 function updateMessageInDOM(profileId, text, type) {
     const profileCard = document.getElementById(`profile-${profileId}`);
     if (profileCard) {
-        const messageDiv = profileCard.querySelector('.status-message');
-        if (messageDiv) {
-            messageDiv.textContent = text;
-            // Reset classes and add the new ones
-            messageDiv.className = `status-message mt-3 status-${type}`; 
+        const container = profileCard.querySelector('.status-container');
+        const messageDiv = container?.querySelector('.status-message');
+        const textSpan = container?.querySelector('.message-text');
+
+        if (container && messageDiv && textSpan) {
+            if (text) {
+                textSpan.textContent = text;
+                // Only change the type class, the other classes are for structure
+                messageDiv.className = `status-message status-${type}`;
+                container.classList.remove('d-none');
+            } else {
+                textSpan.textContent = '';
+                container.classList.add('d-none');
+            }
         }
     }
 }
@@ -38,4 +47,15 @@ export function updateAndSaveMessage(profileId, text, type = 'info') {
  */
 export function updateTemporaryMessage(profileId, text, type = 'info') {
     updateMessageInDOM(profileId, text, type);
+}
+
+/**
+ * Handles the click event for closing a status message.
+ * @param {MouseEvent} event The click event.
+ */
+export function handleCloseMessage(event) {
+    const profileId = parseInt(event.currentTarget.dataset.id);
+    // This function will call updateMessageInDOM with empty text, hiding the element
+    // and also clearing the message from storage so it doesn't reappear.
+    updateAndSaveMessage(profileId, '', 'info');
 }

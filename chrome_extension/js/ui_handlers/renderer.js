@@ -55,7 +55,12 @@ function getProfileCardHTML(profile) {
             <button class="btn btn-primary btn-sm flex-grow-1 get-context" data-id="${profile.id}"><i class="bi bi-box-arrow-up"></i> Get Context</button>
             <button class="btn btn-success btn-sm flex-grow-1 deploy-code" data-id="${profile.id}"><i class="bi bi-box-arrow-in-down"></i> Deploy Code</button>
         </div>
-        <div class="status-message mt-3 status-${message.type}">${message.text}</div>
+        <div class="status-container mt-3 ${!message.text ? 'd-none' : ''}">
+            <div class="status-message status-${message.type}">
+                <span class="message-text">${message.text}</span>
+                <button type="button" class="btn-close btn-sm close-message" data-id="${profile.id}" aria-label="Close"></button>
+            </div>
+        </div>
     </div>
 
     <!-- Settings View for the profile (hidden by default) -->

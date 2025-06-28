@@ -2,6 +2,7 @@ import * as profileHandlers from './ui_handlers/profile.js';
 import * as inputHandlers from './ui_handlers/inputs.js';
 import * as actionHandlers from './ui_handlers/actions.js';
 import * as settingsHandlers from './ui_handlers/settings.js';
+import * as messageHandlers from './ui_handlers/message.js';
 
 export function attachAllEventListeners(reRenderCallback) {
     // Profile-related events that trigger a re-render
@@ -85,6 +86,11 @@ export function attachAllEventListeners(reRenderCallback) {
     });
     document.querySelectorAll('.close-settings').forEach(button => {
         button.addEventListener('click', settingsHandlers.handleCloseSettingsClick);
+    });
+
+    // Message-related events
+    document.querySelectorAll('.close-message').forEach(button => {
+        button.addEventListener('click', messageHandlers.handleCloseMessage);
     });
 
     // Archive-related events

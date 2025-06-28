@@ -7,6 +7,11 @@ body {
 .container { 
     padding: 0; 
 }
+#profilesContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
 .form-check-label { 
     margin-left: 8px; 
 }
@@ -19,23 +24,32 @@ body {
 }
 .status-message {
     font-size: 0.875rem;
-    min-height: 1.5rem;
-    text-align: center;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+.message-text {
+    word-break: break-word;
 }
 .status-error {
     color: #dc3545;
+    background-color: rgba(220, 53, 69, 0.15);
 }
 .status-success {
     color: #198754;
+    background-color: rgba(25, 135, 84, 0.15);
 }
 .status-info {
-    color: #6c757d;
+    color: #212529;
+    background-color: #e9ecef;
 }
 .profile-card {
     border: 1px solid;
     border-radius: 0.25rem;
     padding: 10px;
-    margin-bottom: 10px;
     transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
 .profile-header {
@@ -141,13 +155,19 @@ body {
     .rollback-stack-item.available {
         background-color: #adb5bd;
     }
+    .status-message .btn-close {
+        filter: invert(1) grayscale(100%) brightness(200%);
+    }
     .status-error {
         color: #ff6b6b;
+        background-color: rgba(255, 107, 107, 0.15);
     }
     .status-success {
         color: #20c997;
+        background-color: rgba(32, 201, 151, 0.1);
     }
     .status-info {
         color: #adb5bd;
+        background-color: #495057;
     }
 }
