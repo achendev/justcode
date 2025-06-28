@@ -8,8 +8,48 @@ document.addEventListener('DOMContentLoaded', () => {
     const addProfileButton = document.getElementById('addProfile');
     const archiveListContainer = document.getElementById('archiveListContainer');
     const errorDiv = document.getElementById('error');
+    const updateAppButton = document.getElementById('updateAppButton');
     
     initUI(profilesContainer, profileTabs, addProfileButton, archiveListContainer, errorDiv);
+
+    // Add listener for the update button
+    updateAppButton.addEventListener('click', () => {
+        errorDiv.textContent = 'Checking for updates...';
+        loadData(async (profiles, activeProfileId) => {
+            const activeProfile = profiles.find(p => p.id === activeProfileId);
+            if (!activeProfile || !activeProfile.serverUrl) {
+                errorDiv.textContent = 'Error: No active profile or server URL configured.';
+                return;
+            }
+
+            const serverUrl = activeProfile.serverUrl.endsWith('/') ? activeProfile.serverUrl.slice(0, -1) : activeProfile.serverUrl;
+            const endpoint = `${serverUrl}/update`;
+
+            try {
+                const headers = { 'Content-Type': 'text/plain' };
+                if (activeProfile.isAuthEnabled && activeProfile.username) {
+                    headers['Authorization'] = 'Basic ' + btoa(`${activeProfile.username}:${activeProfile.password}`);
+                }
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: headers
+                });
+
+                const resultText = await response.text();
+                if (!response.ok) {
+                    throw new Error(resultText);
+                }
+                
+                // Show the success/info message from the server
+                errorDiv.textContent = resultText;
+
+            } catch (error) {
+                errorDiv.textContent = `Update failed: ${error.message}`;
+                console.error('JustCode Update Error:', error);
+            }
+        });
+    });
 
     // Add keyboard shortcuts for actions within the popup
     document.addEventListener('keydown', (event) => {
