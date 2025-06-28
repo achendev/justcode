@@ -35,9 +35,6 @@ body {
     gap: 5px;
     margin-bottom: 10px;
 }
-.profile-name-input.form-control-sm {
-    flex-grow: 1;
-}
 .nav-tabs {
     margin-bottom: 10px;
 }
