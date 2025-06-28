@@ -41,6 +41,9 @@ export function attachAllEventListeners(reRenderCallback) {
     document.querySelectorAll('.exclude-patterns').forEach(input => {
         input.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'excludePatterns', '.git/,venv/,.env,log/,logs/,tmp/'));
     });
+    document.querySelectorAll('.get-exclusion-prompt').forEach(button => {
+        button.addEventListener('click', (e) => actionHandlers.handleGetExclusionSuggestionClick(e));
+    });
     document.querySelectorAll('.include-patterns').forEach(input => {
         input.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'includePatterns'));
     });

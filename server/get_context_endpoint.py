@@ -10,6 +10,7 @@ def get_context():
     exclude_str = request.args.get('exclude', '')
     include_str = request.args.get('include', '')
     context_size_limit = int(request.args.get('limit', 3000000))
+    suggest_exclusions = request.args.get('suggest_exclusions', 'false').lower() == 'true'
 
     if not path or not path.strip():
         return Response("Error: 'path' parameter is missing.", status=400, mimetype='text/plain')
@@ -23,14 +24,11 @@ def get_context():
 
     exclude_patterns = [p.strip() for p in exclude_str.split(',') if p.strip()]
     include_patterns = [p.strip() for p in include_str.split(',') if p.strip()]
-    try:
-        file_contents = generate_context_from_path(project_path, include_patterns, exclude_patterns)
-        # Check if the generated context is too large
-        if len(file_contents) > context_size_limit:
-            print(f"Context size ({len(file_contents)}) exceeds limit ({context_size_limit}). Generating exclusion suggestion prompt.")
-            tree_with_counts, total_size = generate_tree_with_char_counts(project_path, include_patterns, exclude_patterns)
-            
-            large_context_prompt = f"""PROJECT FILE TREE (with character counts):
+
+    def _generate_suggestion_prompt():
+        """Generates the exclusion suggestion prompt."""
+        tree_with_counts, total_size = generate_tree_with_char_counts(project_path, include_patterns, exclude_patterns)
+        return f"""PROJECT FILE TREE (with character counts):
 {three_brackets}bash
 {tree_with_counts}
 {three_brackets}
@@ -76,7 +74,20 @@ You MUST follow these rules without exception.
 .gin/,node_modules/,*.log,tmp/,data/,*/data/,assets/
 {three_brackets}
 """
-            return Response(large_context_prompt, mimetype='text/plain')
+    try:
+        # Handle explicit request for exclusion suggestions
+        if suggest_exclusions:
+            print("Forced exclusion suggestion prompt requested.")
+            suggestion_prompt = _generate_suggestion_prompt()
+            return Response(suggestion_prompt, mimetype='text/plain')
+
+        file_contents = generate_context_from_path(project_path, include_patterns, exclude_patterns)
+        
+        # Check if the generated context is too large (implicit suggestion)
+        if len(file_contents) > context_size_limit:
+            print(f"Context size ({len(file_contents)}) exceeds limit ({context_size_limit}). Generating exclusion suggestion prompt.")
+            suggestion_prompt = _generate_suggestion_prompt()
+            return Response(suggestion_prompt, mimetype='text/plain')
 
         # The prompt will always use Unix-style paths for simplicity and consistency for the LLM.
         # The server-side deploy logic will handle the conversion to the correct OS path separator.

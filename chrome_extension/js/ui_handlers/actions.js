@@ -1,4 +1,4 @@
-import { getContext } from '../get_context.js';
+import { getContext, getExclusionSuggestion } from '../get_context.js';
 import { deployCode } from '../deploy_code.js';
 import { rollbackCode } from '../rollback.js';
 import { loadData } from '../storage.js';
@@ -65,6 +65,41 @@ export function handleDeployCodeClick(event) {
 
 export function handleRollbackCodeClick(event) {
     performAction(event, rollbackCode);
+}
+
+export async function handleGetExclusionSuggestionClick(event) {
+    const button = event.currentTarget;
+    const originalButtonHTML = button.innerHTML;
+    const id = parseInt(button.dataset.id);
+    
+    button.disabled = true;
+    button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>`;
+    updateTemporaryMessage(id, '');
+
+    try {
+        await new Promise((resolve, reject) => {
+            loadData(async (profiles, activeProfileId, archivedProfiles) => {
+                try {
+                    const profile = profiles.find(p => p.id === id);
+                    if (!profile) {
+                        throw new Error("Action failed: Profile not found.");
+                    }
+                    // The called function handles its own messaging.
+                    await getExclusionSuggestion(profile);
+                    resolve();
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        });
+    } catch (error) {
+        // This is a fallback error handler. The action function should handle its own UI updates.
+        console.error("JustCode Action Error:", error);
+        updateAndSaveMessage(id, `Error: ${error.message}`, 'error');
+    } finally {
+        button.disabled = false;
+        button.innerHTML = originalButtonHTML;
+    }
 }
 
 export function handleUpdateAppClick(event) {
