@@ -25,7 +25,7 @@ The system consists of two main components:
 *   **🧩 Chrome Extension (`chrome_extension/`):** A user-friendly popup interface.
     *   **Popup Interface:** Contains an input for the project path and three main buttons: "Get Context," "Deploy Code," and "Rollback."
     *   **Shortcuts:** 
-        *   `Alt + O`: Open the extension popup.
+        *   `Alt + ↑`: Open the extension popup.
         *   When the popup is open:
             *   `Alt + ←`: Trigger "Get Context" for the active profile.
             *   `Alt + →`: Trigger "Deploy Code" for the active profile.
@@ -33,7 +33,7 @@ The system consists of two main components:
             *   `Alt + A`: Switch to the profile tab on the left (loops around).
             *   `Alt + S`: Switch to the profile tab on the right (loops around).
     
-    > **Note on Shortcuts:** If the `Alt + O` shortcut to open the extension doesn't work, you may need to set or reset it. Go to `chrome://extensions/shortcuts` in your browser, find the "JustCode Extension", and assign your preferred shortcut for the "Open JustCode Popup" action.
+    > **Note on Shortcuts:** If the `Alt + ↑` shortcut to open the extension doesn't work, you may need to set or reset it. Go to `chrome://extensions/shortcuts` in your browser, find the "JustCode Extension", and assign your preferred shortcut for the "Open JustCode Popup" action.
 
 ## ↩️ Automatic Rollback
 
@@ -205,7 +205,7 @@ This workflow turns the tedious task of manually curating a large project's cont
 ## 🔄 Usage Workflow
 
 1.  **Start the Server:** Ensure the local Flask server is running.
-2.  **Open Popup:** Click the JustCode extension icon in your browser toolbar or press `Alt+O`.
+2.  **Open Popup:** Click the JustCode extension icon in your browser toolbar or press `Alt+↑`.
 3.  **Set Path:** Enter the absolute path to your project.
 4.  **Go to LLM:** Navigate to your preferred LLM chat interface.
 5.  **Get Context:** Click the `Get Context` button or press `Alt+←`. Your project context will be loaded into the prompt area.
