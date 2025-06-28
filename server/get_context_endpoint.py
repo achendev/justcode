@@ -28,7 +28,7 @@ def get_context():
     def _generate_suggestion_prompt():
         """Generates the exclusion suggestion prompt."""
         tree_with_counts, total_size = generate_tree_with_char_counts(project_path, include_patterns, exclude_patterns)
-        return f"""PROJECT FILE TREE (with character counts):
+        return f"""PROJECT FILE TREE (with character and line counts):
 {three_brackets}bash
 {tree_with_counts}
 {three_brackets}
@@ -39,12 +39,12 @@ You are an expert assistant for a developer using a tool called **JustCode**. Th
 
 The developer just tried to send their project, but it's too big! The total size is **{total_size:,} characters**, which is over their configured limit of **{context_size_limit:,} characters**.
 
-**Your mission is to help them fix this.** You must analyze the project's file tree above and generate a new, more effective "exclude patterns" list. This list will tell JustCode to ignore irrelevant files and directories, shrinking the project context to a manageable size. The developer will take your output and paste it directly into the JustCode extension to try again.
+**Your mission is to help them fix this.** You must analyze the project's file tree above (which includes character and line counts for each entry) and generate a new, more effective "exclude patterns" list. This list will tell JustCode to ignore irrelevant files and directories, shrinking the project context to a manageable size. The developer will take your output and paste it directly into the JustCode extension to try again.
 
 Focus on excluding directories or file types that are unlikely to be relevant to the code type task, such as:
 - **Dependencies & Packages:** `node_modules/`, `venv/`, `packages/`, etc. These are almost never needed.
 - **Build & Distributable Files:** `dist/`, `build/`, `target/`, `.next/`. These are generated from the source, so the source is all that matters.
-- **Large Data & Media Assets:** Look for large `.csv`, `.json`, `.db`, image, or video files.
+- **Large Data & Media Assets:** Look for large `.csv`, `.json`, `.db`, image, or video files. Pay attention to both character and line counts.
 - **Logs, Caches, and Temp Files:** `*.log`, `tmp/`, `.cache/`, etc.
 - **IDE & System-Specific Config:** `.vscode/`, `.idea/`, `.DS_Store`.
 - **Version Control:** The `.git/` directory is critical to exclude.

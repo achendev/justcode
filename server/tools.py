@@ -101,10 +101,10 @@ def generate_context_from_path(project_path, include_patterns, exclude_patterns)
 
 def generate_tree_with_char_counts(project_path, include_patterns, exclude_patterns):
     """
-    Generates a file tree string with character counts for each file and directory.
+    Generates a file tree string with character and line counts for each file and directory.
     Returns the formatted tree string and the total character count.
     """
-    matching_files_data = [] # List of tuples (rel_path_norm, content_length)
+    matching_files_data = [] # List of tuples (rel_path_norm, content_length, line_count)
     for dirpath, dirnames, filenames in os.walk(project_path, topdown=True):
         # Exclude directories by modifying dirnames in place
         excluded_dirs = []
@@ -128,18 +128,21 @@ def generate_tree_with_char_counts(project_path, include_patterns, exclude_patte
             
             try:
                 with open(file_full_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    content_length = len(f.read())
-                matching_files_data.append((file_rel_path_norm, content_length))
+                    content = f.read()
+                    content_length = len(content)
+                    line_count = len(content.splitlines())
+                matching_files_data.append((file_rel_path_norm, content_length, line_count))
             except (OSError, UnicodeDecodeError):
                 continue
     
-    file_sizes = dict(matching_files_data)
-    total_size = sum(file_sizes.values())
+    file_stats = {path: {'chars': chars, 'lines': lines} for path, chars, lines in matching_files_data}
+    total_chars = sum(stats['chars'] for stats in file_stats.values())
+    total_lines = sum(stats['lines'] for stats in file_stats.values())
     
     tree_dict = {}
-    dir_sizes = {}
+    dir_stats = {}
 
-    for path, size in file_sizes.items():
+    for path, stats in file_stats.items():
         parts = path.split('/')
         current_path_prefix = ''
         for part in parts[:-1]:
@@ -147,17 +150,21 @@ def generate_tree_with_char_counts(project_path, include_patterns, exclude_patte
                 current_path_prefix = f"{current_path_prefix}/{part}"
             else:
                 current_path_prefix = part
-            dir_sizes[current_path_prefix] = dir_sizes.get(current_path_prefix, 0) + size
-        
+            
+            current_dir_stat = dir_stats.get(current_path_prefix, {'chars': 0, 'lines': 0})
+            current_dir_stat['chars'] += stats['chars']
+            current_dir_stat['lines'] += stats['lines']
+            dir_stats[current_path_prefix] = current_dir_stat
+
         d = tree_dict
         for part in parts[:-1]:
             d = d.setdefault(part, {})
         d[parts[-1]] = None
 
-    def format_size(s):
-        return f"({s:,} chars)"
+    def format_stats(s_chars, s_lines):
+        return f"({s_chars:,} chars, {s_lines:,} lines)"
     
-    tree_lines = [f". {format_size(total_size)}"]
+    tree_lines = [f". {format_stats(total_chars, total_lines)}"]
 
     def build_tree_str(d, current_dir_path="", prefix=""):
         # Sort items: directories first, then alphabetically by name
@@ -172,17 +179,19 @@ def generate_tree_with_char_counts(project_path, include_patterns, exclude_patte
                 rel_path = name
             
             if d[name] is not None:  # It's a directory
-                size_str = format_size(dir_sizes.get(rel_path, 0))
-                tree_lines.append(f"{prefix}{pointer}{name}/ {size_str}")
+                stats = dir_stats.get(rel_path, {'chars': 0, 'lines': 0})
+                stats_str = format_stats(stats['chars'], stats['lines'])
+                tree_lines.append(f"{prefix}{pointer}{name}/ {stats_str}")
                 extension = '│   ' if pointer == '├── ' else '    '
                 build_tree_str(d[name], rel_path, prefix + extension)
             else: # It's a file
-                size_str = format_size(file_sizes.get(rel_path, 0))
-                tree_lines.append(f"{prefix}{pointer}{name} {size_str}")
+                stats = file_stats.get(rel_path, {'chars': 0, 'lines': 0})
+                stats_str = format_stats(stats['chars'], stats['lines'])
+                tree_lines.append(f"{prefix}{pointer}{name} {stats_str}")
                 
     build_tree_str(tree_dict)
     
-    return "\n".join(tree_lines), total_size
+    return "\n".join(tree_lines), total_chars
 
 
 def is_safe_path(base_dir, target_path):
