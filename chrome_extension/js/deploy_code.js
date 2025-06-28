@@ -1,10 +1,11 @@
 import { refreshRollbackCount } from './ui.js';
+import { updateAndSaveMessage, updateTemporaryMessage } from './ui_handlers/message.js';
 
-export async function deployCode(profile, errorDiv) {
-    errorDiv.textContent = '';
+export async function deployCode(profile) {
+    updateTemporaryMessage(profile.id, '');
     const path = profile.projectPath;
     if (!path) {
-        errorDiv.textContent = 'Error: Please enter a project path.';
+        updateAndSaveMessage(profile.id, 'Error: Please enter a project path.', 'error');
         return;
     }
     try {
@@ -13,7 +14,7 @@ export async function deployCode(profile, errorDiv) {
             // Read directly from clipboard if deployFromClipboard is enabled
             codeToDeploy = await navigator.clipboard.readText();
             if (!codeToDeploy || !codeToDeploy.includes("EOPROJECTFILE")) {
-                errorDiv.textContent = 'Error: Clipboard content is not a valid deploy script.';
+                updateAndSaveMessage(profile.id, 'Error: Clipboard content is not a valid deploy script.', 'error');
                 return;
             }
         } else {
@@ -60,13 +61,13 @@ export async function deployCode(profile, errorDiv) {
                 }
             });
             if (results[0].result.error) {
-                errorDiv.textContent = `Error: ${results[0].result.error}`;
+                updateAndSaveMessage(profile.id, `Error: ${results[0].result.error}`, 'error');
                 return;
             }
             await new Promise(resolve => setTimeout(resolve, 100));
             codeToDeploy = await navigator.clipboard.readText();
             if (!codeToDeploy || !codeToDeploy.includes("EOPROJECTFILE")) {
-                errorDiv.textContent = 'Error: Clipboard content is not a valid deploy script.';
+                updateAndSaveMessage(profile.id, 'Error: Clipboard content is not a valid deploy script.', 'error');
                 return;
             }
         }
@@ -91,10 +92,10 @@ export async function deployCode(profile, errorDiv) {
         }
         
         refreshRollbackCount(profile);
-        errorDiv.textContent = 'Code deployed successfully!';
+        updateAndSaveMessage(profile.id, 'Code deployed successfully!', 'success');
         console.log('JustCode Deploy Result:', resultText);
     } catch (error) {
-        errorDiv.textContent = `Error: ${error.message}`;
+        updateAndSaveMessage(profile.id, `Error: ${error.message}`, 'error');
         console.error('JustCode Error:', error);
     }
 }

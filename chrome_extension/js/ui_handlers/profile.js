@@ -1,4 +1,5 @@
 import { loadData, saveData } from '../storage.js';
+import { updateAndSaveMessage } from './message.js';
 
 export function handleAddProfile(reRenderCallback) {
     loadData((profiles, activeProfileId, archivedProfiles) => {
@@ -15,7 +16,8 @@ export function handleAddProfile(reRenderCallback) {
             username: '',
             password: '',
             rollbackCount: 0,
-            contextSizeLimit: 3000000
+            contextSizeLimit: 3000000,
+            lastMessage: { text: '', type: 'info' }
         };
         profiles.push(newProfile);
         const newActiveProfileId = newProfile.id;
@@ -56,6 +58,7 @@ export function handleCopyProfile(event, reRenderCallback) {
         newProfile.id = Date.now();
         newProfile.name = `${profileToCopy.name} (Copy)`;
         newProfile.rollbackCount = 0; // Reset rollback count for the new profile
+        newProfile.lastMessage = { text: '', type: 'info' }; // Reset message
         
         const originalIndex = profiles.findIndex(p => p.id === id);
         
@@ -67,11 +70,11 @@ export function handleCopyProfile(event, reRenderCallback) {
     });
 }
 
-export function handleArchiveProfile(event, errorDiv, reRenderCallback) {
+export function handleArchiveProfile(event, reRenderCallback) {
     const id = parseInt(event.currentTarget.dataset.id);
     loadData((profiles, activeProfileId, archivedProfiles) => {
         if (profiles.length <= 1) {
-            errorDiv.textContent = 'Cannot archive the last profile.';
+            updateAndSaveMessage(id, 'Cannot archive the last profile.', 'error');
             return;
         }
         const profileToArchive = profiles.find(p => p.id === id);
@@ -87,12 +90,11 @@ export function handleArchiveProfile(event, errorDiv, reRenderCallback) {
     });
 }
 
-export function handleDirectPermanentDeleteProfile(event, errorDiv, reRenderCallback) {
-    errorDiv.textContent = '';
+export function handleDirectPermanentDeleteProfile(event, reRenderCallback) {
     const id = parseInt(event.currentTarget.dataset.id);
     loadData((profiles, activeProfileId, archivedProfiles) => {
         if (profiles.length <= 1) {
-            errorDiv.textContent = 'Cannot delete the last profile.';
+            updateAndSaveMessage(id, 'Cannot delete the last profile.', 'error');
             return;
         }
 

@@ -7,9 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const profileTabs = document.getElementById('profileTabs');
     const addProfileButton = document.getElementById('addProfile');
     const archiveListContainer = document.getElementById('archiveListContainer');
-    const errorDiv = document.getElementById('error');
     
-    initUI(profilesContainer, profileTabs, addProfileButton, archiveListContainer, errorDiv);
+    initUI(profilesContainer, profileTabs, addProfileButton, archiveListContainer);
 
     // Add Shift-key listener to swap Archive/Delete buttons
     document.addEventListener('keydown', (event) => {
@@ -45,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const getContextButton = document.querySelector('.profile-card.active .get-context');
             if (getContextButton) {
                 const mockEvent = { currentTarget: getContextButton };
-                handleGetContextClick(mockEvent, errorDiv, true);
+                handleGetContextClick(mockEvent, true);
                 actionTaken = true;
             }
         } else if (event.key === 'ArrowRight') {
@@ -69,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const newIndex = (currentIndex - 1 + profiles.length) % profiles.length;
                 const newActiveProfileId = profiles[newIndex].id;
                 saveData(profiles, newActiveProfileId, archivedProfiles);
-                renderUI(profiles, newActiveProfileId, archivedProfiles, profilesContainer, profileTabs, archiveListContainer, errorDiv);
+                renderUI(profiles, newActiveProfileId, archivedProfiles, profilesContainer, profileTabs, archiveListContainer);
             });
         } else if (event.code === 'KeyS') { // Switch profile right
             actionTaken = true;
@@ -79,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const newIndex = (currentIndex + 1) % profiles.length;
                 const newActiveProfileId = profiles[newIndex].id;
                 saveData(profiles, newActiveProfileId, archivedProfiles);
-                renderUI(profiles, newActiveProfileId, archivedProfiles, profilesContainer, profileTabs, archiveListContainer, errorDiv);
+                renderUI(profiles, newActiveProfileId, archivedProfiles, profilesContainer, profileTabs, archiveListContainer);
             });
         }
 

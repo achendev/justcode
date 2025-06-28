@@ -2,6 +2,7 @@ import { getContext } from '../get_context.js';
 import { deployCode } from '../deploy_code.js';
 import { rollbackCode } from '../rollback.js';
 import { loadData } from '../storage.js';
+import { updateAndSaveMessage, updateTemporaryMessage } from './message.js';
 
 function setActionButtonsDisabled(profileId, isDisabled) {
     const profileCard = document.querySelector(`.profile-card.active#profile-${profileId}`);
@@ -16,13 +17,14 @@ function setActionButtonsDisabled(profileId, isDisabled) {
     }
 }
 
-async function performAction(event, errorDiv, actionFunc, ...extraArgs) {
+async function performAction(event, actionFunc, ...extraArgs) {
     const button = event.currentTarget;
     const originalButtonHTML = button.innerHTML;
     const id = parseInt(button.dataset.id);
 
     setActionButtonsDisabled(id, true);
     button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Working...`;
+    updateTemporaryMessage(id, ''); // Clear previous persistent message
 
     try {
         // Wrap the callback-based loadData in a Promise to use with async/await
@@ -34,8 +36,8 @@ async function performAction(event, errorDiv, actionFunc, ...extraArgs) {
                         // This error will be caught by the outer catch block
                         throw new Error("Action failed: Profile not found.");
                     }
-                    // The actionFunc is responsible for updating the errorDiv on its own
-                    await actionFunc(profile, errorDiv, ...extraArgs);
+                    // The actionFunc is responsible for updating the message on its own
+                    await actionFunc(profile, ...extraArgs);
                     resolve();
                 } catch (error) {
                     reject(error);
@@ -43,42 +45,41 @@ async function performAction(event, errorDiv, actionFunc, ...extraArgs) {
             });
         });
     } catch (error) {
-        // The individual action functions should have already updated the UI.
-        // We log the error here for debugging purposes, but avoid overwriting a specific error message.
+        // This is a fallback for unexpected errors not caught by the action function.
+        // The individual action functions should handle their own errors and messaging.
         console.error("JustCode Action Error:", error.message);
-        if (!errorDiv.textContent) {
-             errorDiv.textContent = `Error: ${error.message}`;
-        }
+        updateAndSaveMessage(id, `Error: ${error.message}`, 'error');
     } finally {
         setActionButtonsDisabled(id, false);
         button.innerHTML = originalButtonHTML;
     }
 }
 
-export function handleGetContextClick(event, errorDiv, fromShortcut = false) {
-    performAction(event, errorDiv, getContext, fromShortcut);
+export function handleGetContextClick(event, fromShortcut = false) {
+    performAction(event, getContext, fromShortcut);
 }
 
-export function handleDeployCodeClick(event, errorDiv) {
-    performAction(event, errorDiv, deployCode);
+export function handleDeployCodeClick(event) {
+    performAction(event, deployCode);
 }
 
-export function handleRollbackCodeClick(event, errorDiv) {
-    performAction(event, errorDiv, rollbackCode);
+export function handleRollbackCodeClick(event) {
+    performAction(event, rollbackCode);
 }
 
-export function handleUpdateAppClick(event, errorDiv) {
+export function handleUpdateAppClick(event) {
     const button = event.currentTarget;
     const originalButtonHTML = button.innerHTML;
+    const id = parseInt(button.dataset.id);
     
     button.disabled = true;
     button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>`;
-    errorDiv.textContent = 'Checking for updates...';
+    updateTemporaryMessage(id, 'Checking for updates...');
 
     loadData(async (profiles, activeProfileId) => {
-        const activeProfile = profiles.find(p => p.id === activeProfileId);
+        const activeProfile = profiles.find(p => p.id === id);
         if (!activeProfile || !activeProfile.serverUrl) {
-            errorDiv.textContent = 'Error: No active profile or server URL configured.';
+            updateAndSaveMessage(id, 'Error: No active profile or server URL configured.', 'error');
             button.disabled = false;
             button.innerHTML = originalButtonHTML;
             return;
@@ -103,10 +104,10 @@ export function handleUpdateAppClick(event, errorDiv) {
                 throw new Error(resultText);
             }
             
-            errorDiv.textContent = resultText;
+            updateAndSaveMessage(id, resultText, 'success');
 
         } catch (error) {
-            errorDiv.textContent = `Update failed: ${error.message}`;
+            updateAndSaveMessage(id, `Update failed: ${error.message}`, 'error');
             console.error('JustCode Update Error:', error);
         } finally {
             button.disabled = false;

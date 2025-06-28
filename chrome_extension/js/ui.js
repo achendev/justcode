@@ -49,7 +49,7 @@ export async function refreshRollbackCount(profile) {
     });
 }
 
-export function renderUI(profiles, activeProfileId, archivedProfiles, profilesContainer, profileTabs, archiveListContainer, errorDiv) {
+export function renderUI(profiles, activeProfileId, archivedProfiles, profilesContainer, profileTabs, archiveListContainer) {
     // 1. Render main DOM (uses cached rollback count initially)
     renderDOM(profiles, activeProfileId, profilesContainer, profileTabs);
 
@@ -58,9 +58,9 @@ export function renderUI(profiles, activeProfileId, archivedProfiles, profilesCo
 
     // 3. Attach Listeners
     const reRenderCallback = (newProfiles, newActiveProfileId, newArchivedProfiles) => {
-        renderUI(newProfiles, newActiveProfileId, newArchivedProfiles, profilesContainer, profileTabs, archiveListContainer, errorDiv);
+        renderUI(newProfiles, newActiveProfileId, newArchivedProfiles, profilesContainer, profileTabs, archiveListContainer);
     };
-    attachAllEventListeners(reRenderCallback, errorDiv);
+    attachAllEventListeners(reRenderCallback);
 
     // 4. Asynchronously fetch the latest rollback count for the active profile
     const activeProfile = profiles.find(p => p.id === activeProfileId);
@@ -69,9 +69,9 @@ export function renderUI(profiles, activeProfileId, archivedProfiles, profilesCo
     }
 }
 
-export function initUI(profilesContainer, profileTabs, addProfileButton, archiveListContainer, errorDiv) {
+export function initUI(profilesContainer, profileTabs, addProfileButton, archiveListContainer) {
     const reRenderCallback = (profiles, activeProfileId, archivedProfiles) => {
-        renderUI(profiles, activeProfileId, archivedProfiles, profilesContainer, profileTabs, archiveListContainer, errorDiv);
+        renderUI(profiles, activeProfileId, archivedProfiles, profilesContainer, profileTabs, archiveListContainer);
     };
 
     addProfileButton.addEventListener('click', () => {
@@ -95,6 +95,6 @@ export function initUI(profilesContainer, profileTabs, addProfileButton, archive
     });
 
     loadData((profiles, activeProfileId, archivedProfiles) => {
-        renderUI(profiles, activeProfileId, archivedProfiles, profilesContainer, profileTabs, archiveListContainer, errorDiv);
+        renderUI(profiles, activeProfileId, archivedProfiles, profilesContainer, profileTabs, archiveListContainer);
     });
 }

@@ -1,4 +1,6 @@
-export async function getContext(profile, errorDiv, fromShortcut = false) {
+import { updateAndSaveMessage, updateTemporaryMessage } from './ui_handlers/message.js';
+
+export async function getContext(profile, fromShortcut = false) {
     const path = profile.projectPath;
     const excludePatterns = profile.excludePatterns || '';
     const includePatterns = profile.includePatterns || '';
@@ -6,7 +8,7 @@ export async function getContext(profile, errorDiv, fromShortcut = false) {
     const contextSizeLimit = profile.contextSizeLimit || 3000000;
     
     if (!path) {
-        errorDiv.textContent = 'Error: Please enter a project path.';
+        updateAndSaveMessage(profile.id, 'Error: Please enter a project path.', 'error');
         return;
     }
     
@@ -17,7 +19,7 @@ export async function getContext(profile, errorDiv, fromShortcut = false) {
     console.log('JustCode: Fetching project state...');
     
     // Always show the "getting context" message, even for shortcuts.
-    errorDiv.textContent = 'Getting context...';
+    updateTemporaryMessage(profile.id, 'Getting context...');
 
     try {
         const headers = {};
@@ -38,9 +40,7 @@ export async function getContext(profile, errorDiv, fromShortcut = false) {
         if (profile.copyToClipboard) {
             await navigator.clipboard.writeText(responseText);
             console.log('JustCode: Project context copied to clipboard.');
-            if (!fromShortcut) {
-                errorDiv.textContent = 'Context copied to clipboard!';
-            }
+            updateAndSaveMessage(profile.id, 'Context copied to clipboard!', 'success');
         } else {
             await chrome.scripting.executeScript({
                 target: { tabId: (await chrome.tabs.query({ active: true, currentWindow: true }))[0].id },
@@ -88,9 +88,7 @@ export async function getContext(profile, errorDiv, fromShortcut = false) {
                 },
                 args: [responseText]
             });
-            if (!fromShortcut) {
-                errorDiv.textContent = 'Context loaded successfully!';
-            }
+            updateAndSaveMessage(profile.id, 'Context loaded successfully!', 'success');
         }
 
         if (fromShortcut) {
@@ -117,7 +115,7 @@ export async function getContext(profile, errorDiv, fromShortcut = false) {
         }
 
     } catch (error) {
-        errorDiv.textContent = `Error: ${error.message}`;
+        updateAndSaveMessage(profile.id, `Error: ${error.message}`, 'error');
         console.error('JustCode Error:', error);
     }
 }

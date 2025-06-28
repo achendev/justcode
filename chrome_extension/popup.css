@@ -17,10 +17,19 @@ body {
     margin-bottom: 0;
     font-size: smaller;
 }
-.error { 
-    color: #dc3545; 
-    font-size: 0.875rem; 
+.status-message {
+    font-size: 0.875rem;
     min-height: 1.5rem;
+    text-align: center;
+}
+.status-error {
+    color: #dc3545;
+}
+.status-success {
+    color: #198754;
+}
+.status-info {
+    color: #6c757d;
 }
 .profile-card {
     border: 1px solid;
@@ -131,5 +140,14 @@ body {
     }
     .rollback-stack-item.available {
         background-color: #adb5bd;
+    }
+    .status-error {
+        color: #ff6b6b;
+    }
+    .status-success {
+        color: #20c997;
+    }
+    .status-info {
+        color: #adb5bd;
     }
 }

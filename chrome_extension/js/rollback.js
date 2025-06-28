@@ -1,15 +1,16 @@
 import { refreshRollbackCount } from './ui.js';
+import { updateAndSaveMessage, updateTemporaryMessage } from './ui_handlers/message.js';
 
-export async function rollbackCode(profile, errorDiv) {
-    errorDiv.textContent = '';
+export async function rollbackCode(profile) {
+    updateTemporaryMessage(profile.id, '');
     const path = profile.projectPath;
     if (!path) {
-        errorDiv.textContent = 'Error: Project path is required for rollback.';
+        updateAndSaveMessage(profile.id, 'Error: Project path is required for rollback.', 'error');
         return;
     }
 
     try {
-        errorDiv.textContent = 'Attempting rollback...';
+        updateTemporaryMessage(profile.id, 'Attempting rollback...');
         const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
         const endpoint = `${serverUrl}/rollback?path=${encodeURIComponent(path)}`;
 
@@ -29,11 +30,11 @@ export async function rollbackCode(profile, errorDiv) {
         }
 
         refreshRollbackCount(profile);
-        errorDiv.textContent = 'Rollback successful!';
+        updateAndSaveMessage(profile.id, 'Rollback successful!', 'success');
         console.log('JustCode Rollback Result:', resultText);
 
     } catch (error) {
-        errorDiv.textContent = `Error: ${error.message.replace('Error: Rollback failed: ', '')}`;
+        updateAndSaveMessage(profile.id, `Error: ${error.message.replace('Error: Rollback failed: ', '')}`, 'error');
         console.error('JustCode Error:', error);
     }
 }

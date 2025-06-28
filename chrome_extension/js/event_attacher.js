@@ -3,7 +3,7 @@ import * as inputHandlers from './ui_handlers/inputs.js';
 import * as actionHandlers from './ui_handlers/actions.js';
 import * as settingsHandlers from './ui_handlers/settings.js';
 
-export function attachAllEventListeners(reRenderCallback, errorDiv) {
+export function attachAllEventListeners(reRenderCallback) {
     // Profile-related events that trigger a re-render
     document.querySelectorAll('.nav-link').forEach(tab => {
         tab.addEventListener('click', (e) => profileHandlers.handleTabSwitch(e, reRenderCallback));
@@ -18,11 +18,11 @@ export function attachAllEventListeners(reRenderCallback, errorDiv) {
     });
     
     document.querySelectorAll('.archive-profile').forEach(button => {
-        button.addEventListener('click', (e) => profileHandlers.handleArchiveProfile(e, errorDiv, reRenderCallback));
+        button.addEventListener('click', (e) => profileHandlers.handleArchiveProfile(e, reRenderCallback));
     });
 
     document.querySelectorAll('.permanent-delete-direct').forEach(button => {
-        button.addEventListener('click', (e) => profileHandlers.handleDirectPermanentDeleteProfile(e, errorDiv, reRenderCallback));
+        button.addEventListener('click', (e) => profileHandlers.handleDirectPermanentDeleteProfile(e, reRenderCallback));
     });
 
     document.querySelectorAll('.move-profile-left').forEach(button => {
@@ -52,13 +52,13 @@ export function attachAllEventListeners(reRenderCallback, errorDiv) {
 
     // Main action buttons
     document.querySelectorAll('.get-context').forEach(button => {
-        button.addEventListener('click', (e) => actionHandlers.handleGetContextClick(e, errorDiv));
+        button.addEventListener('click', (e) => actionHandlers.handleGetContextClick(e));
     });
     document.querySelectorAll('.deploy-code').forEach(button => {
-        button.addEventListener('click', (e) => actionHandlers.handleDeployCodeClick(e, errorDiv));
+        button.addEventListener('click', (e) => actionHandlers.handleDeployCodeClick(e));
     });
     document.querySelectorAll('.rollback-code').forEach(button => {
-        button.addEventListener('click', (e) => actionHandlers.handleRollbackCodeClick(e, errorDiv));
+        button.addEventListener('click', (e) => actionHandlers.handleRollbackCodeClick(e));
     });
 
     // Settings-related events
@@ -81,7 +81,7 @@ export function attachAllEventListeners(reRenderCallback, errorDiv) {
         button.addEventListener('click', settingsHandlers.handleOpenSettingsClick);
     });
     document.querySelectorAll('.update-app-button').forEach(button => {
-        button.addEventListener('click', (e) => actionHandlers.handleUpdateAppClick(e, errorDiv));
+        button.addEventListener('click', (e) => actionHandlers.handleUpdateAppClick(e));
     });
     document.querySelectorAll('.close-settings').forEach(button => {
         button.addEventListener('click', settingsHandlers.handleCloseSettingsClick);

@@ -15,7 +15,8 @@ export function loadData(callback) {
             username: '',
             password: '',
             rollbackCount: 0,
-            contextSizeLimit: 3000000
+            contextSizeLimit: 3000000,
+            lastMessage: { text: '', type: 'info' }
         }];
         profiles.forEach(profile => {
             if (!profile.excludePatterns) {
@@ -44,6 +45,9 @@ export function loadData(callback) {
             }
             if (profile.contextSizeLimit === undefined) {
                 profile.contextSizeLimit = 3000000;
+            }
+            if (!profile.lastMessage) {
+                profile.lastMessage = { text: '', type: 'info' };
             }
         });
         const activeProfileId = data.activeProfileId || profiles[0].id;
