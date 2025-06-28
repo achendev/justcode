@@ -53,6 +53,7 @@ Focus on excluding directories or file types that are unlikely to be relevant to
 - Any type of credentials
 - Any type of logs and sessions files
 - Any type of files contains personal information
+- Any type of temporary folders
 
 The goal is to provide final a comma-separated list of glob patterns appended to the existing exclude list.
 
