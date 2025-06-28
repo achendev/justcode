@@ -45,11 +45,11 @@ function getProfileCardHTML(profile) {
         </div>
         <div class="form-check mb-3">
             <input type="checkbox" class="form-check-input copy-to-clipboard" id="copyToClipboard-${profile.id}" ${profile.copyToClipboard ? 'checked' : ''}>
-            <label class="form-check-label" for="copyToClipboard-${profile.id}">Copy to clipboard on Get Context</label>
+            <label class="form-check-label" for="copyToClipboard-${profile.id}">Get Context to clipboard</label>
         </div>
         <div class="form-check mb-3">
             <input type="checkbox" class="form-check-input deploy-from-clipboard" id="deployFromClipboard-${profile.id}" ${profile.deployFromClipboard ? 'checked' : ''}>
-            <label class="form-check-label" for="deployFromClipboard-${profile.id}">Deploy from clipboard</label>
+            <label class="form-check-label" for="deployFromClipboard-${profile.id}">Deploy Code from clipboard</label>
         </div>
         <div class="d-flex gap-2">
             <button class="btn btn-primary btn-sm flex-grow-1 get-context" data-id="${profile.id}"><i class="bi bi-box-arrow-up"></i> Get Context</button>
