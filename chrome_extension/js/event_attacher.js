@@ -12,6 +12,10 @@ export function attachAllEventListeners(reRenderCallback, errorDiv) {
     document.querySelectorAll('.profile-name-input').forEach(input => {
         input.addEventListener('change', (e) => profileHandlers.handleProfileNameChange(e, reRenderCallback));
     });
+
+    document.querySelectorAll('.copy-profile').forEach(button => {
+        button.addEventListener('click', (e) => profileHandlers.handleCopyProfile(e, reRenderCallback));
+    });
     
     document.querySelectorAll('.archive-profile').forEach(button => {
         button.addEventListener('click', (e) => profileHandlers.handleArchiveProfile(e, errorDiv, reRenderCallback));

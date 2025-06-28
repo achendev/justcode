@@ -43,6 +43,30 @@ export function handleProfileNameChange(event, reRenderCallback) {
     });
 }
 
+export function handleCopyProfile(event, reRenderCallback) {
+    const id = parseInt(event.currentTarget.dataset.id);
+    loadData((profiles, activeProfileId, archivedProfiles) => {
+        const profileToCopy = profiles.find(p => p.id === id);
+        if (!profileToCopy) return;
+
+        // Create a deep copy
+        const newProfile = JSON.parse(JSON.stringify(profileToCopy));
+        
+        // Assign new unique properties
+        newProfile.id = Date.now();
+        newProfile.name = `${profileToCopy.name} (Copy)`;
+        newProfile.rollbackCount = 0; // Reset rollback count for the new profile
+        
+        const originalIndex = profiles.findIndex(p => p.id === id);
+        
+        profiles.splice(originalIndex !== -1 ? originalIndex + 1 : profiles.length, 0, newProfile);
+
+        const newActiveProfileId = newProfile.id;
+        saveData(profiles, newActiveProfileId, archivedProfiles);
+        reRenderCallback(profiles, newActiveProfileId, archivedProfiles);
+    });
+}
+
 export function handleArchiveProfile(event, errorDiv, reRenderCallback) {
     const id = parseInt(event.currentTarget.dataset.id);
     loadData((profiles, activeProfileId, archivedProfiles) => {

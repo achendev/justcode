@@ -18,7 +18,10 @@ function getProfileCardHTML(profile) {
         <div class="d-flex align-items-end gap-2 mb-2">
             <div class="flex-grow-1">
                 <label for="projectPath-${profile.id}" class="form-label">Project Path:</label>
-                <input type="text" class="form-control form-control-sm project-path" id="projectPath-${profile.id}" placeholder="/path/to/project" value="${profile.projectPath}">
+                <div class="input-group">
+                    <button class="btn btn-outline-secondary btn-sm copy-profile" type="button" data-id="${profile.id}" title="Copy Profile"><i class="bi bi-copy"></i></button>
+                    <input type="text" class="form-control form-control-sm project-path" id="projectPath-${profile.id}" placeholder="/path/to/project" value="${profile.projectPath}">
+                </div>
             </div>
             <button class="btn btn-outline-info btn-sm rollback-code" data-id="${profile.id}" title="Rollback the last deploy for this project"><i class="bi bi-arrow-counterclockwise"></i> Rollback</button>
         </div>

@@ -13,6 +13,10 @@ body {
 .form-check { 
     margin-bottom: 8px; 
 }
+.form-label {
+    margin-bottom: 0;
+    font-size: smaller;
+}
 .error { 
     color: #dc3545; 
     font-size: 0.875rem; 
