@@ -252,7 +252,7 @@ def execute_script(script_content, project_path):
                 if not match:
                     raise ValueError(f"Invalid or unsupported 'cat' command format: {line}")
                 
-                relative_path = match.group('path').strip("'\"").lstrip('./')
+                relative_path = re.sub(r'^\./', '', match.group('path').strip("'\""))
                 if not is_safe_path(project_path, relative_path):
                     raise PermissionError(f"Path traversal attempt detected: {relative_path}")
                 
@@ -285,14 +285,14 @@ def execute_script(script_content, project_path):
 
             if command == 'mkdir':
                 for arg in args:
-                    relative_path = arg.lstrip('./')
+                    relative_path = re.sub(r'^\./', '', arg)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                     os.makedirs(os.path.join(project_path, relative_path), exist_ok=True)
                     output_log.append(f"Created directory: {relative_path}")
 
             elif command == 'touch':
                 for arg in args:
-                    relative_path = arg.lstrip('./')
+                    relative_path = re.sub(r'^\./', '', arg)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                     full_path = os.path.join(project_path, relative_path)
                     os.makedirs(os.path.dirname(full_path), exist_ok=True)
@@ -314,7 +314,7 @@ def execute_script(script_content, project_path):
                     raise ValueError("'rm' command requires at least one file path.")
 
                 for relative_path in file_paths:
-                    relative_path = relative_path.lstrip('./')
+                    relative_path = re.sub(r'^\./', '', relative_path)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                     full_path = os.path.join(project_path, relative_path)
                     try:
@@ -326,7 +326,7 @@ def execute_script(script_content, project_path):
 
             elif command == 'rmdir':
                 for arg in args:
-                    relative_path = arg.lstrip('./')
+                    relative_path = re.sub(r'^\./', '', arg)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                     full_path = os.path.join(project_path, relative_path)
                     try:
@@ -337,7 +337,7 @@ def execute_script(script_content, project_path):
 
             elif command == 'mv':
                 if len(args) != 2: raise ValueError("'mv' requires two arguments.")
-                src, dest = args[0].lstrip('./'), args[1].lstrip('./')
+                src, dest = re.sub(r'^\./', '', args[0]), re.sub(r'^\./', '', args[1])
                 if not is_safe_path(project_path, src) or not is_safe_path(project_path, dest): raise PermissionError(f"Traversal: {src} or {dest}")
                 full_src = os.path.join(project_path, src)
                 full_dest = os.path.join(project_path, dest)
