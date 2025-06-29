@@ -77,8 +77,14 @@ export async function getExclusionSuggestion(profile) {
         const responseText = await response.text();
         if (!response.ok) throw new Error(`Server error: ${response.status} ${responseText}`);
         
-        await pasteIntoLLMInterface(responseText);
-        updateAndSaveMessage(profile.id, 'Exclusion suggestion prompt loaded!', 'success');
+        if (profile.copyToClipboard) {
+            await navigator.clipboard.writeText(responseText);
+            console.log('JustCode: Exclusion suggestion prompt copied to clipboard.');
+            updateAndSaveMessage(profile.id, 'Exclusion suggestion prompt copied!', 'success');
+        } else {
+            await pasteIntoLLMInterface(responseText);
+            updateAndSaveMessage(profile.id, 'Exclusion suggestion prompt loaded!', 'success');
+        }
     } catch (error) {
         updateAndSaveMessage(profile.id, `Error: ${error.message}`, 'error');
         console.error('JustCode Error:', error);
