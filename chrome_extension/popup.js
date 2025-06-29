@@ -10,6 +10,15 @@ document.addEventListener('DOMContentLoaded', () => {
     
     initUI(profilesContainer, profileTabs, addProfileButton, archiveListContainer);
 
+    // Allow horizontal scrolling of tabs with the mouse wheel
+    profileTabs.addEventListener('wheel', (event) => {
+        // If there's vertical scroll, prevent default and scroll horizontally
+        if (event.deltaY !== 0) {
+            event.preventDefault();
+            profileTabs.scrollLeft += event.deltaY;
+        }
+    });
+
     // Add Shift-key listener to swap Archive/Delete buttons
     document.addEventListener('keydown', (event) => {
         // Only act if Shift is pressed and it's the only modifier key
