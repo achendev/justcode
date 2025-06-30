@@ -97,6 +97,15 @@ body {
 .rollback-stack-item.available {
     background-color: #6c757d;
 }
+.include-patterns-container {
+    max-height: 100px; /* Animate to this height */
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out, margin-bottom 0.3s ease-in-out;
+}
+.include-patterns-container.collapsed {
+    max-height: 0;
+    margin-bottom: 0 !important; /* Override bootstrap's mb-3 */
+}
 /* Light theme (default) */
 body {
     background-color: #f8f9fa;

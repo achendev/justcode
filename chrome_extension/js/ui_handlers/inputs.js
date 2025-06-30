@@ -17,3 +17,11 @@ export function handleCheckboxChange(event, fieldName) {
         saveData(profiles, activeProfileId, archivedProfiles);
     });
 }
+
+export function handleExcludeFocus(event) {
+    const id = parseInt(event.target.id.split('-')[1]);
+    const includeContainer = document.getElementById(`includeContainer-${id}`);
+    if (includeContainer) {
+        includeContainer.classList.remove('collapsed');
+    }
+}

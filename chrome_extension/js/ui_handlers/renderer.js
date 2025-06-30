@@ -42,7 +42,7 @@ function getProfileCardHTML(profile) {
                 <button class="btn btn-outline-secondary btn-sm get-exclusion-prompt" type="button" data-id="${profile.id}" title="Get AI-suggestion for exclude patterns"><i class="bi bi-funnel"></i></button>
             </div>
         </div>
-        <div class="mb-3">
+        <div class="mb-3 include-patterns-container collapsed" id="includeContainer-${profile.id}">
             <label for="includePatterns-${profile.id}" class="form-label">Include Patterns (comma-separated):</label>
             <input type="text" class="form-control form-control-sm include-patterns" id="includePatterns-${profile.id}" placeholder="*.py,*.js,*.html" value="${profile.includePatterns}">
         </div>

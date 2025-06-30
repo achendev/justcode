@@ -40,6 +40,7 @@ export function attachAllEventListeners(reRenderCallback) {
     });
     document.querySelectorAll('.exclude-patterns').forEach(input => {
         input.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'excludePatterns', '.git/,venv/,.env,log/,logs/,tmp/'));
+        input.addEventListener('focus', inputHandlers.handleExcludeFocus);
     });
     document.querySelectorAll('.get-exclusion-prompt').forEach(button => {
         button.addEventListener('click', (e) => actionHandlers.handleGetExclusionSuggestionClick(e));
