@@ -205,14 +205,17 @@ This workflow turns the tedious task of manually curating a large project's cont
 ## 🔄 Usage Workflow
 
 1.  **Start the Server:** Ensure the local Flask server is running.
-2.  **Open Popup:** Click the JustCode extension icon in your browser toolbar or press `Alt+↑`.
-3.  **Set Path:** Enter the absolute path to your project.
-4.  **Go to LLM:** Navigate to your preferred LLM chat interface.
+2.  **Go to LLM:** Navigate to your preferred LLM chat interface.
+3.  **Open Popup:** Click the JustCode extension icon in your browser toolbar or press `Alt+↑`.
+4.  **Set Path:** Enter the absolute path to your project.
 5.  **Get Context:** Click the `Get Context` button or press `Alt+←`. Your project context will be loaded into the prompt area.
 6.  **Prompt LLM:** Add your instructions and submit.
 7.  **Get Response:** The LLM will respond with a bash script.
 8.  **Deploy Code:** Click the `Deploy Code` button or press `Alt+→`.
 9.  **Verify:** Your local files are now updated.
+
+> **💡 Pro Tip: Recommended LLM**
+> While JustCode can work with many LLMs, it is highly optimized for and tested with **Google AI Studio** using the **Gemini 2.5 Pro** model. Its large context window and strong instruction-following capabilities provide the most reliable results.
 
 > **💡 Pro Tip: What if a deployment goes wrong?**
 > If a deployment fails or makes unwanted changes, just click the **Rollback** button for that profile. It will instantly restore your files to the state they were in before you clicked "Deploy Code".
