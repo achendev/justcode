@@ -6,7 +6,7 @@ export function loadData(callback) {
             id: Date.now(), 
             name: 'Default', 
             projectPath: '', 
-            copyToClipboard: true, 
+            copyToClipboard: false, 
             deployFromClipboard: false,
             excludePatterns: defaultExcludePatterns,
             includePatterns: '',

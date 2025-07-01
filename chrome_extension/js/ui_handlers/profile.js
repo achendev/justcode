@@ -7,7 +7,7 @@ export function handleAddProfile(reRenderCallback) {
             id: Date.now(),
             name: `Profile ${profiles.length + 1}`,
             projectPath: '',
-            copyToClipboard: true,
+            copyToClipboard: false,
             deployFromClipboard: false,
             excludePatterns: '.git/,venv/,.env,log/,logs/,tmp/',
             includePatterns: '',
