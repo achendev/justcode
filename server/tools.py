@@ -4,6 +4,7 @@ import fnmatch
 import shlex
 import time
 import glob
+import stat
 
 here_doc_value = 'EOPROJECTFILE'
 
@@ -284,11 +285,22 @@ def execute_script(script_content, project_path):
             command, args = parts[0], parts[1:]
 
             if command == 'mkdir':
-                for arg in args:
+                use_p_flag = '-p' in args
+                paths_to_create = [arg for arg in args if arg != '-p']
+
+                for arg in paths_to_create:
                     relative_path = re.sub(r'^\./', '', arg)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
-                    os.makedirs(os.path.join(project_path, relative_path), exist_ok=True)
-                    output_log.append(f"Created directory: {relative_path}")
+                    full_path = os.path.join(project_path, relative_path)
+                    if use_p_flag:
+                        os.makedirs(full_path, exist_ok=True)
+                        output_log.append(f"Created directory (with -p): {relative_path}")
+                    else:
+                        try:
+                            os.mkdir(full_path)
+                            output_log.append(f"Created directory: {relative_path}")
+                        except FileExistsError:
+                            raise OSError(f"mkdir: cannot create directory ‘{relative_path}’: File exists")
 
             elif command == 'touch':
                 for arg in args:
@@ -334,6 +346,35 @@ def execute_script(script_content, project_path):
                         output_log.append(f"Removed directory: {relative_path}")
                     except OSError as e:
                         raise OSError(f"Could not rmdir '{relative_path}': {e}")
+            
+            elif command == 'chmod':
+                if len(args) < 2:
+                    raise ValueError("'chmod' requires a mode and at least one file.")
+                
+                mode_str = args[0]
+                file_paths = args[1:]
+
+                for relative_path_arg in file_paths:
+                    relative_path = re.sub(r'^\./', '', relative_path_arg)
+                    if not is_safe_path(project_path, relative_path):
+                        raise PermissionError(f"Traversal: {relative_path}")
+                    
+                    full_path = os.path.join(project_path, relative_path)
+                    if not os.path.exists(full_path):
+                        raise FileNotFoundError(f"chmod: cannot access '{relative_path}': No such file or directory")
+
+                    new_mode = 0
+                    if mode_str.isdigit():
+                        new_mode = int(mode_str, 8)
+                    else:
+                        current_mode = os.stat(full_path).st_mode
+                        if mode_str == '+x':
+                            new_mode = current_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+                        else:
+                            raise ValueError(f"Unsupported chmod mode: '{mode_str}'. Only octal and '+x' are supported.")
+                    
+                    os.chmod(full_path, new_mode)
+                    output_log.append(f"Changed mode of {relative_path} to {mode_str}")
 
             elif command == 'mv':
                 if len(args) != 2: raise ValueError("'mv' requires two arguments.")
@@ -348,7 +389,7 @@ def execute_script(script_content, project_path):
             else:
                 raise ValueError(f"Unsupported command: '{command}'")
 
-        except (ValueError, PermissionError, OSError, IsADirectoryError) as e:
+        except (ValueError, PermissionError, OSError, IsADirectoryError, FileNotFoundError) as e:
             raise type(e)(f"Failed on line {i}: '{line}'\n{str(e)}") from e
 
     return output_log

@@ -2,6 +2,7 @@ import os
 import re
 import shlex
 import traceback
+import stat
 from flask import request, Response
 from .tools import is_safe_path, create_new_rollback_filepath, get_sorted_rollback_files, execute_script, here_doc_value
 
@@ -53,7 +54,8 @@ def deploy_code():
             command, args = parts[0], parts[1:]
 
             if command == 'mkdir':
-                for arg in args:
+                paths_to_create = [arg for arg in args if arg != '-p']
+                for arg in paths_to_create:
                     relative_path = re.sub(r'^\./', '', arg)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                     if not os.path.isdir(os.path.join(project_path, relative_path)):
@@ -98,6 +100,24 @@ def deploy_code():
                 src, dest = re.sub(r'^\./', '', args[0]), re.sub(r'^\./', '', args[1])
                 if not is_safe_path(project_path, src) or not is_safe_path(project_path, dest): raise PermissionError(f"Traversal: {src} or {dest}")
                 rollback_commands.insert(0, f"mv {shlex.quote('./' + dest)} {shlex.quote('./' + src)}")
+            elif command == 'chmod':
+                if len(args) < 2:
+                    raise ValueError("'chmod' requires a mode and at least one file path.")
+                
+                file_args = args[1:]
+                for arg in file_args:
+                    relative_path = re.sub(r'^\./', '', arg)
+                    if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
+                    full_path = os.path.join(project_path, relative_path)
+                    
+                    if os.path.exists(full_path) and not os.path.isdir(full_path):
+                        try:
+                            current_mode = os.stat(full_path).st_mode
+                            original_permissions = stat.S_IMODE(current_mode)
+                            octal_mode_str = oct(original_permissions)[2:]
+                            rollback_commands.insert(0, f"chmod {octal_mode_str} {shlex.quote('./' + relative_path)}")
+                        except FileNotFoundError:
+                            pass # File might be created in the same script. If so, no rollback for perms needed.
             else:
                 raise ValueError(f"Unsupported command: '{command}'")
     except (ValueError, PermissionError, OSError) as e:

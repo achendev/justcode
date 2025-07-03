@@ -105,22 +105,24 @@ You MUST follow these rules without exception. Failure to do so will render the 
 2.  **NO RECURSIVE DELETION:** You are strictly forbidden from using `rm -r` or `rm -rf`. This is a critical security rule.
     *   **To delete a file:** You MUST use `rm ./path/to/file.ext`. You can optionally use the `-f` flag.
     *   **To delete an empty directory:** You MUST use `rmdir ./path/to/directory`.
-3.  **ALLOWED COMMANDS:** You MUST ONLY use the following commands: `mkdir`, `rmdir`, `rm`, `touch`, `cat`, `mv`.
+3.  **ALLOWED COMMANDS:** You MUST ONLY use the following commands: `mkdir`, `rmdir`, `rm`, `touch`, `cat`, `mv`, `chmod`. The `-p` flag is supported for `mkdir`.
 4.  **FILE CONTENT:** All new files or full file modifications MUST be written using a `cat` heredoc in this exact format: `cat > ./path/to/file << '{here_doc_value}'`.
 5.  **NO NESTED CODE FENCES:** Inside a file's content (between `{here_doc_value}` delimiters), no line can begin with ` ``` ` as it will break the script.
 
 ### EXAMPLE OF A PERFECT RESPONSE ###
 {three_brackets}bash
-mkdir ./path/to/new_directory
+mkdir -p ./path/to/new/bin
 cat > ./path/to/changed_file.py << '{here_doc_value}'
 # full content of the changed python file
 # every line is exactly as it should be in the final file
 def new_function():
     pass
 {here_doc_value}
-cat > ./path/to/new_file.txt << '{here_doc_value}'
-This is a new file.
+cat > ./path/to/new/bin/myscript << '{here_doc_value}'
+#!/bin/bash
+echo "Hello from my new script!"
 {here_doc_value}
+chmod +x ./path/to/new/bin/myscript
 rm -f ./path/to/old_file_to_remove.txt
 rmdir ./path/to/empty_directory_to_remove
 mv ./path/to/old_name.txt ./path/to/new_name.txt
