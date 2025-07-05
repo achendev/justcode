@@ -93,7 +93,7 @@ def generate_context_from_path(project_path, include_patterns, exclude_patterns)
             quoted_path = shlex.quote('./' + rel_path)
             output_parts.append(f"cat > {quoted_path} << '{here_doc_value}'\n")
             output_parts.append(content)
-            output_parts.append(f"\n{here_doc_value}\n\n\n\n\n")
+            output_parts.append(f"\n{here_doc_value}\n")
 
         except Exception as e:
             print(f"Warning: Could not read file '{full_path}': {e}")
