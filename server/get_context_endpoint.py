@@ -107,7 +107,7 @@ You MUST follow these rules without exception. Failure to do so will render the 
     *   **To delete an empty directory:** You MUST use `rmdir ./path/to/directory`.
 3.  **ALLOWED COMMANDS:** You MUST ONLY use the following commands: `mkdir`, `rmdir`, `rm`, `touch`, `cat`, `mv`, `chmod`. The `-p` flag is supported for `mkdir`.
 4.  **FILE CONTENT:** All new files or full file modifications MUST be written using a `cat` heredoc in this exact format: `cat > ./path/to/file << '{here_doc_value}'`.
-5.  **NO NESTED CODE FENCES:** Inside a file's content (between `EOPROJECTFILE` delimiters), no line can begin with three brackets ` ``` ` as it will break the script, use indentation instead. FAILURE TO DO SO WILL BREAK THE RENDER AND MAKE OUTPUT UNUSABLE.
+5.  **NO NESTED CODE FENCES:** Inside a file's content (between `EOPROJECTFILE` delimiters), no line can begin with three brackets like ```syntax_language as it will break the script, use indentation instead. FAILURE TO DO SO WILL BREAK THE RENDER AND MAKE OUTPUT UNUSABLE.
 
 ### EXAMPLE OF A PERFECT RESPONSE ###
 {three_brackets}bash
