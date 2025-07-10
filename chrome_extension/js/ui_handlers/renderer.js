@@ -30,7 +30,7 @@ function getProfileCardHTML(profile) {
                     <input type="text" class="form-control form-control-sm project-path" id="projectPath-${profile.id}" placeholder="/path/to/project" value="${profile.projectPath}">
                 </div>
             </div>
-            <button class="btn btn-outline-info btn-sm rollback-code" data-id="${profile.id}" title="Rollback the last deploy for this project"><i class="bi bi-arrow-counterclockwise"></i> Rollback</button>
+            <button class="btn btn-outline-secondary btn-sm rollback-code" data-id="${profile.id}" title="Rollback the last deploy for this project"><i class="bi bi-arrow-counterclockwise"></i> Rollback</button>
         </div>
         <div class="rollback-stack-container mb-3" data-id="${profile.id}">
             ${rollbackStackItems}
