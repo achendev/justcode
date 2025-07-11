@@ -97,13 +97,14 @@ export async function getContext(profile, fromShortcut = false) {
     const includePatterns = profile.includePatterns || '';
     const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
     const contextSizeLimit = profile.contextSizeLimit || 3000000;
+    const duplicateInstructions = profile.duplicateInstructions !== false; // Default to true if undefined
     
     if (!path) {
         updateAndSaveMessage(profile.id, 'Error: Please enter a project path.', 'error');
         return;
     }
     
-    let endpoint = `${serverUrl}/getcontext?path=${encodeURIComponent(path)}&exclude=${encodeURIComponent(excludePatterns)}&limit=${contextSizeLimit}`;
+    let endpoint = `${serverUrl}/getcontext?path=${encodeURIComponent(path)}&exclude=${encodeURIComponent(excludePatterns)}&limit=${contextSizeLimit}&duplicate_instructions=${duplicateInstructions}`;
     if (includePatterns) {
         endpoint += `&include=${encodeURIComponent(includePatterns)}`;
     }

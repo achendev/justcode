@@ -73,6 +73,9 @@ export function attachAllEventListeners(reRenderCallback) {
     document.querySelectorAll('.context-size-limit').forEach(input => {
         input.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'contextSizeLimit'));
     });
+    document.querySelectorAll('.duplicate-instructions').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => inputHandlers.handleCheckboxChange(e, 'duplicateInstructions'));
+    });
     document.querySelectorAll('.auth-enabled').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => inputHandlers.handleCheckboxChange(e, 'isAuthEnabled'));
     });

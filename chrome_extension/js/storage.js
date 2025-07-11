@@ -16,6 +16,7 @@ export function loadData(callback) {
             password: '',
             rollbackCount: 0,
             contextSizeLimit: 3000000,
+            duplicateInstructions: true,
             lastMessage: { text: '', type: 'info' }
         }];
         profiles.forEach(profile => {
@@ -45,6 +46,9 @@ export function loadData(callback) {
             }
             if (profile.contextSizeLimit === undefined) {
                 profile.contextSizeLimit = 3000000;
+            }
+            if (profile.duplicateInstructions === undefined) {
+                profile.duplicateInstructions = true;
             }
             if (!profile.lastMessage) {
                 profile.lastMessage = { text: '', type: 'info' };

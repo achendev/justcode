@@ -11,6 +11,7 @@ def get_context():
     include_str = request.args.get('include', '')
     context_size_limit = int(request.args.get('limit', 3000000))
     suggest_exclusions = request.args.get('suggest_exclusions', 'false').lower() == 'true'
+    duplicate_instructions = request.args.get('duplicate_instructions', 'true').lower() == 'true'
 
     if not path or not path.strip():
         return Response("Error: 'path' parameter is missing.", status=400, mimetype='text/plain')
@@ -91,15 +92,7 @@ You MUST follow these rules without exception.
             suggestion_prompt = _generate_suggestion_prompt()
             return Response(suggestion_prompt, mimetype='text/plain')
 
-        # The prompt will always use Unix-style paths for simplicity and consistency for the LLM.
-        # The server-side deploy logic will handle the conversion to the correct OS path separator.
-        prompt_template = f"""This is current state of project files:
-{three_brackets}bash
-{file_contents}
-{three_brackets}
-
-
-### CRITICAL INSTRUCTIONS ###
+        instructions_block = f"""### CRITICAL INSTRUCTIONS ###
 You MUST follow these rules without exception. Failure to do so will render the output unusable.
 1.  **OUTPUT FORMAT:** The entire response MUST be a single `bash` code block. Do not include any explanations, apologies, or text outside the ````bash...```` block. Do not use canvas mode, just simple markdown code block.
 2.  **NO RECURSIVE DELETION:** You are strictly forbidden from using `rm -r` or `rm -rf`. This is a critical security rule.
@@ -126,7 +119,33 @@ chmod +x ./path/to/new/bin/myscript
 rm -f ./path/to/old_file_to_remove.txt
 rmdir ./path/to/empty_directory_to_remove
 mv ./path/to/old_name.txt ./path/to/new_name.txt
+{three_brackets}"""
+
+        if duplicate_instructions:
+            prompt_template = f"""{instructions_block}
+
+
+This is current state of project files:
+{three_brackets}bash
+{file_contents}
 {three_brackets}
+
+
+{instructions_block}
+
+
+
+
+ 
+"""
+        else:
+            prompt_template = f"""This is current state of project files:
+{three_brackets}bash
+{file_contents}
+{three_brackets}
+
+
+{instructions_block}
 
 
 
