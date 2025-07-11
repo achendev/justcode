@@ -69,7 +69,7 @@ You MUST follow these rules without exception.
 2.  **DO NOT** include any explanations, apologies, or text outside of this list.
 3.  **FINAL LIST**: Provide final list, take CURRENT EXCLUDE PATTERNS as a base and append new patterns to it.
 4.  **CODE BLOCK**: Answer must be in code block.
-5.  **EXLCLUDING FORMAT**: Don't use **/folder/ it doesn't work, use *folder/ instead to reliably exclude it
+5.  **EXCLUDING FORMAT**: Don't use **/folder/ it doesn't work, use *folder/ instead to reliably exclude it
 
 ### EXAMPLE OF A PERFECT RESPONSE ###
 {three_brackets}bash
