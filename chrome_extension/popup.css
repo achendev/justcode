@@ -136,6 +136,9 @@ body {
         background-color: #343a40;
         color: #f8f9fa;
     }
+    .form-label {
+        color: #adb5bd;
+    }
     .form-control {
         background-color: #495057;
         color: #f8f9fa;
@@ -146,6 +149,11 @@ body {
         color: #f8f9fa;
         border-color: #80bdff;
         box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+    .form-control:disabled {
+        background-color: #212529; /* Darker than regular inputs */
+        color: #6c757d;
+        opacity: 0.75;
     }
     .btn-outline-primary {
         color: #80bdff;
