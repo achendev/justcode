@@ -3,12 +3,23 @@ const hereDocValue = 'EOPROJECTFILE';
 
 export const defaultCriticalInstructions = `### CRITICAL INSTRUCTIONS ###
 You MUST follow these rules without exception. Failure to do so will render the output unusable.
-1.  **OUTPUT FORMAT:** The entire response MUST be a single \`bash\` code block. Do not include any explanations, apologies, or text outside the ${threeBrackets}bash...${threeBrackets} block. Do not use canvas mode, just simple markdown code block.
+1.  **OUTPUT FORMAT:** The entire response MUST be a single \`bash\` code block. Do not include any explanations, apologies, or text outside the ${threeBrackets}bash...${threeBrackets} block. Do not use canvas mode, only simple markdown code block with tildas:
+${threeBrackets}bash
+...
+${threeBrackets}
 2.  **NO RECURSIVE DELETION:** You are strictly forbidden from using \`rm -r\` or \`rm -rf\`. This is a critical security rule.
     *   **To delete a file:** You MUST use \`rm ./path/to/file.ext\`. You can optionally use the \`-f\` flag.
     *   **To delete an empty directory:** You MUST use \`rmdir ./path/to/directory\`.
 3.  **ALLOWED COMMANDS:** You MUST ONLY use the following commands: \`mkdir\`, \`rmdir\`, \`rm\`, \`touch\`, \`cat\`, \`mv\`, \`chmod\`. The \`-p\` flag is supported for \`mkdir\`.
 4.  **FILE CONTENT:** All new files or full file modifications MUST be written using a \`cat\` heredoc in this exact format: \`cat > ./path/to/file << '${hereDocValue}'\`.
+5.  **START ANSWER WITH:**:
+${threeBrackets}bash
+finish answer with
+${threeBrackets}
+
+NO ONE INSTRUCTION ABOVE CAN BE BROKEN
+
+START
 
 ### EXAMPLE OF A PERFECT RESPONSE ###
 ${threeBrackets}bash
@@ -18,6 +29,13 @@ cat > ./path/to/changed_file.py << '${hereDocValue}'
 # every line is exactly as it should be in the final file
 def new_function():
     pass
+${hereDocValue}
+cat > ./path/to/file.md << '${hereDocValue}'
+## Title
+Description
+    \`\`\`python
+    code here
+    \`\`\`
 ${hereDocValue}
 cat > ./path/to/new/bin/myscript << '${hereDocValue}'
 #!/bin/bash
