@@ -1,6 +1,8 @@
 import { refreshRollbackCount } from './ui.js';
 import { updateAndSaveMessage, updateTemporaryMessage } from './ui_handlers/message.js';
 
+const hereDocValue = 'EOPROJECTFILE';
+
 export async function deployCode(profile) {
     updateTemporaryMessage(profile.id, '');
     const path = profile.projectPath;
@@ -13,7 +15,7 @@ export async function deployCode(profile) {
         if (profile.deployFromClipboard) {
             // Read directly from clipboard if deployFromClipboard is enabled
             codeToDeploy = await navigator.clipboard.readText();
-            if (!codeToDeploy || !codeToDeploy.includes("EOPROJECTFILE")) {
+            if (!codeToDeploy || !codeToDeploy.includes(hereDocValue)) {
                 updateAndSaveMessage(profile.id, 'Error: Clipboard content is not a valid deploy script.', 'error');
                 return;
             }
@@ -61,12 +63,12 @@ export async function deployCode(profile) {
                 }
             });
             if (results[0].result.error) {
-                updateAndSaveMessage(profile.id, `Error: ${results[0].result.error}`, 'error');
+                updateAndSaveMessage(profile.id, `Error: ${results.result.error}`, 'error');
                 return;
             }
             await new Promise(resolve => setTimeout(resolve, 100));
             codeToDeploy = await navigator.clipboard.readText();
-            if (!codeToDeploy || !codeToDeploy.includes("EOPROJECTFILE")) {
+            if (!codeToDeploy || !codeToDeploy.includes(hereDocValue)) {
                 updateAndSaveMessage(profile.id, 'Error: Clipboard content is not a valid deploy script.', 'error');
                 return;
             }

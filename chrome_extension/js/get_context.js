@@ -1,4 +1,5 @@
 import { updateAndSaveMessage, updateTemporaryMessage } from './ui_handlers/message.js';
+import { defaultCriticalInstructions } from './default_instructions.js';
 
 async function pasteIntoLLMInterface(text) {
     await chrome.scripting.executeScript({
@@ -97,14 +98,13 @@ export async function getContext(profile, fromShortcut = false) {
     const includePatterns = profile.includePatterns || '';
     const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
     const contextSizeLimit = profile.contextSizeLimit || 3000000;
-    const duplicateInstructions = profile.duplicateInstructions !== false; // Default to true if undefined
     
     if (!path) {
         updateAndSaveMessage(profile.id, 'Error: Please enter a project path.', 'error');
         return;
     }
     
-    let endpoint = `${serverUrl}/getcontext?path=${encodeURIComponent(path)}&exclude=${encodeURIComponent(excludePatterns)}&limit=${contextSizeLimit}&duplicate_instructions=${duplicateInstructions}`;
+    let endpoint = `${serverUrl}/getcontext?path=${encodeURIComponent(path)}&exclude=${encodeURIComponent(excludePatterns)}&limit=${contextSizeLimit}`;
     if (includePatterns) {
         endpoint += `&include=${encodeURIComponent(includePatterns)}`;
     }
@@ -122,12 +122,41 @@ export async function getContext(profile, fromShortcut = false) {
         const responseText = await response.text();
         if (!response.ok) throw new Error(`Server error: ${response.status} ${responseText}`);
         
+        // The response is now either an exclusion suggestion or the file context.
+        // The suggestion prompt starts with a specific, unique string.
+        if (responseText.startsWith("PROJECT FILE TREE")) {
+             if (profile.copyToClipboard) {
+                await navigator.clipboard.writeText(responseText);
+                updateAndSaveMessage(profile.id, 'Context too large. Suggestion prompt copied!', 'success');
+            } else {
+                await pasteIntoLLMInterface(responseText);
+                updateAndSaveMessage(profile.id, 'Context too large. Suggestion prompt loaded!', 'success');
+            }
+            return; // Stop here
+        }
+
+        // It's the file context. Build the full prompt in the frontend.
+        const fileContext = responseText;
+        
+        const instructionsBlock = profile.isCriticalInstructionsEnabled 
+            ? profile.criticalInstructions 
+            : defaultCriticalInstructions;
+
+        const threeBrackets = '```';
+        let finalPrompt;
+        
+        if (profile.duplicateInstructions) {
+            finalPrompt = `${instructionsBlock}\n\nThis is current state of project files:\n${threeBrackets}bash\n${fileContext}${threeBrackets}\n\n\n${instructionsBlock}\n\n\n \n`;
+        } else {
+            finalPrompt = `This is current state of project files:\n${threeBrackets}bash\n${fileContext}${threeBrackets}\n\n\n${instructionsBlock}\n\n\n \n`;
+        }
+
         if (profile.copyToClipboard) {
-            await navigator.clipboard.writeText(responseText);
+            await navigator.clipboard.writeText(finalPrompt);
             console.log('JustCode: Project context copied to clipboard.');
             updateAndSaveMessage(profile.id, 'Context copied to clipboard!', 'success');
         } else {
-            await pasteIntoLLMInterface(responseText);
+            await pasteIntoLLMInterface(finalPrompt);
             updateAndSaveMessage(profile.id, 'Context loaded successfully!', 'success');
         }
 

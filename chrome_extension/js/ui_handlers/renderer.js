@@ -80,10 +80,6 @@ function getProfileCardHTML(profile) {
             <label for="serverUrl-${profile.id}" class="form-label">JustCode Server URL:</label>
             <input type="text" class="form-control form-control-sm server-url" id="serverUrl-${profile.id}" placeholder="http://127.0.0.1:5010" value="${profile.serverUrl}">
         </div>
-        <div class="form-check mb-3">
-            <input type="checkbox" class="form-check-input duplicate-instructions" id="duplicateInstructions-${profile.id}" ${profile.duplicateInstructions ? 'checked' : ''}>
-            <label class="form-check-label" for="duplicateInstructions-${profile.id}">Duplicate Critical Instructions</label>
-        </div>
         <hr>
         <div class="form-check mb-2">
             <input type="checkbox" class="form-check-input auth-enabled" id="authEnabled-${profile.id}" ${profile.isAuthEnabled ? 'checked' : ''}>
@@ -96,6 +92,19 @@ function getProfileCardHTML(profile) {
         <div class="mb-3">
             <label for="password-${profile.id}" class="form-label">Password:</label>
             <input type="password" class="form-control form-control-sm password" id="password-${profile.id}" value="${profile.password}">
+        </div>
+        <hr>
+        <div class="form-check mb-2">
+            <input type="checkbox" class="form-check-input custom-instructions-enabled" id="customInstructionsEnabled-${profile.id}" ${profile.isCriticalInstructionsEnabled ? 'checked' : ''}>
+            <label class="form-check-label" for="customInstructionsEnabled-${profile.id}">Enable Custom Critical Instructions</label>
+        </div>
+        <div class="form-check mb-2">
+            <input type="checkbox" class="form-check-input duplicate-instructions" id="duplicateInstructions-${profile.id}" ${profile.duplicateInstructions ? 'checked' : ''}>
+            <label class="form-check-label" for="duplicateInstructions-${profile.id}">Duplicate Critical Instructions</label>
+        </div>
+        <div class="mb-3">
+            <label for="criticalInstructions-${profile.id}" class="form-label">Critical Instructions Prompt:</label>
+            <textarea class="form-control form-control-sm critical-instructions" id="criticalInstructions-${profile.id}" rows="8" ${!profile.isCriticalInstructionsEnabled ? 'disabled' : ''}>${profile.criticalInstructions}</textarea>
         </div>
     </div>
     `;

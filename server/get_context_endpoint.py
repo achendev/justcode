@@ -1,9 +1,7 @@
 import os
 import traceback
 from flask import request, Response
-from .tools import generate_context_from_path, generate_tree_with_char_counts, here_doc_value
-
-three_brackets = '```'
+from .tools import generate_context_from_path, generate_tree_with_char_counts
 
 def get_context():
     path = request.args.get('path')
@@ -11,7 +9,6 @@ def get_context():
     include_str = request.args.get('include', '')
     context_size_limit = int(request.args.get('limit', 3000000))
     suggest_exclusions = request.args.get('suggest_exclusions', 'false').lower() == 'true'
-    duplicate_instructions = request.args.get('duplicate_instructions', 'true').lower() == 'true'
 
     if not path or not path.strip():
         return Response("Error: 'path' parameter is missing.", status=400, mimetype='text/plain')
@@ -28,6 +25,7 @@ def get_context():
 
     def _generate_suggestion_prompt():
         """Generates the exclusion suggestion prompt."""
+        three_brackets = '```'
         tree_with_counts, total_size = generate_tree_with_char_counts(project_path, include_patterns, exclude_patterns)
         return f"""PROJECT FILE TREE (with character and line counts):
 {three_brackets}bash
@@ -78,81 +76,21 @@ You MUST follow these rules without exception.
 {three_brackets}
 """
     try:
-        # Handle explicit request for exclusion suggestions
+        # If suggesting exclusions, we must generate the tree anyway.
         if suggest_exclusions:
             print("Forced exclusion suggestion prompt requested.")
-            suggestion_prompt = _generate_suggestion_prompt()
-            return Response(suggestion_prompt, mimetype='text/plain')
+            return Response(_generate_suggestion_prompt(), mimetype='text/plain')
 
+        # Check the total size *before* generating the full content string.
+        _, total_size = generate_tree_with_char_counts(project_path, include_patterns, exclude_patterns)
+        if total_size > context_size_limit:
+            print(f"Context size ({total_size}) exceeds limit ({context_size_limit}). Generating exclusion suggestion prompt.")
+            return Response(_generate_suggestion_prompt(), mimetype='text/plain')
+        
+        # Size is OK, now generate the full file context.
         file_contents = generate_context_from_path(project_path, include_patterns, exclude_patterns)
         
-        # Check if the generated context is too large (implicit suggestion)
-        if len(file_contents) > context_size_limit:
-            print(f"Context size ({len(file_contents)}) exceeds limit ({context_size_limit}). Generating exclusion suggestion prompt.")
-            suggestion_prompt = _generate_suggestion_prompt()
-            return Response(suggestion_prompt, mimetype='text/plain')
-
-        instructions_block = f"""### CRITICAL INSTRUCTIONS ###
-You MUST follow these rules without exception. Failure to do so will render the output unusable.
-1.  **OUTPUT FORMAT:** The entire response MUST be a single `bash` code block. Do not include any explanations, apologies, or text outside the ````bash...```` block. Do not use canvas mode, just simple markdown code block.
-2.  **NO RECURSIVE DELETION:** You are strictly forbidden from using `rm -r` or `rm -rf`. This is a critical security rule.
-    *   **To delete a file:** You MUST use `rm ./path/to/file.ext`. You can optionally use the `-f` flag.
-    *   **To delete an empty directory:** You MUST use `rmdir ./path/to/directory`.
-3.  **ALLOWED COMMANDS:** You MUST ONLY use the following commands: `mkdir`, `rmdir`, `rm`, `touch`, `cat`, `mv`, `chmod`. The `-p` flag is supported for `mkdir`.
-4.  **FILE CONTENT:** All new files or full file modifications MUST be written using a `cat` heredoc in this exact format: `cat > ./path/to/file << '{here_doc_value}'`.
-5.  **NO NESTED CODE FENCES:** Inside a file's content (between `EOPROJECTFILE` delimiters), no line can begin with three brackets like ```syntax_language as it will break the script, use indentation instead. FAILURE TO DO SO WILL BREAK THE RENDER AND MAKE OUTPUT UNUSABLE.
-
-### EXAMPLE OF A PERFECT RESPONSE ###
-{three_brackets}bash
-mkdir -p ./path/to/new/bin
-cat > ./path/to/changed_file.py << '{here_doc_value}'
-# full content of the changed python file
-# every line is exactly as it should be in the final file
-def new_function():
-    pass
-{here_doc_value}
-cat > ./path/to/new/bin/myscript << '{here_doc_value}'
-#!/bin/bash
-echo "Hello from my new script!"
-{here_doc_value}
-chmod +x ./path/to/new/bin/myscript
-rm -f ./path/to/old_file_to_remove.txt
-rmdir ./path/to/empty_directory_to_remove
-mv ./path/to/old_name.txt ./path/to/new_name.txt
-{three_brackets}"""
-
-        if duplicate_instructions:
-            prompt_template = f"""{instructions_block}
-
-
-This is current state of project files:
-{three_brackets}bash
-{file_contents}
-{three_brackets}
-
-
-{instructions_block}
-
-
-
-
- 
-"""
-        else:
-            prompt_template = f"""This is current state of project files:
-{three_brackets}bash
-{file_contents}
-{three_brackets}
-
-
-{instructions_block}
-
-
-
-
- 
-"""
-        return Response(prompt_template, mimetype='text/plain')
+        return Response(file_contents, mimetype='text/plain')
         
     except Exception as e:
         error_message = f"An unexpected error occurred in '{project_path}': {e}\n{traceback.format_exc()}"

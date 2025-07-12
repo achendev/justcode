@@ -73,8 +73,14 @@ export function attachAllEventListeners(reRenderCallback) {
     document.querySelectorAll('.context-size-limit').forEach(input => {
         input.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'contextSizeLimit'));
     });
+    document.querySelectorAll('.custom-instructions-enabled').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => settingsHandlers.handleCustomInstructionsToggle(e));
+    });
     document.querySelectorAll('.duplicate-instructions').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => inputHandlers.handleCheckboxChange(e, 'duplicateInstructions'));
+    });
+    document.querySelectorAll('.critical-instructions').forEach(textarea => {
+        textarea.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'criticalInstructions'));
     });
     document.querySelectorAll('.auth-enabled').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => inputHandlers.handleCheckboxChange(e, 'isAuthEnabled'));

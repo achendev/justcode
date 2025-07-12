@@ -30,3 +30,22 @@ export function handleServerUrlChange(event) {
         saveData(profiles, activeProfileId, archivedProfiles);
     });
 }
+
+export function handleCustomInstructionsToggle(event) {
+    const id = parseInt(event.target.id.split('-')[1]);
+    const isChecked = event.target.checked;
+    
+    const profileCard = document.getElementById(`profile-${id}`);
+    const textarea = profileCard.querySelector('.critical-instructions');
+    if (textarea) {
+        textarea.disabled = !isChecked;
+    }
+
+    loadData((profiles, activeProfileId, archivedProfiles) => {
+        const profile = profiles.find(p => p.id === id);
+        if (profile) {
+            profile.isCriticalInstructionsEnabled = isChecked;
+            saveData(profiles, activeProfileId, archivedProfiles);
+        }
+    });
+}

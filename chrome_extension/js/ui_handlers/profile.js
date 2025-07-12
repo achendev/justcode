@@ -1,5 +1,6 @@
 import { loadData, saveData } from '../storage.js';
 import { updateAndSaveMessage } from './message.js';
+import { defaultCriticalInstructions } from '../default_instructions.js';
 
 export function handleAddProfile(reRenderCallback) {
     loadData((profiles, activeProfileId, archivedProfiles) => {
@@ -17,6 +18,9 @@ export function handleAddProfile(reRenderCallback) {
             password: '',
             rollbackCount: 0,
             contextSizeLimit: 3000000,
+            isCriticalInstructionsEnabled: false,
+            criticalInstructions: defaultCriticalInstructions,
+            duplicateInstructions: true,
             lastMessage: { text: '', type: 'info' }
         };
         profiles.push(newProfile);
@@ -83,7 +87,7 @@ export function handleArchiveProfile(event, reRenderCallback) {
         const updatedProfiles = profiles.filter(p => p.id !== id);
         const updatedArchivedProfiles = [...archivedProfiles, profileToArchive];
 
-        const newActiveProfileId = activeProfileId === id ? updatedProfiles[0].id : activeProfileId;
+        const newActiveProfileId = activeProfileId === id ? updatedProfiles.id : activeProfileId;
         
         saveData(updatedProfiles, newActiveProfileId, updatedArchivedProfiles);
         reRenderCallback(updatedProfiles, newActiveProfileId, updatedArchivedProfiles);
