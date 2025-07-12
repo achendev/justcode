@@ -5,8 +5,9 @@ async function pasteIntoLLMInterface(text) {
     await chrome.scripting.executeScript({
         target: { tabId: (await chrome.tabs.query({ active: true, currentWindow: true }))[0].id },
         func: (textToPaste) => {
-            // Check if we're on chatgpt.com by inspecting the URL
-            if (window.location.hostname === 'chatgpt.com' || window.location.hostname === 'www.chatgpt.com') {
+            const hostname = window.location.hostname;
+
+            if (hostname.includes('chatgpt.com')) {
                 const promptContainer = document.querySelector("#prompt-textarea");
                 if (promptContainer) {
                     const pElement = promptContainer.querySelector('p');
@@ -19,12 +20,48 @@ async function pasteIntoLLMInterface(text) {
                         return;
                     }
                 }
-                console.error('JustCode Error: Could not find target p element within #prompt-textarea.');
+                console.error('JustCode Error: Could not find target p element on ChatGPT.');
+            
+            } else if (hostname.includes('gemini.google.com')) {
+                const editorDiv = document.querySelector('div.ql-editor[contenteditable="true"]');
+                if (editorDiv) {
+                    const lines = textToPaste.split('\n');
+                    // Escape HTML special characters to prevent them from being interpreted as tags,
+                    // then wrap each line in a <p> tag. Quill uses <p><br></p> for empty lines.
+                    const newHtml = lines.map(line => {
+                        const escapedLine = line.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
+                        return `<p>${escapedLine || '<br>'}</p>`;
+                    }).join('');
+                    
+                    editorDiv.innerHTML = newHtml;
+
+                    if (editorDiv.classList.contains('ql-blank')) {
+                        editorDiv.classList.remove('ql-blank');
+                    }
+
+                    editorDiv.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+                    editorDiv.focus();
+
+                    // Move cursor to the end
+                    const range = document.createRange();
+                    const sel = window.getSelection();
+                    if (sel) {
+                        range.selectNodeContents(editorDiv);
+                        range.collapse(false);
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                    }
+                    console.log('JustCode: Content loaded into Gemini editor div.');
+                    return;
+                }
+                console.error('JustCode Error: Could not find target editor div on Gemini.');
             }
+
             // Fallback for other LLM sites
             const selectors = [
                 'textarea[aria-label="Start typing a prompt"]',
                 'textarea[aria-label="Ask Grok anything"]',
+                'textarea[aria-label="Ask Gemini"]',
                 'textarea[aria-label^="Type something"]',
                 'p[placeholder="data-placeholder"]',
                 'textarea[placeholder="Ask anything"]'
@@ -142,7 +179,7 @@ export async function getContext(profile, fromShortcut = false) {
             ? profile.criticalInstructions 
             : defaultCriticalInstructions;
 
-        const threeBrackets = '```';
+        const threeBrackets = '~~~';
         let finalPrompt;
         
         if (profile.duplicateInstructions) {
