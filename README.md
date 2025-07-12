@@ -162,16 +162,9 @@ These steps are the same for all operating systems.
 
 3.  **Grant Clipboard Permission**
 
-    Just Code requires permission to read from and write to your clipboard. This must be enabled manually in the extension's settings.
+    The first time you open the JustCode extension popup, it will check if it has the necessary permissions to access your clipboard. If not, it will display a screen with instructions to guide you through the process of enabling it.
 
-    **How to enable:**
-    *   In Chrome, go to **Settings**.
-    *   Navigate to **Extensions** on the left menu.
-    *   Find the **JustCode Extension** and click on the **Details** button.
-    *   On the details page, click on **Site settings**.
-    *   Find **Clipboard** in the permissions list and change its value to **Allow**.
-
-    *This is a critical one-time setup step to allow the extension to read the code provided by the LLM.*
+    This is a one-time setup step required by Chrome for security. The extension will help you get it right.
 
 ## 🔧 Server Configuration
 

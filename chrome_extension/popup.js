@@ -2,7 +2,58 @@ import { initUI, renderUI } from './js/ui.js';
 import { loadData, saveData } from './js/storage.js';
 import { handleGetContextClick } from './js/ui_handlers/actions.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+async function checkAndHandleClipboardPermission() {
+    const mainView = document.getElementById('mainView');
+    const archiveView = document.getElementById('archiveView');
+    const permissionsView = document.getElementById('permissionsView');
+
+    // Hide all views initially to prevent flicker
+    mainView.style.display = 'none';
+    archiveView.style.display = 'none';
+    permissionsView.style.display = 'none';
+
+    try {
+        // We need to check both read and write permissions. These are for the extension's own origin.
+        const readPerm = await navigator.permissions.query({ name: 'clipboard-read' });
+        const writePerm = await navigator.permissions.query({ name: 'clipboard-write' });
+
+        // If both are granted, show the main UI.
+        if (readPerm.state === 'granted' && writePerm.state === 'granted') {
+            mainView.style.display = 'block'; // Show default view
+            return true;
+        } else {
+            // If either is denied or requires a prompt, show the instructions.
+            permissionsView.style.display = 'block';
+            return false;
+        }
+    } catch (error) {
+        // Fallback for browsers that might not support the Permissions API for clipboard.
+        console.warn("Could not query clipboard permissions, assuming they are granted.", error);
+        mainView.style.display = 'block'; // Show default view
+        return true;
+    }
+}
+
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const goToSettingsButton = document.getElementById('goToSettings');
+    const reloadExtensionButton = document.getElementById('reloadExtension');
+
+    goToSettingsButton.addEventListener('click', () => {
+        // Opens the extension's details page where site permissions can be found.
+        chrome.tabs.create({ url: 'chrome://extensions/?id=' + chrome.runtime.id });
+    });
+
+    reloadExtensionButton.addEventListener('click', () => {
+        window.location.reload();
+    });
+
+    const hasPermission = await checkAndHandleClipboardPermission();
+
+    if (!hasPermission) {
+        return; // Stop initialization if permissions are not granted.
+    }
+
     const profilesContainer = document.getElementById('profilesContainer');
     const profileTabs = document.getElementById('profileTabs');
     const addProfileButton = document.getElementById('addProfile');

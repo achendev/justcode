@@ -31,6 +31,29 @@
             </div>
             <div id="archiveListContainer"></div>
         </div>
+
+        <!-- Permissions View Wrapper (hidden by default) -->
+        <div id="permissionsView" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0 text-warning"><i class="bi bi-shield-lock"></i> Permissions Required</h5>
+            </div>
+            <div class="p-2 mb-2" style="border: 1px solid #6c757d; border-radius: 0.25rem;">
+                <p>JustCode needs clipboard access to function correctly. Please enable it in the extension's settings.</p>
+                <strong>How to enable:</strong>
+                <ol class="mt-2" style="padding-left: 20px;">
+                    <li>Click the <strong>"Go to Settings"</strong> button below.</li>
+                    <li>The extension's details page will open in a new tab.</li>
+                    <li>Click on <strong>"Site settings"</strong> or <strong>"Permissions"</strong>.</li>
+                    <li>Find <strong>"Clipboard"</strong> in the permissions list.</li>
+                    <li>Change its value from "Ask" or "Block" to <strong>"Allow"</strong>.</li>
+                    <li>Return to this popup and click <strong>"Reload"</strong>.</li>
+                </ol>
+            </div>
+            <div class="d-flex gap-2">
+                <button id="goToSettings" class="btn btn-primary btn-sm flex-grow-1">Go to Settings</button>
+                <button id="reloadExtension" class="btn btn-secondary btn-sm flex-grow-1">Reload</button>
+            </div>
+        </div>
     </div>
     <script type="module" src="popup.js"></script>
 </body>
