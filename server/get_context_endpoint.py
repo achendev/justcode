@@ -25,7 +25,7 @@ def get_context():
 
     def _generate_suggestion_prompt():
         """Generates the exclusion suggestion prompt."""
-        three_brackets = '```'
+        three_brackets = '~~~'
         tree_with_counts, total_size = generate_tree_with_char_counts(project_path, include_patterns, exclude_patterns)
         return f"""PROJECT FILE TREE (with character and line counts):
 {three_brackets}bash
