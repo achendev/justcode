@@ -95,12 +95,12 @@ function getProfileCardHTML(profile) {
         </div>
         <hr>
         <div class="form-check mb-2">
-            <input type="checkbox" class="form-check-input custom-instructions-enabled" id="customInstructionsEnabled-${profile.id}" ${profile.isCriticalInstructionsEnabled ? 'checked' : ''}>
-            <label class="form-check-label" for="customInstructionsEnabled-${profile.id}">Enable Custom Critical Instructions</label>
-        </div>
-        <div class="form-check mb-2">
             <input type="checkbox" class="form-check-input duplicate-instructions" id="duplicateInstructions-${profile.id}" ${profile.duplicateInstructions ? 'checked' : ''}>
             <label class="form-check-label" for="duplicateInstructions-${profile.id}">Duplicate Critical Instructions</label>
+        </div>
+        <div class="form-check mb-2">
+            <input type="checkbox" class="form-check-input custom-instructions-enabled" id="customInstructionsEnabled-${profile.id}" ${profile.isCriticalInstructionsEnabled ? 'checked' : ''}>
+            <label class="form-check-label" for="customInstructionsEnabled-${profile.id}">Enable Custom Critical Instructions</label>
         </div>
         <div class="mb-3">
             <label for="criticalInstructions-${profile.id}" class="form-label">Critical Instructions Prompt:</label>
