@@ -20,7 +20,7 @@ export function handleAddProfile(reRenderCallback) {
             contextSizeLimit: 3000000,
             isCriticalInstructionsEnabled: false,
             criticalInstructions: defaultCriticalInstructions,
-            duplicateInstructions: true,
+            duplicateInstructions: false,
             lastMessage: { text: '', type: 'info' }
         };
         profiles.push(newProfile);
