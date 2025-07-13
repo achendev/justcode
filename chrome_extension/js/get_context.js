@@ -190,7 +190,7 @@ export async function getContext(profile, fromShortcut = false) {
         
         let fenceRule = '';
         if (codeBlockDelimiter === '```') {
-            fenceRule = `6.  **NO NESTED CODE FENCES:** Inside a file's content (between \`${hereDocValue}\` delimiters), no line can begin with \`\`\` as it will break the script.`;
+            fenceRule = `6.  **NO NESTED CODE FENCES:** Inside a file's content (between \`EOPROJECTFILE\` delimiters), no line can begin with three brackets like \`\`\`syntax_language as it will break the script, use indentation instead. FAILURE TO DO SO WILL BREAK THE RENDER AND MAKE OUTPUT UNUSABLE.`;
         }
 
         const instructionsBlock = baseInstructions

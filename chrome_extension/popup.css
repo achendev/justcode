@@ -139,12 +139,20 @@ body {
     .form-label {
         color: #adb5bd;
     }
-    .form-control {
+    .input-group-text {
+        color: #adb5bd;
+        background-color: #212529;
+        border-color: #6c757d;
+    }
+    .form-control, .form-select {
         background-color: #495057;
         color: #f8f9fa;
         border-color: #6c757d;
     }
-    .form-control:focus {
+    .form-select {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23dee2e6' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+    }
+    .form-control:focus, .form-select:focus {
         background-color: #495057;
         color: #f8f9fa;
         border-color: #80bdff;

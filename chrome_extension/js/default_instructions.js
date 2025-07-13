@@ -12,10 +12,13 @@ You MUST follow these rules without exception. Failure to do so will render the 
 3.  **ALLOWED COMMANDS:** You MUST ONLY use the following commands: \`mkdir\`, \`rmdir\`, \`rm\`, \`touch\`, \`cat\`, \`mv\`, \`chmod\`. The \`-p\` flag is supported for \`mkdir\`.
 4.  **FILE CONTENT:** All new files or full file modifications MUST be written using a \`cat\` heredoc in this exact format: \`cat > ./path/to/file << '${hereDocValue}'\`.
 5.  **START ANSWER WITH:**:
+
 {{DELIMITER}}bash
 finish answer with
 {{DELIMITER}}
+
 {{FENCE_RULE}}
+
 NO ONE INSTRUCTION ABOVE CAN BE BROKEN
 
 START
