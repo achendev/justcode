@@ -78,6 +78,13 @@ function getProfileCardHTML(profile) {
             <input type="number" class="form-control context-size-limit" id="contextSizeLimit-${profile.id}" value="${profile.contextSizeLimit}" title="Context Size Limit (characters)">
         </div>
         <div class="input-group input-group-sm mb-2">
+            <span class="input-group-text" style="width: 120px;">Block Delimiter</span>
+            <select class="form-select form-select-sm code-block-delimiter" id="codeBlockDelimiter-${profile.id}">
+                <option value="~~~" ${profile.codeBlockDelimiter === '~~~' ? 'selected' : ''}>~~~</option>
+                <option value="\`\`\`" ${profile.codeBlockDelimiter === '```' ? 'selected' : ''}>\`\`\`</option>
+            </select>
+        </div>
+        <div class="input-group input-group-sm mb-2">
             <span class="input-group-text" style="width: 120px;">Server URL</span>
             <input type="text" class="form-control server-url" id="serverUrl-${profile.id}" placeholder="http://127.0.0.1:5010" value="${profile.serverUrl}">
         </div>
@@ -106,6 +113,7 @@ function getProfileCardHTML(profile) {
         <div class="mb-3">
             <label for="criticalInstructions-${profile.id}" class="form-label">Critical Instructions Prompt:</label>
             <textarea class="form-control form-control-sm critical-instructions" id="criticalInstructions-${profile.id}" rows="8" ${!profile.isCriticalInstructionsEnabled ? 'disabled' : ''}>${profile.criticalInstructions}</textarea>
+            <small class="form-text text-muted">Use <code>{{DELIMITER}}</code> as a placeholder for your chosen block delimiter.</small>
         </div>
     </div>
     `;

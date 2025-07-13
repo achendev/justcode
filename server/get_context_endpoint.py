@@ -25,12 +25,12 @@ def get_context():
 
     def _generate_suggestion_prompt():
         """Generates the exclusion suggestion prompt."""
-        three_brackets = '~~~'
+        code_block_delimiter = '~~~'
         tree_with_counts, total_size = generate_tree_with_char_counts(project_path, include_patterns, exclude_patterns)
         return f"""PROJECT FILE TREE (with character and line counts):
-{three_brackets}bash
+{code_block_delimiter}bash
 {tree_with_counts}
-{three_brackets}
+{code_block_delimiter}
 
 
 ### Context and Your Mission ###
@@ -71,9 +71,9 @@ You MUST follow these rules without exception.
 5.  **EXCLUDING FORMAT**: Don't use **/folder/ it doesn't work, use *folder/ instead to reliably exclude it
 
 ### EXAMPLE OF A PERFECT RESPONSE ###
-{three_brackets}bash
+{code_block_delimiter}bash
 *.git/,*node_modules/,*.log,*tmp/,*data/,assets/
-{three_brackets}
+{code_block_delimiter}
 """
     try:
         # If suggesting exclusions, we must generate the tree anyway.

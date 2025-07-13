@@ -1,9 +1,16 @@
 import { updateAndSaveMessage, updateTemporaryMessage } from './ui_handlers/message.js';
-import { defaultCriticalInstructions } from './default_instructions.js';
+import { defaultCriticalInstructions, hereDocValue } from './default_instructions.js';
 
 async function pasteIntoLLMInterface(text) {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab) {
+        console.error('JustCode Error: No active tab found.');
+        // Consider showing an error to the user here.
+        return;
+    }
+
     await chrome.scripting.executeScript({
-        target: { tabId: (await chrome.tabs.query({ active: true, currentWindow: true }))[0].id },
+        target: { tabId: tab.id },
         func: (textToPaste) => {
             const hostname = window.location.hostname;
 
@@ -175,17 +182,27 @@ export async function getContext(profile, fromShortcut = false) {
         // It's the file context. Build the full prompt in the frontend.
         const fileContext = responseText;
         
-        const instructionsBlock = profile.isCriticalInstructionsEnabled 
+        const codeBlockDelimiter = profile.codeBlockDelimiter || '~~~';
+        
+        const baseInstructions = profile.isCriticalInstructionsEnabled 
             ? profile.criticalInstructions 
             : defaultCriticalInstructions;
+        
+        let fenceRule = '';
+        if (codeBlockDelimiter === '```') {
+            fenceRule = `6.  **NO NESTED CODE FENCES:** Inside a file's content (between \`${hereDocValue}\` delimiters), no line can begin with \`\`\` as it will break the script.`;
+        }
 
-        const threeBrackets = '~~~';
+        const instructionsBlock = baseInstructions
+            .replace(/\{\{DELIMITER\}\}/g, codeBlockDelimiter)
+            .replace(/\{\{FENCE_RULE\}\}/g, fenceRule);
+
         let finalPrompt;
         
         if (profile.duplicateInstructions) {
-            finalPrompt = `${instructionsBlock}\n\nThis is current state of project files:\n${threeBrackets}bash\n${fileContext}${threeBrackets}\n\n\n${instructionsBlock}\n\n\n \n`;
+            finalPrompt = `${instructionsBlock}\n\nThis is current state of project files:\n${codeBlockDelimiter}bash\n${fileContext}${codeBlockDelimiter}\n\n\n${instructionsBlock}\n\n\n \n`;
         } else {
-            finalPrompt = `This is current state of project files:\n${threeBrackets}bash\n${fileContext}${threeBrackets}\n\n\n${instructionsBlock}\n\n\n \n`;
+            finalPrompt = `This is current state of project files:\n${codeBlockDelimiter}bash\n${fileContext}${codeBlockDelimiter}\n\n\n${instructionsBlock}\n\n\n \n`;
         }
 
         if (profile.copyToClipboard) {

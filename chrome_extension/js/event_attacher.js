@@ -73,6 +73,9 @@ export function attachAllEventListeners(reRenderCallback) {
     document.querySelectorAll('.context-size-limit').forEach(input => {
         input.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'contextSizeLimit'));
     });
+    document.querySelectorAll('.code-block-delimiter').forEach(select => {
+        select.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'codeBlockDelimiter'));
+    });
     document.querySelectorAll('.custom-instructions-enabled').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => settingsHandlers.handleCustomInstructionsToggle(e));
     });
