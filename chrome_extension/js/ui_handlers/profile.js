@@ -21,6 +21,7 @@ export function handleAddProfile(reRenderCallback) {
             isCriticalInstructionsEnabled: false,
             criticalInstructions: defaultCriticalInstructions,
             duplicateInstructions: false,
+            codeBlockDelimiter: '```',
             lastMessage: { text: '', type: 'info' }
         };
         profiles.push(newProfile);

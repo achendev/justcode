@@ -21,7 +21,7 @@ export function loadData(callback) {
             isCriticalInstructionsEnabled: false,
             criticalInstructions: defaultCriticalInstructions,
             duplicateInstructions: false,
-            codeBlockDelimiter: '~~~',
+            codeBlockDelimiter: '```',
             lastMessage: { text: '', type: 'info' }
         }];
         
@@ -42,7 +42,7 @@ export function loadData(callback) {
             if (profile.criticalInstructions === undefined) { profile.criticalInstructions = defaultCriticalInstructions; needsSave = true; }
             if (profile.isCriticalInstructionsEnabled === undefined) { profile.isCriticalInstructionsEnabled = false; needsSave = true; }
             if (profile.duplicateInstructions === undefined) { profile.duplicateInstructions = false; needsSave = true; }
-            if (profile.codeBlockDelimiter === undefined) { profile.codeBlockDelimiter = '~~~'; needsSave = true; }
+            if (profile.codeBlockDelimiter === undefined) { profile.codeBlockDelimiter = '```'; needsSave = true; }
         });
 
         const activeProfileId = data.activeProfileId || (profiles.length > 0 ? profiles.id : null);
