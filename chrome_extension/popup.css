@@ -106,6 +106,26 @@ body {
     max-height: 0;
     margin-bottom: 0 !important; /* Override bootstrap's mb-3 */
 }
+.archived-profile-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    margin-bottom: 5px;
+    border: 1px solid #6c757d;
+    border-radius: 0.25rem;
+}
+.archived-profile-card .profile-info {
+    flex-grow: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+.archived-profile-card .profile-info > * {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 /* Light theme (default) */
 body {
     background-color: #f8f9fa;

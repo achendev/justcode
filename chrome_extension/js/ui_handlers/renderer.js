@@ -122,10 +122,10 @@ function getProfileCardHTML(profile) {
 function getArchivedProfileHTML(profile) {
     const projectPathDisplay = profile.projectPath || 'No path set';
     return `
-    <div class="d-flex align-items-center p-2 mb-2" style="border: 1px solid #6c757d; border-radius: 0.25rem; gap: 10px;">
+    <div class="archived-profile-card">
         <button class="btn btn-outline-success btn-sm restore-profile" data-id="${profile.id}" title="Restore Profile"><i class="bi bi-upload"></i></button>
-        <div class="flex-grow-1" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-            <strong title="${profile.name}">${profile.name}</strong><br>
+        <div class="profile-info">
+            <strong title="${profile.name}">${profile.name}</strong>
             <small class="text-muted" title="${projectPathDisplay}">${projectPathDisplay}</small>
         </div>
         <button class="btn btn-outline-danger btn-sm permanent-delete-profile" data-id="${profile.id}" title="Delete Permanently"><i class="bi bi-trash"></i></button>
