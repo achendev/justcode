@@ -262,7 +262,8 @@ def execute_script(script_content, project_path):
                 content_lines = []
                 while i < len(lines):
                     content_line = lines[i]
-                    if content_line == here_doc_value:
+                    # Allow AI mistake like EOPROJECTFILE```
+                    if content_line.startswith(here_doc_value):
                         i += 1
                         break
                     content_lines.append(content_line)
