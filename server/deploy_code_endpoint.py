@@ -45,8 +45,10 @@ def deploy_code():
                     rollback_cmd = f"rm -f {quoted_rel_path}"
                 rollback_commands.insert(0, rollback_cmd)
 
-                while i < len(lines) and lines[i] != here_doc_value: i += 1
-                if i < len(lines): i += 1
+                while i < len(lines) and not lines[i].startswith(here_doc_value):
+                    i += 1
+                if i < len(lines):
+                    i += 1
                 continue
 
             parts = shlex.split(line)
