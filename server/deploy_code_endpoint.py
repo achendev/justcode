@@ -44,8 +44,8 @@ def deploy_code():
                 else:
                     rollback_cmd = f"rm -f {quoted_rel_path}"
                 rollback_commands.insert(0, rollback_cmd)
-
-                while i < len(lines) and lines[i] != here_doc_value: i += 1
+                # Allow common mistakes with backticks at the end of the answer
+                while i < len(lines) and (lines[i] != here_doc_value or lines[i] != f'{here_doc_value}```'): i += 1
                 if i < len(lines): i += 1
                 continue
 

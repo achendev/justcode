@@ -263,7 +263,8 @@ def execute_script(script_content, project_path):
                 while i < len(lines):
                     content_line = lines[i]
                     # Allow AI mistake like EOPROJECTFILE```
-                    if content_line.startswith(here_doc_value):
+                    # Allow common mistakes with backticks at the end of the answer
+                    if content_line == here_doc_value or content_line == f'{here_doc_value}```':
                         i += 1
                         break
                     content_lines.append(content_line)
