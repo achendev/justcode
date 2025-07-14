@@ -145,6 +145,9 @@ body {
         background-color: #212529;
         color: #f8f9fa;
     }
+    .btn-close {
+        filter: invert(1) grayscale(100%) brightness(200%);
+    }
     .profile-card {
         background-color: #343a40;
         border-color: #495057;
@@ -207,9 +210,6 @@ body {
     }
     .rollback-stack-item.available {
         background-color: #adb5bd;
-    }
-    .status-message .btn-close {
-        filter: invert(1) grayscale(100%) brightness(200%);
     }
     .status-error {
         color: #ff6b6b;
