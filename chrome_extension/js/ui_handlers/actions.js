@@ -144,7 +144,7 @@ export function handleUpdateAppClick(event) {
         try {
             const headers = { 'Content-Type': 'text/plain' };
             if (activeProfile.isAuthEnabled && activeProfile.username) {
-                headers['Authorization'] = 'Basic ' + btoa(`${active_profile.username}:${activeProfile.password}`);
+                headers['Authorization'] = 'Basic ' + btoa(`${activeProfile.username}:${activeProfile.password}`);
             }
 
             const response = await fetch(endpoint, {
