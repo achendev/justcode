@@ -206,32 +206,30 @@ def is_safe_path(base_dir, target_path):
     target_path_abs = os.path.abspath(os.path.join(base_dir, target_path))
     return target_path_abs.startswith(base_dir_abs)
 
-def _get_rollback_base_name(project_path):
-    """Creates a sanitized, unique base name for a project's rollback scripts."""
-    rollback_dir = "rollback_scripts"
-    os.makedirs(rollback_dir, exist_ok=True)
-    sanitized_filename = re.sub(r'[\\/:\s]', '_', project_path).strip('_')
-    return os.path.join(rollback_dir, sanitized_filename)
+def _get_history_dir(project_path, stack_type):
+    """Gets the path to the undo or redo stack directory for a project."""
+    # stack_type should be 'undo' or 'redo'
+    history_dir = os.path.join(project_path, ".justcode", f"{stack_type}_stack")
+    os.makedirs(history_dir, exist_ok=True)
+    return history_dir
 
-def create_new_rollback_filepath(project_path):
-    """Generates a new, timestamped filepath for a rollback script."""
-    base_name = _get_rollback_base_name(project_path)
-    timestamp = int(time.time() * 1000)
-    return f"{base_name}__{timestamp}.sh"
+def clear_stack(project_path, stack_type):
+    """Deletes all scripts in a given stack."""
+    stack_dir = _get_history_dir(project_path, stack_type)
+    for f in os.listdir(stack_dir):
+        os.remove(os.path.join(stack_dir, f))
 
-def get_sorted_rollback_files(project_path):
-    """Gets a list of all rollback scripts for a project, sorted oldest to newest."""
-    base_name = _get_rollback_base_name(project_path)
-    pattern = f"{base_name}__*.sh"
-    files = glob.glob(pattern)
+def get_sorted_stack_timestamps(project_path, stack_type):
+    """Gets a list of all script timestamps for a project stack, sorted oldest to newest."""
+    stack_dir = _get_history_dir(project_path, stack_type)
+    timestamps = set()
+    for filename in os.listdir(stack_dir):
+        parts = os.path.basename(filename).split('.')
+        if len(parts) > 0 and parts[0].isdigit():
+            timestamps.add(parts[0])
     
-    # Sort files based on the timestamp in their names
-    try:
-        files.sort(key=lambda f: int(f.split('__')[-1].split('.')[0]))
-    except (IndexError, ValueError):
-        # Handle cases where a file might not match the expected pattern
-        return []
-    return files
+    sorted_timestamps = sorted(list(timestamps), key=int)
+    return sorted_timestamps
 
 
 def execute_script(script_content, project_path):

@@ -2,7 +2,7 @@ import { defaultCriticalInstructions } from './default_instructions.js';
 
 export function loadData(callback) {
     chrome.storage.local.get(['profiles', 'activeProfileId', 'archivedProfiles'], (data) => {
-        const defaultExcludePatterns = '.git/,venv/,.env,log/,logs/,tmp/';
+        const defaultExcludePatterns = '.git/,venv/,.env,log/,logs/,tmp/,.justcode/';
         const defaultServerUrl = 'http://127.0.0.1:5010';
         const profiles = data.profiles || [{ 
             id: Date.now(), 
@@ -16,7 +16,6 @@ export function loadData(callback) {
             isAuthEnabled: false,
             username: '',
             password: '',
-            rollbackCount: 0,
             contextSizeLimit: 3000000,
             isCriticalInstructionsEnabled: false,
             criticalInstructions: defaultCriticalInstructions,
@@ -36,13 +35,13 @@ export function loadData(callback) {
             if (profile.isAuthEnabled === undefined) { profile.isAuthEnabled = false; needsSave = true; }
             if (profile.username === undefined) { profile.username = ''; needsSave = true; }
             if (profile.password === undefined) { profile.password = ''; needsSave = true; }
-            if (profile.rollbackCount === undefined) { profile.rollbackCount = 0; needsSave = true; }
             if (profile.contextSizeLimit === undefined) { profile.contextSizeLimit = 3000000; needsSave = true; }
             if (profile.lastMessage === undefined) { profile.lastMessage = { text: '', type: 'info' }; needsSave = true; }
             if (profile.criticalInstructions === undefined) { profile.criticalInstructions = defaultCriticalInstructions; needsSave = true; }
             if (profile.isCriticalInstructionsEnabled === undefined) { profile.isCriticalInstructionsEnabled = false; needsSave = true; }
             if (profile.duplicateInstructions === undefined) { profile.duplicateInstructions = false; needsSave = true; }
             if (profile.codeBlockDelimiter === undefined) { profile.codeBlockDelimiter = '```'; needsSave = true; }
+            if (profile.rollbackCount !== undefined) { delete profile.rollbackCount; needsSave = true; } // Remove obsolete field
         });
 
         const activeProfileId = data.activeProfileId || (profiles.length > 0 ? profiles.id : null);

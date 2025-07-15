@@ -10,6 +10,7 @@ ENV/
 env.bak/
 venv.bak/
 rollback_scripts/
+.justcode/
 
 # Editor and IDE files
 .vscode/

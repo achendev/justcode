@@ -3,8 +3,9 @@ import re
 import shlex
 import traceback
 import stat
+import time
 from flask import request, Response
-from .tools import is_safe_path, create_new_rollback_filepath, get_sorted_rollback_files, execute_script, here_doc_value
+from .tools import is_safe_path, execute_script, here_doc_value, _get_history_dir, clear_stack, get_sorted_stack_timestamps
 
 def deploy_code():
     path = request.args.get('path')
@@ -19,8 +20,8 @@ def deploy_code():
     if not script_content:
         return Response("Error: No deploy script provided in the request body.", status=400, mimetype='text/plain')
     
-    # --- Pass 1: Generate Rollback Script ---
-    rollback_commands = []
+    # --- Pass 1: Generate Undo Script ---
+    rollback_commands = [] # This is the content of the "undo" script
     lines = script_content.splitlines()
     i = 0
     try:
@@ -69,19 +70,10 @@ def deploy_code():
                     if not os.path.exists(os.path.join(project_path, relative_path)):
                         rollback_commands.insert(0, f"rm -f {shlex.quote('./' + relative_path)}")
             elif command == 'rm':
-                # Check for any unsupported flags.
                 for arg in args:
-                    if arg.startswith('-') and arg != '-f':
-                        raise ValueError(f"Unsupported flag for 'rm': '{arg}'. Only '-f' is supported.")
-                
-                if args.count('-f') > 1:
-                    raise ValueError("Multiple '-f' flags are not allowed for 'rm'.")
-
+                    if arg.startswith('-') and arg != '-f': raise ValueError(f"Unsupported flag for 'rm': '{arg}'.")
                 file_paths = [arg for arg in args if not arg.startswith('-')]
-
-                if not file_paths:
-                    raise ValueError("'rm' command requires at least one file path.")
-
+                if not file_paths: raise ValueError("'rm' command requires a file path.")
                 for relative_path_arg in file_paths:
                     relative_path = re.sub(r'^\./', '', relative_path_arg)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
@@ -103,43 +95,43 @@ def deploy_code():
                 if not is_safe_path(project_path, src) or not is_safe_path(project_path, dest): raise PermissionError(f"Traversal: {src} or {dest}")
                 rollback_commands.insert(0, f"mv {shlex.quote('./' + dest)} {shlex.quote('./' + src)}")
             elif command == 'chmod':
-                if len(args) < 2:
-                    raise ValueError("'chmod' requires a mode and at least one file path.")
-                
                 file_args = args[1:]
                 for arg in file_args:
                     relative_path = re.sub(r'^\./', '', arg)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                     full_path = os.path.join(project_path, relative_path)
-                    
                     if os.path.exists(full_path) and not os.path.isdir(full_path):
                         try:
-                            current_mode = os.stat(full_path).st_mode
-                            original_permissions = stat.S_IMODE(current_mode)
-                            octal_mode_str = oct(original_permissions)[2:]
-                            rollback_commands.insert(0, f"chmod {octal_mode_str} {shlex.quote('./' + relative_path)}")
-                        except FileNotFoundError:
-                            pass # File might be created in the same script. If so, no rollback for perms needed.
+                            original_permissions = stat.S_IMODE(os.stat(full_path).st_mode)
+                            rollback_commands.insert(0, f"chmod {oct(original_permissions)[2:]} {shlex.quote('./' + relative_path)}")
+                        except FileNotFoundError: pass
             else:
                 raise ValueError(f"Unsupported command: '{command}'")
     except (ValueError, PermissionError, OSError) as e:
-        error_details = f"Error during rollback script generation: {str(e)}"
-        print(error_details)
-        return Response(error_details, status=500, mimetype='text/plain')
+        return Response(f"Error during undo script generation: {str(e)}", status=500, mimetype='text/plain')
 
-    # Create the new rollback script.
-    rollback_filepath = create_new_rollback_filepath(project_path)
-    with open(rollback_filepath, 'w', encoding='utf-8') as f:
-        f.write("\n".join(rollback_commands))
+    # A new deployment clears the redo history.
+    clear_stack(project_path, 'redo')
 
-    # Clean up old rollback scripts if there are more than 10.
-    all_rollbacks = get_sorted_rollback_files(project_path)
-    if len(all_rollbacks) > 10:
-        for old_script in all_rollbacks[:-10]: # Keep the 10 newest
+    # Create new script files in the undo_stack.
+    timestamp = str(int(time.time() * 1000))
+    undo_stack_dir = _get_history_dir(project_path, 'undo')
+    undo_script_content = "\n".join(rollback_commands)
+    undo_filepath = os.path.join(undo_stack_dir, f"{timestamp}.sh")
+    redo_filepath = os.path.join(undo_stack_dir, f"{timestamp}.redo") # The redo file is the original deploy script
+
+    with open(undo_filepath, 'w', encoding='utf-8') as f: f.write(undo_script_content)
+    with open(redo_filepath, 'w', encoding='utf-8') as f: f.write(script_content)
+
+    # Clean up old undo scripts if there are more than 10.
+    all_undo_timestamps = get_sorted_stack_timestamps(project_path, 'undo')
+    if len(all_undo_timestamps) > 10:
+        for old_ts in all_undo_timestamps[:-10]: # Keep the 10 newest
             try:
-                os.remove(old_script)
+                os.remove(os.path.join(undo_stack_dir, f"{old_ts}.sh"))
+                os.remove(os.path.join(undo_stack_dir, f"{old_ts}.redo"))
             except OSError as e:
-                print(f"Warning: Could not delete old rollback script '{old_script}': {e}")
+                print(f"Warning: Could not delete old undo script for ts '{old_ts}': {e}")
     
     # --- Pass 2: Execute Deployment Script ---
     try:
@@ -147,7 +139,13 @@ def deploy_code():
         success_message = f"Successfully deployed code.\n--- LOG ---\n" + "\n".join(output_log)
         return Response(success_message, mimetype='text/plain')
     except Exception as e:
+        # On failure, remove the undo/redo files we just created.
+        try:
+            if os.path.exists(undo_filepath): os.remove(undo_filepath)
+            if os.path.exists(redo_filepath): os.remove(redo_filepath)
+        except OSError: pass # Best effort cleanup
+        
         error_details = f"Error during deployment:\n{str(e)}\n{traceback.format_exc()}"
-        error_details += f"\n\nNOTE: A rollback script was saved to '{rollback_filepath}'. You can use the 'Rollback' button to undo partial changes."
+        error_details += "\n\nNOTE: The action failed to execute. The undo history has not been changed."
         print(error_details)
         return Response(error_details, status=500, mimetype='text/plain')

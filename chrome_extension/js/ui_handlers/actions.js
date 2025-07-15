@@ -1,6 +1,6 @@
 import { getContext, getExclusionSuggestion } from '../get_context.js';
 import { deployCode } from '../deploy_code.js';
-import { rollbackCode } from '../rollback.js';
+import { undoCode, redoCode } from '../undo_redo.js';
 import { loadData } from '../storage.js';
 import { updateAndSaveMessage, updateTemporaryMessage } from './message.js';
 
@@ -9,11 +9,13 @@ function setActionButtonsDisabled(profileId, isDisabled) {
     if (profileCard) {
         const getContextBtn = profileCard.querySelector('.get-context');
         const deployCodeBtn = profileCard.querySelector('.deploy-code');
-        const rollbackCodeBtn = profileCard.querySelector('.rollback-code');
+        const undoCodeBtn = profileCard.querySelector('.undo-code');
+        const redoCodeBtn = profileCard.querySelector('.redo-code');
 
         if (getContextBtn) getContextBtn.disabled = isDisabled;
         if (deployCodeBtn) deployCodeBtn.disabled = isDisabled;
-        if (rollbackCodeBtn) rollbackCodeBtn.disabled = isDisabled;
+        if (undoCodeBtn) undoCodeBtn.disabled = isDisabled;
+        if (redoCodeBtn) redoCodeBtn.disabled = isDisabled;
     }
 }
 
@@ -22,21 +24,23 @@ async function performAction(event, actionFunc, ...extraArgs) {
     const originalButtonHTML = button.innerHTML;
     const id = parseInt(button.dataset.id);
 
-    setActionButtonsDisabled(id, true);
-    button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Working...`;
+    // Temporarily disable all action buttons for the profile
+    const profileCard = document.querySelector(`.profile-card.active#profile-${id}`);
+    if (profileCard) {
+        profileCard.querySelectorAll('.get-context, .deploy-code, .undo-code, .redo-code').forEach(btn => btn.disabled = true);
+    }
+    
+    button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>`;
     updateTemporaryMessage(id, ''); // Clear previous persistent message
 
     try {
-        // Wrap the callback-based loadData in a Promise to use with async/await
         await new Promise((resolve, reject) => {
             loadData(async (profiles, activeProfileId, archivedProfiles) => {
                 try {
                     const profile = profiles.find(p => p.id === id);
                     if (!profile) {
-                        // This error will be caught by the outer catch block
                         throw new Error("Action failed: Profile not found.");
                     }
-                    // The actionFunc is responsible for updating the message on its own
                     await actionFunc(profile, ...extraArgs);
                     resolve();
                 } catch (error) {
@@ -45,12 +49,21 @@ async function performAction(event, actionFunc, ...extraArgs) {
             });
         });
     } catch (error) {
-        // This is a fallback for unexpected errors not caught by the action function.
-        // The individual action functions should handle their own errors and messaging.
         console.error("JustCode Action Error:", error.message);
         updateAndSaveMessage(id, `Error: ${error.message}`, 'error');
     } finally {
-        setActionButtonsDisabled(id, false);
+        // Re-enable buttons based on their actual state by calling refresh
+        loadData((profiles, activeProfileId) => {
+             const profile = profiles.find(p => p.id === id);
+             if(profile) {
+                // This will re-enable/disable undo/redo based on counts
+                // and we need to manually re-enable the others.
+                const getContextBtn = profileCard.querySelector('.get-context');
+                const deployCodeBtn = profileCard.querySelector('.deploy-code');
+                if(getContextBtn) getContextBtn.disabled = false;
+                if(deployCodeBtn) deployCodeBtn.disabled = false;
+             }
+        });
         button.innerHTML = originalButtonHTML;
     }
 }
@@ -63,9 +76,14 @@ export function handleDeployCodeClick(event) {
     performAction(event, deployCode);
 }
 
-export function handleRollbackCodeClick(event) {
-    performAction(event, rollbackCode);
+export function handleUndoCodeClick(event) {
+    performAction(event, undoCode);
 }
+
+export function handleRedoCodeClick(event) {
+    performAction(event, redoCode);
+}
+
 
 export async function handleGetExclusionSuggestionClick(event) {
     const button = event.currentTarget;
@@ -126,7 +144,7 @@ export function handleUpdateAppClick(event) {
         try {
             const headers = { 'Content-Type': 'text/plain' };
             if (activeProfile.isAuthEnabled && activeProfile.username) {
-                headers['Authorization'] = 'Basic ' + btoa(`${activeProfile.username}:${activeProfile.password}`);
+                headers['Authorization'] = 'Basic ' + btoa(`${active_profile.username}:${activeProfile.password}`);
             }
 
             const response = await fetch(endpoint, {

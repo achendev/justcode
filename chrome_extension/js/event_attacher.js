@@ -39,7 +39,7 @@ export function attachAllEventListeners(reRenderCallback) {
         input.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'projectPath'));
     });
     document.querySelectorAll('.exclude-patterns').forEach(input => {
-        input.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'excludePatterns', '.git/,venv/,.env,log/,logs/,tmp/'));
+        input.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'excludePatterns', '.git/,venv/,.env,log/,logs/,tmp/,.justcode/'));
         input.addEventListener('focus', inputHandlers.handleExcludeFocus);
     });
     document.querySelectorAll('.get-exclusion-prompt').forEach(button => {
@@ -62,8 +62,11 @@ export function attachAllEventListeners(reRenderCallback) {
     document.querySelectorAll('.deploy-code').forEach(button => {
         button.addEventListener('click', (e) => actionHandlers.handleDeployCodeClick(e));
     });
-    document.querySelectorAll('.rollback-code').forEach(button => {
-        button.addEventListener('click', (e) => actionHandlers.handleRollbackCodeClick(e));
+    document.querySelectorAll('.undo-code').forEach(button => {
+        button.addEventListener('click', (e) => actionHandlers.handleUndoCodeClick(e));
+    });
+    document.querySelectorAll('.redo-code').forEach(button => {
+        button.addEventListener('click', (e) => actionHandlers.handleRedoCodeClick(e));
     });
 
     // Settings-related events

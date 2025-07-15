@@ -1,9 +1,4 @@
 function getProfileCardHTML(profile) {
-    // Render the stack based on the cached rollbackCount
-    const rollbackStackItems = [...Array(10)].map((_, i) => 
-        `<div class="rollback-stack-item ${i < profile.rollbackCount ? 'available' : ''}"></div>`
-    ).join('');
-    
     const message = profile.lastMessage || { text: '', type: 'info' };
 
     return `
@@ -30,15 +25,15 @@ function getProfileCardHTML(profile) {
                     <input type="text" class="form-control form-control-sm project-path" id="projectPath-${profile.id}" placeholder="/path/to/project" value="${profile.projectPath}">
                 </div>
             </div>
-            <button class="btn btn-outline-secondary btn-sm rollback-code" data-id="${profile.id}" title="Rollback the last deploy for this project"><i class="bi bi-arrow-counterclockwise"></i> Rollback</button>
-        </div>
-        <div class="rollback-stack-container mb-3" data-id="${profile.id}">
-            ${rollbackStackItems}
+            <div class="btn-group btn-group-sm" role="group">
+                <button class="btn btn-outline-secondary undo-code" data-id="${profile.id}" title="Undo the last deploy (Alt+R)" disabled><i class="bi bi-arrow-90deg-left"></i> Undo</button>
+                <button class="btn btn-outline-secondary redo-code" data-id="${profile.id}" title="Redo the last undo" disabled><i class="bi bi-arrow-90deg-right"></i> Redo</button>
+            </div>
         </div>
         <div class="mb-3">
             <label for="excludePatterns-${profile.id}" class="form-label">Exclude Patterns (comma-separated):</label>
             <div class="input-group">
-                <input type="text" class="form-control form-control-sm exclude-patterns" id="excludePatterns-${profile.id}" placeholder=".git/,venv/,.env,log/,logs/,tmp/" value="${profile.excludePatterns}">
+                <input type="text" class="form-control form-control-sm exclude-patterns" id="excludePatterns-${profile.id}" placeholder=".git/,venv/,.env,log/,logs/,tmp/,.justcode/" value="${profile.excludePatterns}">
                 <button class="btn btn-outline-secondary btn-sm get-exclusion-prompt" type="button" data-id="${profile.id}" title="Get AI-suggestion for exclude patterns"><i class="bi bi-funnel"></i></button>
             </div>
         </div>

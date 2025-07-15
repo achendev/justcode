@@ -1,4 +1,4 @@
-import { refreshRollbackCount } from './ui.js';
+import { refreshUndoRedoCounts } from './ui.js';
 import { updateAndSaveMessage, updateTemporaryMessage } from './ui_handlers/message.js';
 
 const hereDocValue = 'EOPROJECTFILE';
@@ -93,7 +93,7 @@ export async function deployCode(profile) {
             throw new Error(`Deploy failed: ${resultText}`);
         }
         
-        refreshRollbackCount(profile);
+        refreshUndoRedoCounts(profile);
         updateAndSaveMessage(profile.id, 'Code deployed successfully!', 'success');
         console.log('JustCode Deploy Result:', resultText);
     } catch (error) {

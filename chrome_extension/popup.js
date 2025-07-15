@@ -1,6 +1,6 @@
 import { initUI, renderUI } from './js/ui.js';
 import { loadData, saveData } from './js/storage.js';
-import { handleGetContextClick } from './js/ui_handlers/actions.js';
+import { handleGetContextClick, handleUndoCodeClick } from './js/ui_handlers/actions.js';
 
 async function checkAndHandleClipboardPermission() {
     const mainView = document.getElementById('mainView');
@@ -115,9 +115,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 actionTaken = true;
             }
         } else if (event.code === 'KeyR') { // Use event.code for reliability
-            const rollbackButton = document.querySelector('.profile-card.active .rollback-code');
-            if (rollbackButton) {
-                rollbackButton.click();
+            const undoButton = document.querySelector('.profile-card.active .undo-code');
+            if (undoButton && !undoButton.disabled) {
+                const mockEvent = { currentTarget: undoButton };
+                handleUndoCodeClick(mockEvent);
                 actionTaken = true;
             }
         } else if (event.code === 'KeyA') { // Switch profile left

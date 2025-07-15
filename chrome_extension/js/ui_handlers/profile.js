@@ -10,13 +10,12 @@ export function handleAddProfile(reRenderCallback) {
             projectPath: '',
             copyToClipboard: false,
             deployFromClipboard: false,
-            excludePatterns: '.git/,venv/,.env,log/,logs/,tmp/',
+            excludePatterns: '.git/,venv/,.env,log/,logs/,tmp/,.justcode/',
             includePatterns: '',
             serverUrl: 'http://127.0.0.1:5010',
             isAuthEnabled: false,
             username: '',
             password: '',
-            rollbackCount: 0,
             contextSizeLimit: 3000000,
             isCriticalInstructionsEnabled: false,
             criticalInstructions: defaultCriticalInstructions,
@@ -62,7 +61,6 @@ export function handleCopyProfile(event, reRenderCallback) {
         // Assign new unique properties
         newProfile.id = Date.now();
         newProfile.name = `${profileToCopy.name} (Copy)`;
-        newProfile.rollbackCount = 0; // Reset rollback count for the new profile
         newProfile.lastMessage = { text: '', type: 'info' }; // Reset message
         
         const originalIndex = profiles.findIndex(p => p.id === id);

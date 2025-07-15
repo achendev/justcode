@@ -1,9 +1,10 @@
 import os
 import traceback
+import shutil
 from flask import request, Response
-from .tools import get_sorted_rollback_files, execute_script
+from .tools import get_sorted_stack_timestamps, execute_script, _get_history_dir
 
-def rollback():
+def rollback(): # This is the UNDO action
     path = request.args.get('path')
     if not path or not path.strip():
         return Response("Error: 'path' parameter is missing.", status=400, mimetype='text/plain')
@@ -12,33 +13,41 @@ def rollback():
     if not os.path.isdir(project_path):
         return Response(f"Error: Provided path '{project_path}' is not a valid directory.", status=400, mimetype='text/plain')
 
-    all_rollback_files = get_sorted_rollback_files(project_path)
+    all_undo_timestamps = get_sorted_stack_timestamps(project_path, 'undo')
 
     if request.method == 'GET':
-        return Response(str(len(all_rollback_files)), mimetype='text/plain')
+        return Response(str(len(all_undo_timestamps)), mimetype='text/plain')
     
     if request.method == 'POST':
-        if not all_rollback_files:
-            return Response("No rollback script found for this project.", status=404, mimetype='text/plain')
+        if not all_undo_timestamps:
+            return Response("No actions to undo.", status=404, mimetype='text/plain')
 
-        latest_rollback_filepath = all_rollback_files[-1] # Get the newest one
+        latest_timestamp = all_undo_timestamps[-1]
+        
+        undo_stack_dir = _get_history_dir(project_path, 'undo')
+        redo_stack_dir = _get_history_dir(project_path, 'redo')
 
-        with open(latest_rollback_filepath, 'r', encoding='utf-8') as f:
+        undo_script_path = os.path.join(undo_stack_dir, f"{latest_timestamp}.sh")
+        redo_script_path = os.path.join(undo_stack_dir, f"{latest_timestamp}.redo")
+
+        if not os.path.exists(undo_script_path) or not os.path.exists(redo_script_path):
+             return Response(f"History is corrupt. Missing files for timestamp {latest_timestamp}.", status=500, mimetype='text/plain')
+
+        with open(undo_script_path, 'r', encoding='utf-8') as f:
             script_content = f.read()
         
-        if not script_content.strip():
-            os.remove(latest_rollback_filepath)
-            return Response("The latest rollback script was empty, nothing to do.", status=404, mimetype='text/plain')
-            
         try:
             output_log = execute_script(script_content, project_path)
-            os.remove(latest_rollback_filepath) # Clean up after successful rollback
-            success_message = f"Successfully rolled back changes.\n--- LOG ---\n" + "\n".join(output_log)
+            
+            # Move the script pair to the redo stack
+            shutil.move(undo_script_path, os.path.join(redo_stack_dir, f"{latest_timestamp}.sh"))
+            shutil.move(redo_script_path, os.path.join(redo_stack_dir, f"{latest_timestamp}.redo"))
+            
+            success_message = f"Successfully undone changes.\n--- LOG ---\n" + "\n".join(output_log)
             return Response(success_message, mimetype='text/plain')
         except Exception as e:
-            error_details = f"Error during rollback:\n{str(e)}\n{traceback.format_exc()}"
+            error_details = f"Error during undo operation:\n{str(e)}\n{traceback.format_exc()}"
             print(error_details)
             return Response(error_details, status=500, mimetype='text/plain')
     
-    # Should not be reached
     return Response("Unsupported method.", status=405, mimetype='text/plain')
