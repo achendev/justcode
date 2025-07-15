@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 from server.get_context_endpoint import get_context
 from server.deploy_code_endpoint import deploy_code
-from server.rollback_endpoint import rollback
+from server.undo_endpoint import undo
 from server.redo_endpoint import redo
 from server.update_endpoint import update_app
 
@@ -18,7 +18,7 @@ CORS(app)
 # Register routes from endpoint modules
 app.add_url_rule('/getcontext', 'get_context', get_context, methods=['GET'])
 app.add_url_rule('/deploycode', 'deploy_code', deploy_code, methods=['POST'])
-app.add_url_rule('/rollback', 'rollback', rollback, methods=['GET', 'POST']) # This is now the UNDO endpoint
+app.add_url_rule('/undo', 'undo', undo, methods=['GET', 'POST'])
 app.add_url_rule('/redo', 'redo', redo, methods=['GET', 'POST'])
 app.add_url_rule('/update', 'update_app', update_app, methods=['POST'])
 

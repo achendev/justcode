@@ -14,7 +14,7 @@ export async function refreshUndoRedoCounts(profile) {
     }
     
     const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
-    const undoEndpoint = `${serverUrl}/rollback?path=${encodeURIComponent(profile.projectPath)}`; // /rollback is the undo endpoint
+    const undoEndpoint = `${serverUrl}/undo?path=${encodeURIComponent(profile.projectPath)}`;
     const redoEndpoint = `${serverUrl}/redo?path=${encodeURIComponent(profile.projectPath)}`;
     
     let undoCount = 0;

@@ -12,7 +12,7 @@ export async function undoCode(profile) {
     try {
         updateTemporaryMessage(profile.id, 'Undoing last action...');
         const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
-        const endpoint = `${serverUrl}/rollback?path=${encodeURIComponent(path)}`; // /rollback is the undo endpoint
+        const endpoint = `${serverUrl}/undo?path=${encodeURIComponent(path)}`;
 
         const headers = { 'Content-Type': 'text/plain' };
         if (profile.isAuthEnabled && profile.username) {

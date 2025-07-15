@@ -4,7 +4,7 @@ import shutil
 from flask import request, Response
 from .tools import get_sorted_stack_timestamps, execute_script, _get_history_dir
 
-def rollback(): # This is the UNDO action
+def undo(): # This is the UNDO action
     path = request.args.get('path')
     if not path or not path.strip():
         return Response("Error: 'path' parameter is missing.", status=400, mimetype='text/plain')
