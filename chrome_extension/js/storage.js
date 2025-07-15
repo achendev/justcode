@@ -2,7 +2,7 @@ import { defaultCriticalInstructions } from './default_instructions.js';
 
 export function loadData(callback) {
     chrome.storage.local.get(['profiles', 'activeProfileId', 'archivedProfiles'], (data) => {
-        const defaultExcludePatterns = '.git/,venv/,.env,log/,logs/,tmp/,.justcode/';
+        const defaultExcludePatterns = '.git/,venv/,.env,log/,*logs/,tmp/';
         const defaultServerUrl = 'http://127.0.0.1:5010';
         const profiles = data.profiles || [{ 
             id: Date.now(), 

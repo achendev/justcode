@@ -33,7 +33,7 @@ function getProfileCardHTML(profile) {
         <div class="mb-3">
             <label for="excludePatterns-${profile.id}" class="form-label">Exclude Patterns (comma-separated):</label>
             <div class="input-group">
-                <input type="text" class="form-control form-control-sm exclude-patterns" id="excludePatterns-${profile.id}" placeholder=".git/,venv/,.env,log/,logs/,tmp/,.justcode/" value="${profile.excludePatterns}">
+                <input type="text" class="form-control form-control-sm exclude-patterns" id="excludePatterns-${profile.id}" placeholder=".git/,venv/,.env,log/,*logs/,tmp/" value="${profile.excludePatterns}">
                 <button class="btn btn-outline-secondary btn-sm get-exclusion-prompt" type="button" data-id="${profile.id}" title="Get AI-suggestion for exclude patterns"><i class="bi bi-funnel"></i></button>
             </div>
         </div>

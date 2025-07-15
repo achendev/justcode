@@ -39,7 +39,7 @@ export function attachAllEventListeners(reRenderCallback) {
         input.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'projectPath'));
     });
     document.querySelectorAll('.exclude-patterns').forEach(input => {
-        input.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'excludePatterns', '.git/,venv/,.env,log/,logs/,tmp/,.justcode/'));
+        input.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'excludePatterns', '.git/,venv/,.env,log/,*logs/,tmp/'));
         input.addEventListener('focus', inputHandlers.handleExcludeFocus);
     });
     document.querySelectorAll('.get-exclusion-prompt').forEach(button => {

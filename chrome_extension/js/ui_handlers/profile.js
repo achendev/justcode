@@ -10,7 +10,7 @@ export function handleAddProfile(reRenderCallback) {
             projectPath: '',
             copyToClipboard: false,
             deployFromClipboard: false,
-            excludePatterns: '.git/,venv/,.env,log/,logs/,tmp/,.justcode/',
+            excludePatterns: '.git/,venv/,.env,log/,logs/,tmp/',
             includePatterns: '',
             serverUrl: 'http://127.0.0.1:5010',
             isAuthEnabled: false,
