@@ -5,6 +5,7 @@ import shlex
 import time
 import glob
 import stat
+import hashlib
 
 here_doc_value = 'EOPROJECTFILE'
 
@@ -200,28 +201,40 @@ def generate_tree_with_char_counts(project_path, include_patterns, exclude_patte
 def is_safe_path(base_dir, target_path):
     """
     Checks if a target path is safely within a base directory to prevent path traversal.
-    `os.path.join` handles converting '/' from the LLM to the correct OS separator.
     """
     base_dir_abs = os.path.abspath(base_dir)
     target_path_abs = os.path.abspath(os.path.join(base_dir, target_path))
     return target_path_abs.startswith(base_dir_abs)
 
+def _get_justcode_root():
+    """Gets the root directory of the JustCode application itself."""
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
+def _get_project_id(project_path):
+    """Creates a stable, filesystem-safe ID from a project path by sanitizing it."""
+    sanitized_path = re.sub(r'[^a-zA-Z0-9_.-]', '_', os.path.abspath(project_path))
+    return sanitized_path
+
 def _get_history_dir(project_path, stack_type):
-    """Gets the path to the undo or redo stack directory for a project."""
-    # stack_type should be 'undo' or 'redo'
-    history_dir = os.path.join(project_path, ".justcode", f"{stack_type}_stack")
+    """Gets the path to the undo or redo stack directory for a specific project."""
+    justcode_root = _get_justcode_root()
+    project_id = _get_project_id(project_path)
+    history_dir = os.path.join(justcode_root, ".justcode", project_id, f"{stack_type}_stack")
     os.makedirs(history_dir, exist_ok=True)
     return history_dir
 
 def clear_stack(project_path, stack_type):
-    """Deletes all scripts in a given stack."""
+    """Deletes all scripts in a given stack for a specific project."""
     stack_dir = _get_history_dir(project_path, stack_type)
-    for f in os.listdir(stack_dir):
-        os.remove(os.path.join(stack_dir, f))
+    if os.path.exists(stack_dir):
+        for f in os.listdir(stack_dir):
+            os.remove(os.path.join(stack_dir, f))
 
 def get_sorted_stack_timestamps(project_path, stack_type):
     """Gets a list of all script timestamps for a project stack, sorted oldest to newest."""
     stack_dir = _get_history_dir(project_path, stack_type)
+    if not os.path.exists(stack_dir):
+        return []
     timestamps = set()
     for filename in os.listdir(stack_dir):
         parts = os.path.basename(filename).split('.')
