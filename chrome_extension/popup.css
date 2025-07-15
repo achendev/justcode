@@ -130,6 +130,11 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+.btn-icon-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
 /* Light theme (default) */
 body {
     background-color: #f8f9fa;

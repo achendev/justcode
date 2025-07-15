@@ -20,14 +20,14 @@ function getProfileCardHTML(profile) {
         <div class="d-flex align-items-end gap-2 mb-2">
             <div class="flex-grow-1">
                 <label for="projectPath-${profile.id}" class="form-label">Project Path:</label>
-                <div class="input-group">
-                    <button class="btn btn-outline-secondary btn-sm copy-profile" type="button" data-id="${profile.id}" title="Copy Profile"><i class="bi bi-copy"></i></button>
-                    <input type="text" class="form-control form-control-sm project-path" id="projectPath-${profile.id}" placeholder="/path/to/project" value="${profile.projectPath}">
+                <div class="input-group input-group-sm">
+                    <button class="btn btn-outline-secondary copy-profile" type="button" data-id="${profile.id}" title="Copy Profile"><i class="bi bi-copy"></i></button>
+                    <input type="text" class="form-control project-path" id="projectPath-${profile.id}" placeholder="/path/to/project" value="${profile.projectPath}">
                 </div>
             </div>
             <div class="btn-group btn-group-sm" role="group">
-                <button class="btn btn-outline-secondary undo-code" data-id="${profile.id}" title="Undo the last deploy (Alt+R)" disabled><i class="bi bi-arrow-90deg-left"></i> Undo</button>
-                <button class="btn btn-outline-secondary redo-code" data-id="${profile.id}" title="Redo the last undo" disabled><i class="bi bi-arrow-90deg-right"></i> Redo</button>
+                <button class="btn btn-outline-secondary undo-code" data-id="${profile.id}" title="Undo the last deploy (Alt+R)" disabled><i class="bi bi-arrow-90deg-left"></i></button>
+                <button class="btn btn-outline-secondary redo-code" data-id="${profile.id}" title="Redo the last undo" disabled><i class="bi bi-arrow-90deg-right"></i></button>
             </div>
         </div>
         <div class="mb-3">
