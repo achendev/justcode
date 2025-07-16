@@ -4,6 +4,7 @@ import { updateAndSaveMessage, updateTemporaryMessage } from './ui_handlers/mess
 const hereDocValue = 'EOPROJECTFILE';
 
 export async function deployCode(profile) {
+    const isDetached = new URLSearchParams(window.location.search).get('view') === 'window';
     updateTemporaryMessage(profile.id, '');
     const path = profile.projectPath;
     if (!path) {
@@ -12,8 +13,8 @@ export async function deployCode(profile) {
     }
     try {
         let codeToDeploy;
-        if (profile.deployFromClipboard) {
-            // Read directly from clipboard if deployFromClipboard is enabled
+        if (profile.deployFromClipboard || isDetached) {
+            // Read directly from clipboard if deployFromClipboard is enabled or in detached mode
             codeToDeploy = await navigator.clipboard.readText();
             if (!codeToDeploy || !codeToDeploy.includes(hereDocValue)) {
                 updateAndSaveMessage(profile.id, 'Error: Clipboard content is not a valid deploy script.', 'error');

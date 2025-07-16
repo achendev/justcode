@@ -137,6 +137,7 @@ export async function getExclusionSuggestion(profile) {
 }
 
 export async function getContext(profile, fromShortcut = false) {
+    const isDetached = new URLSearchParams(window.location.search).get('view') === 'window';
     const path = profile.projectPath;
     const excludePatterns = profile.excludePatterns || '';
     const includePatterns = profile.includePatterns || '';
@@ -169,7 +170,7 @@ export async function getContext(profile, fromShortcut = false) {
         // The response is now either an exclusion suggestion or the file context.
         // The suggestion prompt starts with a specific, unique string.
         if (responseText.startsWith("PROJECT FILE TREE")) {
-             if (profile.copyToClipboard) {
+             if (profile.copyToClipboard || isDetached) {
                 await navigator.clipboard.writeText(responseText);
                 updateAndSaveMessage(profile.id, 'Context too large. Suggestion prompt copied!', 'success');
             } else {
@@ -205,7 +206,7 @@ export async function getContext(profile, fromShortcut = false) {
             finalPrompt = `This is current state of project files:\n${codeBlockDelimiter}bash\n${fileContext}${codeBlockDelimiter}\n\n\n${instructionsBlock}\n\n\n \n`;
         }
 
-        if (profile.copyToClipboard) {
+        if (profile.copyToClipboard || isDetached) {
             await navigator.clipboard.writeText(finalPrompt);
             console.log('JustCode: Project context copied to clipboard.');
             updateAndSaveMessage(profile.id, 'Context copied to clipboard!', 'success');

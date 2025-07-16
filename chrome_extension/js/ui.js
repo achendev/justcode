@@ -73,7 +73,27 @@ export function renderUI(profiles, activeProfileId, archivedProfiles, profilesCo
     };
     attachAllEventListeners(reRenderCallback);
 
-    // 4. Asynchronously fetch the latest counts for the active profile
+    // 4. Handle detached window specific UI overrides
+    const isDetached = new URLSearchParams(window.location.search).get('view') === 'window';
+    if (isDetached) {
+        const activeProfileCard = document.querySelector('.profile-card.active');
+        if (activeProfileCard) {
+            const getContextCheckbox = activeProfileCard.querySelector('.copy-to-clipboard');
+            const deployCheckbox = activeProfileCard.querySelector('.deploy-from-clipboard');
+            // Visually check the boxes and disable them to show the behavior is fixed.
+            // This does not trigger save events.
+            if (getContextCheckbox) {
+                getContextCheckbox.checked = true;
+                getContextCheckbox.disabled = true;
+            }
+            if (deployCheckbox) {
+                deployCheckbox.checked = true;
+                deployCheckbox.disabled = true;
+            }
+        }
+    }
+    
+    // 5. Asynchronously fetch the latest counts for the active profile
     const activeProfile = profiles.find(p => p.id === activeProfileId);
     if (activeProfile) {
         refreshUndoRedoCounts(activeProfile);
