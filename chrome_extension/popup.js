@@ -38,6 +38,37 @@ async function checkAndHandleClipboardPermission() {
 document.addEventListener('DOMContentLoaded', async () => {
     const goToSettingsButton = document.getElementById('goToSettings');
     const reloadExtensionButton = document.getElementById('reloadExtension');
+    const detachWindowButton = document.getElementById('detachWindow');
+    const mainView = document.getElementById('mainView');
+
+    // --- View Mode Logic ---
+    const urlParams = new URLSearchParams(window.location.search);
+    const isDetached = urlParams.get('view') === 'window';
+    const initialHeight = urlParams.get('height');
+
+    if (isDetached) {
+        // This is a detached window.
+        detachWindowButton.style.display = 'none'; // Hide the button
+        document.body.classList.add('detached'); // Add class for styling
+        if (initialHeight) {
+            // Add a little padding to account for window chrome
+            const adjustedHeight = parseInt(initialHeight, 10) + 40;
+            document.body.style.height = `${adjustedHeight}px`;
+        }
+    } else {
+        // This is a popup.
+        detachWindowButton.addEventListener('click', () => {
+            const currentHeight = mainView.offsetHeight;
+            const popupUrl = chrome.runtime.getURL(`popup.html?view=window&height=${currentHeight}`);
+            chrome.windows.create({
+                url: popupUrl,
+                type: 'popup',
+                width: 350,
+                height: currentHeight + 57 // Add padding for window chrome
+            });
+            window.close(); // Close the current popup view
+        });
+    }
 
     goToSettingsButton.addEventListener('click', () => {
         // Opens the extension's details page where site permissions can be found.

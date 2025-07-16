@@ -3,6 +3,13 @@ body {
     width: 350px; 
     padding: 15px; 
     transition: background-color 0.3s, color 0.3s;
+    /* Prevent vertical resizing in popup mode */
+    overflow-y: hidden;
+}
+/* When in a detached window, allow the body to grow and scroll */
+body.detached {
+    width: auto;
+    overflow-y: auto;
 }
 .container { 
     padding: 0; 
