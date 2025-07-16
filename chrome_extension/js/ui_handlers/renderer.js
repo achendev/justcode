@@ -49,7 +49,7 @@ function getProfileCardHTML(profile) {
             <input type="checkbox" class="form-check-input deploy-from-clipboard" id="deployFromClipboard-${profile.id}" ${profile.deployFromClipboard ? 'checked' : ''}>
             <label class="form-check-label" for="deployFromClipboard-${profile.id}">Deploy Code from clipboard</label>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 action-buttons-container">
             <button class="btn btn-primary btn-sm flex-grow-1 get-context" data-id="${profile.id}"><i class="bi bi-box-arrow-up"></i> Get Context</button>
             <button class="btn btn-success btn-sm flex-grow-1 deploy-code" data-id="${profile.id}"><i class="bi bi-box-arrow-in-down"></i> Deploy Code</button>
         </div>

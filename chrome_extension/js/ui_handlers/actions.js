@@ -3,70 +3,80 @@ import { deployCode } from '../deploy_code.js';
 import { undoCode, redoCode } from '../undo_redo.js';
 import { loadData } from '../storage.js';
 import { updateAndSaveMessage, updateTemporaryMessage } from './message.js';
-
-function setActionButtonsDisabled(profileId, isDisabled) {
-    const profileCard = document.querySelector(`.profile-card.active#profile-${profileId}`);
-    if (profileCard) {
-        const getContextBtn = profileCard.querySelector('.get-context');
-        const deployCodeBtn = profileCard.querySelector('.deploy-code');
-        const undoCodeBtn = profileCard.querySelector('.undo-code');
-        const redoCodeBtn = profileCard.querySelector('.redo-code');
-
-        if (getContextBtn) getContextBtn.disabled = isDisabled;
-        if (deployCodeBtn) deployCodeBtn.disabled = isDisabled;
-        if (undoCodeBtn) undoCodeBtn.disabled = isDisabled;
-        if (redoCodeBtn) redoCodeBtn.disabled = isDisabled;
-    }
-}
+import { refreshUndoRedoCounts } from '../ui.js';
 
 async function performAction(event, actionFunc, ...extraArgs) {
     const button = event.currentTarget;
     const originalButtonHTML = button.innerHTML;
     const id = parseInt(button.dataset.id);
 
-    // Temporarily disable all action buttons for the profile
     const profileCard = document.querySelector(`.profile-card.active#profile-${id}`);
-    if (profileCard) {
-        profileCard.querySelectorAll('.get-context, .deploy-code, .undo-code, .redo-code').forEach(btn => btn.disabled = true);
-    }
-    
-    button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>`;
-    updateTemporaryMessage(id, ''); // Clear previous persistent message
+    if (!profileCard) return;
 
+    // --- Select all buttons ---
+    const getContextBtn = profileCard.querySelector('.get-context');
+    const deployCodeBtn = profileCard.querySelector('.deploy-code');
+    const undoCodeBtn = profileCard.querySelector('.undo-code');
+    const redoCodeBtn = profileCard.querySelector('.redo-code');
+    const mainButtons = [getContextBtn, deployCodeBtn].filter(Boolean);
+    const allActionButtons = [getContextBtn, deployCodeBtn, undoCodeBtn, redoCodeBtn].filter(Boolean);
+
+    // --- Prepare UI for loading state ---
+    // Fix the size of the main action buttons to prevent layout shift during loading.
+    mainButtons.forEach(btn => {
+        const style = window.getComputedStyle(btn);
+        btn.style.width = style.width;
+        btn.style.height = style.height;
+    });
+
+    // Disable all action buttons and show spinner on the clicked one.
+    allActionButtons.forEach(btn => btn.disabled = true);
+    button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>`;
+    updateTemporaryMessage(id, '');
+
+    // --- Execute Action ---
     try {
         await new Promise((resolve, reject) => {
-            loadData(async (profiles, activeProfileId, archivedProfiles) => {
-                try {
-                    const profile = profiles.find(p => p.id === id);
-                    if (!profile) {
-                        throw new Error("Action failed: Profile not found.");
-                    }
-                    await actionFunc(profile, ...extraArgs);
-                    resolve();
-                } catch (error) {
-                    reject(error);
-                }
+            loadData(async (profiles) => {
+                const profile = profiles.find(p => p.id === id);
+                if (!profile) return reject(new Error("Profile not found."));
+                // The action function (e.g., deployCode) is responsible for calling
+                // refreshUndoRedoCounts on success.
+                await actionFunc(profile, ...extraArgs);
+                resolve();
             });
         });
     } catch (error) {
-        console.error("JustCode Action Error:", error.message);
         updateAndSaveMessage(id, `Error: ${error.message}`, 'error');
+        console.error("JustCode Action Error:", error);
     } finally {
-        // Re-enable buttons based on their actual state by calling refresh
-        loadData((profiles, activeProfileId) => {
-             const profile = profiles.find(p => p.id === id);
-             if(profile) {
-                // This will re-enable/disable undo/redo based on counts
-                // and we need to manually re-enable the others.
-                const getContextBtn = profileCard.querySelector('.get-context');
-                const deployCodeBtn = profileCard.querySelector('.deploy-code');
-                if(getContextBtn) getContextBtn.disabled = false;
-                if(deployCodeBtn) deployCodeBtn.disabled = false;
-             }
-        });
+        // --- Restore UI ---
+        // Restore the original content of the clicked button.
         button.innerHTML = originalButtonHTML;
+
+        // Remove the fixed sizes from the main buttons.
+        mainButtons.forEach(btn => {
+            btn.style.width = '';
+            btn.style.height = '';
+        });
+
+        // Re-enable the main action buttons.
+        getContextBtn && (getContextBtn.disabled = false);
+        deployCodeBtn && (deployCodeBtn.disabled = false);
+        
+        // The state of undo/redo buttons is handled by refreshUndoRedoCounts,
+        // which is called by the deploy, undo, and redo actions.
+        // To ensure the UI is consistent for ALL actions (including getContext),
+        // we'll just call it here again for the active profile.
+        loadData(profiles => {
+            const activeProfile = profiles.find(p => p.id === id);
+            if (activeProfile) {
+                refreshUndoRedoCounts(activeProfile);
+            }
+        });
     }
 }
+
 
 export function handleGetContextClick(event, fromShortcut = false) {
     performAction(event, getContext, fromShortcut);

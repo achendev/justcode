@@ -19,6 +19,9 @@ body.detached {
     flex-direction: column;
     gap: 10px;
 }
+.action-buttons-container > .btn.flex-grow-1 {
+    flex-basis: 0;
+}
 .form-check-label { 
     margin-left: 8px; 
 }
