@@ -46,7 +46,7 @@ export function loadData(callback) {
             if (profile.rollbackCount !== undefined) { delete profile.rollbackCount; needsSave = true; } // Remove obsolete field
         });
 
-        const activeProfileId = data.activeProfileId || (profiles.length > 0 ? profiles.id : null);
+        const activeProfileId = data.activeProfileId || (profiles.length > 0 ? profiles[0].id : null);
         const archivedProfiles = data.archivedProfiles || [];
         
         if (needsSave) {
