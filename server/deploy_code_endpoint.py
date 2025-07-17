@@ -9,6 +9,8 @@ from .tools import is_safe_path, execute_script, here_doc_value, _get_history_di
 
 def deploy_code():
     path = request.args.get('path')
+    tolerate_errors = request.args.get('tolerateErrors', 'true').lower() == 'true'
+
     if not path or not path.strip():
         return Response("Error: 'path' parameter is missing.", status=400, mimetype='text/plain')
     
@@ -52,7 +54,15 @@ def deploy_code():
                     i += 1
                 continue
 
-            parts = shlex.split(line)
+            try:
+                parts = shlex.split(line)
+            except ValueError as e:
+                if tolerate_errors:
+                    print(f"Warning (Undo Gen): Tolerating and skipping malformed line: '{line}'. Error: {e}")
+                    continue
+                else:
+                    raise ValueError(f"Invalid command format: {line}") from e
+
             if not parts: continue
             command, args = parts[0], parts[1:]
 
@@ -106,7 +116,11 @@ def deploy_code():
                             rollback_commands.insert(0, f"chmod {oct(original_permissions)[2:]} {shlex.quote('./' + relative_path)}")
                         except FileNotFoundError: pass
             else:
-                raise ValueError(f"Unsupported command: '{command}'")
+                if tolerate_errors:
+                    print(f"Warning (Undo Gen): Tolerating and skipping unsupported command in line: '{line}'")
+                    continue
+                else:
+                    raise ValueError(f"Unsupported command: '{command}'")
     except (ValueError, PermissionError, OSError) as e:
         return Response(f"Error during undo script generation: {str(e)}", status=500, mimetype='text/plain')
 
@@ -135,7 +149,7 @@ def deploy_code():
     
     # --- Pass 2: Execute Deployment Script ---
     try:
-        output_log = execute_script(script_content, project_path)
+        output_log = execute_script(script_content, project_path, tolerate_errors)
         success_message = f"Successfully deployed code.\n--- LOG ---\n" + "\n".join(output_log)
         return Response(success_message, mimetype='text/plain')
     except Exception as e:

@@ -76,7 +76,8 @@ export async function deployCode(profile) {
         }
 
         const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
-        const endpoint = `${serverUrl}/deploycode?path=${encodeURIComponent(path)}`;
+        const tolerateErrors = profile.tolerateErrors !== false; // Default to true if undefined or null
+        const endpoint = `${serverUrl}/deploycode?path=${encodeURIComponent(path)}&tolerateErrors=${tolerateErrors}`;
 
         const headers = { 'Content-Type': 'text/plain' };
         if (profile.isAuthEnabled && profile.username) {

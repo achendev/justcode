@@ -12,7 +12,8 @@ export async function undoCode(profile) {
     try {
         updateTemporaryMessage(profile.id, 'Undoing last action...');
         const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
-        const endpoint = `${serverUrl}/undo?path=${encodeURIComponent(path)}`;
+        const tolerateErrors = profile.tolerateErrors !== false; // Default to true if undefined or null
+        const endpoint = `${serverUrl}/undo?path=${encodeURIComponent(path)}&tolerateErrors=${tolerateErrors}`;
 
         const headers = { 'Content-Type': 'text/plain' };
         if (profile.isAuthEnabled && profile.username) {
@@ -50,7 +51,8 @@ export async function redoCode(profile) {
     try {
         updateTemporaryMessage(profile.id, 'Redoing last undo...');
         const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
-        const endpoint = `${serverUrl}/redo?path=${encodeURIComponent(path)}`;
+        const tolerateErrors = profile.tolerateErrors !== false; // Default to true if undefined or null
+        const endpoint = `${serverUrl}/redo?path=${encodeURIComponent(path)}&tolerateErrors=${tolerateErrors}`;
 
         const headers = { 'Content-Type': 'text/plain' };
         if (profile.isAuthEnabled && profile.username) {

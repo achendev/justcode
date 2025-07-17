@@ -98,6 +98,10 @@ function getProfileCardHTML(profile) {
         </div>
         <hr>
         <div class="form-check mb-2">
+            <input type="checkbox" class="form-check-input tolerate-errors" id="tolerateErrors-${profile.id}" ${profile.tolerateErrors ? 'checked' : ''}>
+            <label class="form-check-label" for="tolerateErrors-${profile.id}">Tolerate AI output errors</label>
+        </div>
+        <div class="form-check mb-2">
             <input type="checkbox" class="form-check-input duplicate-instructions" id="duplicateInstructions-${profile.id}" ${profile.duplicateInstructions ? 'checked' : ''}>
             <label class="form-check-label" for="duplicateInstructions-${profile.id}">Duplicate Critical Instructions</label>
         </div>

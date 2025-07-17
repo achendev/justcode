@@ -21,6 +21,7 @@ export function loadData(callback) {
             criticalInstructions: defaultCriticalInstructions,
             duplicateInstructions: false,
             codeBlockDelimiter: '```',
+            tolerateErrors: true,
             lastMessage: { text: '', type: 'info' }
         }];
         
@@ -41,6 +42,7 @@ export function loadData(callback) {
             if (profile.isCriticalInstructionsEnabled === undefined) { profile.isCriticalInstructionsEnabled = false; needsSave = true; }
             if (profile.duplicateInstructions === undefined) { profile.duplicateInstructions = false; needsSave = true; }
             if (profile.codeBlockDelimiter === undefined) { profile.codeBlockDelimiter = '```'; needsSave = true; }
+            if (profile.tolerateErrors === undefined) { profile.tolerateErrors = true; needsSave = true; }
             if (profile.rollbackCount !== undefined) { delete profile.rollbackCount; needsSave = true; } // Remove obsolete field
         });
 

@@ -82,6 +82,9 @@ export function attachAllEventListeners(reRenderCallback) {
     document.querySelectorAll('.custom-instructions-enabled').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => settingsHandlers.handleCustomInstructionsToggle(e));
     });
+    document.querySelectorAll('.tolerate-errors').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => inputHandlers.handleCheckboxChange(e, 'tolerateErrors'));
+    });
     document.querySelectorAll('.duplicate-instructions').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => inputHandlers.handleCheckboxChange(e, 'duplicateInstructions'));
     });

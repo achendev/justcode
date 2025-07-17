@@ -19,6 +19,7 @@ def undo(): # This is the UNDO action
         return Response(str(len(all_undo_timestamps)), mimetype='text/plain')
     
     if request.method == 'POST':
+        tolerate_errors = request.args.get('tolerateErrors', 'true').lower() == 'true'
         if not all_undo_timestamps:
             return Response("No actions to undo.", status=404, mimetype='text/plain')
 
@@ -37,7 +38,7 @@ def undo(): # This is the UNDO action
             script_content = f.read()
         
         try:
-            output_log = execute_script(script_content, project_path)
+            output_log = execute_script(script_content, project_path, tolerate_errors)
             
             # Move the script pair to the redo stack
             shutil.move(undo_script_path, os.path.join(redo_stack_dir, f"{latest_timestamp}.sh"))

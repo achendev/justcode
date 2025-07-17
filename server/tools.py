@@ -245,7 +245,7 @@ def get_sorted_stack_timestamps(project_path, stack_type):
     return sorted_timestamps
 
 
-def execute_script(script_content, project_path):
+def execute_script(script_content, project_path, tolerate_errors=False):
     """Parses and executes a deployment script, returning logs."""
     lines = script_content.splitlines()
     i = 0
@@ -290,7 +290,16 @@ def execute_script(script_content, project_path):
                 continue
 
             # Handle other commands
-            parts = shlex.split(line)
+            try:
+                parts = shlex.split(line)
+            except ValueError as e:
+                if tolerate_errors:
+                    output_log.append(f"Skipped malformed line: {line}")
+                    print(f"Warning (Execution): Tolerating malformed line: '{line}'. Error: {e}")
+                    continue
+                else:
+                    raise ValueError(f"Invalid command format: {line}") from e
+            
             if not parts: continue
             
             command, args = parts[0], parts[1:]
@@ -398,9 +407,16 @@ def execute_script(script_content, project_path):
                 output_log.append(f"Moved: {src} to {dest}")
             
             else:
-                raise ValueError(f"Unsupported command: '{command}'")
+                if tolerate_errors:
+                    output_log.append(f"Skipped unsupported line: {line}")
+                    print(f"Warning (Execution): Tolerating unsupported command in line: '{line}'")
+                    continue
+                else:
+                    raise ValueError(f"Unsupported command: '{command}'")
 
-        except (ValueError, PermissionError, OSError, IsADirectoryError, FileNotFoundError) as e:
+        except (PermissionError, OSError, IsADirectoryError, FileNotFoundError) as e:
+            raise type(e)(f"Failed on line {i}: '{line}'\n{str(e)}") from e
+        except ValueError as e: # This will catch the `raise ValueError` from above if not tolerating.
             raise type(e)(f"Failed on line {i}: '{line}'\n{str(e)}") from e
 
     return output_log
