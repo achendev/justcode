@@ -363,24 +363,22 @@ async function deployCodeServer(profile) {
         if (profile.deployFromClipboard || isDetached) {
             codeToDeploy = await navigator.clipboard.readText();
         } else {
-            // Try to find a copy button and click it
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            await chrome.scripting.executeScript({
+            const results = await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 func: () => {
                     const allCodeBlocks = Array.from(document.querySelectorAll('code'));
                     if (allCodeBlocks.length > 0) {
-                        const lastCodeBlock = allCodeBlocks[allCodeBlocks.length - 1].innerText;
-                        navigator.clipboard.writeText(lastCodeBlock);
+                        return allCodeBlocks[allCodeBlocks.length - 1].innerText;
                     }
+                    return null;
                 }
             });
-            await new Promise(resolve => setTimeout(resolve, 100)); // Give clipboard time
-            codeToDeploy = await navigator.clipboard.readText();
+            codeToDeploy = results[0].result;
         }
 
         if (!codeToDeploy || !codeToDeploy.includes(hereDocValue)) {
-            updateAndSaveMessage(profile.id, 'Error: No valid deploy script found in clipboard.', 'error');
+            updateAndSaveMessage(profile.id, 'Error: No valid deploy script found on page or in clipboard.', 'error');
             return;
         }
 
