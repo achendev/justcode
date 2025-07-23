@@ -3,10 +3,8 @@ body {
     width: 350px; 
     padding: 15px; 
     transition: background-color 0.3s, color 0.3s;
-    /* Prevent vertical resizing in popup mode */
     overflow-y: hidden;
 }
-/* When in a detached window, allow the body to grow and scroll */
 body.detached {
     width: auto;
     overflow-y: auto;
@@ -76,11 +74,11 @@ body.detached {
     margin-bottom: 10px;
     flex-wrap: nowrap;
     overflow-x: auto;
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 .nav-tabs::-webkit-scrollbar {
-    display: none; /* For Chrome, Safari, and Opera */
+    display: none;
 }
 .nav-link {
     padding: 5px 10px;
@@ -97,28 +95,14 @@ body.detached {
 .tab-content.active {
     display: block;
 }
-.rollback-stack-container {
-    display: flex;
-    gap: 2px;
-    height: 5px;
-}
-.rollback-stack-item {
-    flex-grow: 1;
-    background-color: #e9ecef;
-    border-radius: 1px;
-    transition: background-color 0.2s;
-}
-.rollback-stack-item.available {
-    background-color: #6c757d;
-}
 .include-patterns-container {
-    max-height: 100px; /* Animate to this height */
+    max-height: 100px;
     overflow: hidden;
     transition: max-height 0.3s ease-in-out, margin-bottom 0.3s ease-in-out;
 }
 .include-patterns-container.collapsed {
     max-height: 0;
-    margin-bottom: 0 !important; /* Override bootstrap's mb-3 */
+    margin-bottom: 0 !important;
 }
 .archived-profile-card {
     display: flex;
@@ -140,11 +124,11 @@ body.detached {
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.btn-icon-text {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-}
+
+/* Mode-specific UI visibility */
+.profile-card.server-mode .js-mode-item { display: none !important; }
+.profile-card.js-mode .server-mode-item { display: none !important; }
+
 /* Light theme (default) */
 body {
     background-color: #f8f9fa;
@@ -178,7 +162,7 @@ body {
         background-color: #343a40;
         color: #f8f9fa;
     }
-    .form-label {
+    .form-label, .form-check-label {
         color: #adb5bd;
     }
     .input-group-text {
@@ -201,7 +185,7 @@ body {
         box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
     }
     .form-control:disabled {
-        background-color: #212529; /* Darker than regular inputs */
+        background-color: #212529;
         color: #6c757d;
         opacity: 0.75;
     }
@@ -223,12 +207,6 @@ body {
     }
     .text-muted {
         color: #adb5bd !important;
-    }
-    .rollback-stack-item {
-        background-color: #495057;
-    }
-    .rollback-stack-item.available {
-        background-color: #adb5bd;
     }
     .status-error {
         color: #ff6b6b;

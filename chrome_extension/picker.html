@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Select Folder</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+            background-color: #f8f9fa;
+            color: #212529;
+            text-align: center;
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #212529;
+                color: #f8f9fa;
+            }
+        }
+        #message {
+            font-size: 1rem;
+            font-weight: 500;
+            margin-bottom: 15px;
+        }
+        #message.success {
+             color: #198754;
+        }
+        #message.error {
+             color: #dc3545;
+        }
+        p.sub-message {
+            font-size: 0.8rem;
+            color: #6c757d;
+            margin-top: 8px;
+            max-width: 300px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        #selectFolderBtn {
+            font-size: 1rem;
+            padding: 10px 20px;
+            border-radius: 5px;
+            border: 1px solid #0d6efd;
+            background-color: #0d6efd;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #selectFolderBtn:hover {
+            background-color: #0b5ed7;
+        }
+        @media (prefers-color-scheme: dark) {
+            #message.success {
+                color: #20c997;
+            }
+            #message.error {
+                color: #ff6b6b;
+            }
+            p.sub-message {
+                color: #adb5bd;
+            }
+            #selectFolderBtn {
+                border-color: #80bdff;
+                background-color: #80bdff;
+                color: #212529;
+            }
+            #selectFolderBtn:hover {
+                 background-color: #a0cfff;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div id="message">Confirm Folder Selection</div>
+        <p class="sub-message">For security, please click the button below to open the folder dialog.</p>
+        <button id="selectFolderBtn">Select Folder</button>
+    </div>
+    <script type="module" src="./js/picker.js"></script>
+</body>
+</html>

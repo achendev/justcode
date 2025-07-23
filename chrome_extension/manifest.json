@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
     "name": "JustCode Extension",
-    "version": "1.0",
-    "description": "A Chrome extension for JustCode to fetch project context and deploy code.",
+    "version": "2.0",
+    "description": "Get project context and deploy code locally or via a server.",
     "permissions": [
         "storage",
         "clipboardWrite",
@@ -28,5 +28,9 @@
     },
     "content_security_policy": {
         "extension_pages": "script-src 'self'; object-src 'self'"
-    }
+    },
+    "host_permissions": [
+        "http://127.0.0.1:5010/",
+        "http://0.0.0.0:5010/"
+    ]
 }

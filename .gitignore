@@ -11,7 +11,7 @@ env.bak/
 venv.bak/
 rollback_scripts/
 .justcode/
-
+chrome_extension_*
 # Editor and IDE files
 .vscode/
 .idea/

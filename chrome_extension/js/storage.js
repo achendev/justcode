@@ -2,40 +2,50 @@ import { defaultCriticalInstructions } from './default_instructions.js';
 
 export function loadData(callback) {
     chrome.storage.local.get(['profiles', 'activeProfileId', 'archivedProfiles'], (data) => {
-        const defaultExcludePatterns = '.git/,venv/,.env,log/,*logs/,tmp/';
+        const defaultExcludePatterns = '.git/,venv/,.env,log/,*logs/,tmp/,node_modules/';
         const defaultServerUrl = 'http://127.0.0.1:5010';
-        const profiles = data.profiles || [{ 
-            id: Date.now(), 
-            name: 'Default', 
-            projectPath: '', 
-            copyToClipboard: false, 
-            deployFromClipboard: false,
-            excludePatterns: defaultExcludePatterns,
-            includePatterns: '',
-            serverUrl: defaultServerUrl,
-            isAuthEnabled: false,
-            username: '',
-            password: '',
-            contextSizeLimit: 3000000,
-            isCriticalInstructionsEnabled: false,
-            criticalInstructions: defaultCriticalInstructions,
-            duplicateInstructions: false,
-            codeBlockDelimiter: '```',
-            tolerateErrors: true,
-            lastMessage: { text: '', type: 'info' }
-        }];
-        
-        let needsSave = !data.profiles;
+        let profiles = data.profiles;
+        let needsSave = false;
+
+        if (!profiles || profiles.length === 0) {
+            profiles = [{
+                id: Date.now(),
+                name: 'Default',
+                // Universal fields
+                copyToClipboard: false,
+                deployFromClipboard: false,
+                excludePatterns: defaultExcludePatterns,
+                includePatterns: '',
+                contextSizeLimit: 3000000,
+                isCriticalInstructionsEnabled: false,
+                criticalInstructions: defaultCriticalInstructions,
+                duplicateInstructions: false,
+                codeBlockDelimiter: '```',
+                tolerateErrors: true,
+                lastMessage: { text: '', type: 'info' },
+                // Mode toggle
+                useServerBackend: false,
+                // Server-specific fields
+                projectPath: '',
+                serverUrl: defaultServerUrl,
+                isAuthEnabled: false,
+                username: '',
+                password: '',
+            }];
+            needsSave = true;
+        }
 
         // Ensure all profiles have the latest fields
         profiles.forEach(profile => {
-            if (profile.excludePatterns === undefined) { profile.excludePatterns = defaultExcludePatterns; needsSave = true; }
-            if (profile.includePatterns === undefined) { profile.includePatterns = ''; needsSave = true; }
-            if (profile.deployFromClipboard === undefined) { profile.deployFromClipboard = false; needsSave = true; }
+            if (profile.useServerBackend === undefined) { profile.useServerBackend = false; needsSave = true; }
+            if (profile.projectPath === undefined) { profile.projectPath = ''; needsSave = true; }
             if (profile.serverUrl === undefined) { profile.serverUrl = defaultServerUrl; needsSave = true; }
             if (profile.isAuthEnabled === undefined) { profile.isAuthEnabled = false; needsSave = true; }
             if (profile.username === undefined) { profile.username = ''; needsSave = true; }
             if (profile.password === undefined) { profile.password = ''; needsSave = true; }
+            if (profile.excludePatterns === undefined) { profile.excludePatterns = defaultExcludePatterns; needsSave = true; }
+            if (profile.includePatterns === undefined) { profile.includePatterns = ''; needsSave = true; }
+            if (profile.deployFromClipboard === undefined) { profile.deployFromClipboard = false; needsSave = true; }
             if (profile.contextSizeLimit === undefined) { profile.contextSizeLimit = 3000000; needsSave = true; }
             if (profile.lastMessage === undefined) { profile.lastMessage = { text: '', type: 'info' }; needsSave = true; }
             if (profile.criticalInstructions === undefined) { profile.criticalInstructions = defaultCriticalInstructions; needsSave = true; }
@@ -43,12 +53,16 @@ export function loadData(callback) {
             if (profile.duplicateInstructions === undefined) { profile.duplicateInstructions = false; needsSave = true; }
             if (profile.codeBlockDelimiter === undefined) { profile.codeBlockDelimiter = '```'; needsSave = true; }
             if (profile.tolerateErrors === undefined) { profile.tolerateErrors = true; needsSave = true; }
-            if (profile.rollbackCount !== undefined) { delete profile.rollbackCount; needsSave = true; } // Remove obsolete field
         });
 
-        const activeProfileId = data.activeProfileId || (profiles.length > 0 ? profiles[0].id : null);
+        let activeProfileId = data.activeProfileId;
         const archivedProfiles = data.archivedProfiles || [];
-        
+
+        if (!activeProfileId || !profiles.some(p => p.id === activeProfileId)) {
+            activeProfileId = profiles.length > 0 ? profiles[0].id : null;
+            needsSave = true;
+        }
+
         if (needsSave) {
             chrome.storage.local.set({ profiles, activeProfileId, archivedProfiles }, () => callback(profiles, activeProfileId, archivedProfiles));
         } else {

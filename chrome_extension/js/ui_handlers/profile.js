@@ -1,28 +1,33 @@
 import { loadData, saveData } from '../storage.js';
 import { updateAndSaveMessage } from './message.js';
 import { defaultCriticalInstructions } from '../default_instructions.js';
+import { forgetHandle } from '../file_system_manager.js';
 
 export function handleAddProfile(reRenderCallback) {
     loadData((profiles, activeProfileId, archivedProfiles) => {
         const newProfile = {
             id: Date.now(),
             name: `Profile ${profiles.length + 1}`,
-            projectPath: '',
+            // Universal fields
             copyToClipboard: false,
             deployFromClipboard: false,
-            excludePatterns: '.git/,venv/,.env,log/,logs/,tmp/',
+            excludePatterns: '.git/,venv/,.env,log/,*logs/,tmp/,node_modules/',
             includePatterns: '',
-            serverUrl: 'http://127.0.0.1:5010',
-            isAuthEnabled: false,
-            username: '',
-            password: '',
             contextSizeLimit: 3000000,
             isCriticalInstructionsEnabled: false,
             criticalInstructions: defaultCriticalInstructions,
             duplicateInstructions: false,
             codeBlockDelimiter: '```',
             tolerateErrors: true,
-            lastMessage: { text: '', type: 'info' }
+            lastMessage: { text: '', type: 'info' },
+            // Mode toggle
+            useServerBackend: false,
+            // Server-specific fields
+            projectPath: '',
+            serverUrl: 'http://127.0.0.1:5010',
+            isAuthEnabled: false,
+            username: '',
+            password: '',
         };
         profiles.push(newProfile);
         const newActiveProfileId = newProfile.id;
@@ -56,16 +61,16 @@ export function handleCopyProfile(event, reRenderCallback) {
         const profileToCopy = profiles.find(p => p.id === id);
         if (!profileToCopy) return;
 
-        // Create a deep copy
         const newProfile = JSON.parse(JSON.stringify(profileToCopy));
         
-        // Assign new unique properties
         newProfile.id = Date.now();
         newProfile.name = `${profileToCopy.name} (Copy)`;
-        newProfile.lastMessage = { text: '', type: 'info' }; // Reset message
+        newProfile.lastMessage = { text: '', type: 'info' }; 
         
+        // Don't copy the folder handle, user must select it again for the new profile
+        forgetHandle(newProfile.id);
+
         const originalIndex = profiles.findIndex(p => p.id === id);
-        
         profiles.splice(originalIndex !== -1 ? originalIndex + 1 : profiles.length, 0, newProfile);
 
         const newActiveProfileId = newProfile.id;
@@ -87,7 +92,7 @@ export function handleArchiveProfile(event, reRenderCallback) {
         const updatedProfiles = profiles.filter(p => p.id !== id);
         const updatedArchivedProfiles = [...archivedProfiles, profileToArchive];
 
-        const newActiveProfileId = activeProfileId === id ? updatedProfiles.id : activeProfileId;
+        const newActiveProfileId = activeProfileId === id ? updatedProfiles[0].id : activeProfileId;
         
         saveData(updatedProfiles, newActiveProfileId, updatedArchivedProfiles);
         reRenderCallback(updatedProfiles, newActiveProfileId, updatedArchivedProfiles);
@@ -105,6 +110,7 @@ export function handleDirectPermanentDeleteProfile(event, reRenderCallback) {
         const profileToDeleteIndex = profiles.findIndex(p => p.id === id);
         if (profileToDeleteIndex === -1) return;
 
+        forgetHandle(id); // Clean up IndexedDB
         const updatedProfiles = profiles.filter(p => p.id !== id);
         
         let newActiveProfileId = activeProfileId;
@@ -120,13 +126,9 @@ export function handleDirectPermanentDeleteProfile(event, reRenderCallback) {
 
 function moveProfile(id, direction, reRenderCallback) {
     loadData((profiles, activeProfileId, archivedProfiles) => {
-        if (profiles.length <= 1) {
-            return; // Cannot move if there's only one or zero profiles
-        }
+        if (profiles.length <= 1) return;
         const currentIndex = profiles.findIndex(p => p.id === id);
-        if (currentIndex === -1) {
-            return; // Profile not found
-        }
+        if (currentIndex === -1) return;
         const newProfiles = [...profiles];
         const [movedProfile] = newProfiles.splice(currentIndex, 1);
         const newIndex = (currentIndex + direction + profiles.length) % profiles.length;
@@ -165,6 +167,7 @@ export function handleRestoreProfile(event, reRenderCallback) {
 export function handlePermanentDeleteProfile(event, reRenderCallback) {
     const id = parseInt(event.currentTarget.dataset.id);
     loadData((profiles, activeProfileId, archivedProfiles) => {
+        forgetHandle(id); // Clean up IndexedDB
         const updatedArchivedProfiles = archivedProfiles.filter(p => p.id !== id);
         saveData(profiles, activeProfileId, updatedArchivedProfiles);
         reRenderCallback(profiles, activeProfileId, updatedArchivedProfiles);
