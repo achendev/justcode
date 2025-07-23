@@ -53,13 +53,12 @@ export function handleCustomInstructionsToggle(event) {
 }
 
 export function handleBackendToggle(event, reRenderCallback) {
-    const id = parseInt(event.target.dataset.id);
-    const useServerBackend = event.target.checked;
+    const id = parseInt(event.currentTarget.dataset.id);
     
     loadData((profiles, activeProfileId, archivedProfiles) => {
         const profile = profiles.find(p => p.id === id);
         if (profile) {
-            profile.useServerBackend = useServerBackend;
+            profile.useServerBackend = !profile.useServerBackend; // Toggle the value
             saveData(profiles, activeProfileId, archivedProfiles);
             // Re-render to show/hide the correct UI elements
             reRenderCallback(profiles, activeProfileId, archivedProfiles);

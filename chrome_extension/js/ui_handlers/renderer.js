@@ -22,18 +22,26 @@ function getProfileCardHTML(profile) {
         <!-- Project Path/Folder Selection -->
         <div class="mb-2">
             <label class="form-label">Project Location:</label>
-            <!-- JS Mode -->
-            <div class="input-group input-group-sm js-mode-item">
-                 <button class="btn btn-outline-secondary copy-profile" type="button" data-id="${profile.id}" title="Copy Profile"><i class="bi bi-copy"></i></button>
-                 <button class="btn btn-outline-primary flex-grow-1 select-project-folder" id="selectProjectFolder-${profile.id}" data-id="${profile.id}" title="Select Project Folder">
-                    <span class="folder-name" id="selectedProjectName-${profile.id}">No Folder Selected</span>
+            <div class="d-flex gap-2">
+                <!-- JS Mode -->
+                <div class="input-group input-group-sm js-mode-item flex-grow-1">
+                     <button class="btn btn-outline-secondary copy-profile" type="button" data-id="${profile.id}" title="Copy Profile"><i class="bi bi-copy"></i></button>
+                     <button class="btn btn-outline-primary flex-grow-1 select-project-folder" id="selectProjectFolder-${profile.id}" data-id="${profile.id}" title="Select Project Folder">
+                        <span class="folder-name" id="selectedProjectName-${profile.id}">No Folder Selected</span>
+                    </button>
+                    <button class="btn btn-outline-danger forget-project-folder" id="forgetProjectFolder-${profile.id}" data-id="${profile.id}" title="Forget this folder" style="display: none;"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <!-- Server Mode -->
+                <div class="input-group input-group-sm server-mode-item flex-grow-1">
+                    <button class="btn btn-outline-secondary copy-profile" type="button" data-id="${profile.id}" title="Copy Profile"><i class="bi bi-copy"></i></button>
+                    <input type="text" class="form-control project-path" id="projectPath-${profile.id}" placeholder="/path/to/project" value="${profile.projectPath}">
+                </div>
+                <!-- Backend Toggle Button -->
+                <button class="btn btn-outline-secondary btn-sm backend-toggle-btn" type="button" data-id="${profile.id}" title="Switch to ${profile.useServerBackend ? 'Browser (JS) Backend' : 'Server Backend'}">
+                    ${profile.useServerBackend 
+                        ? '<i class="bi bi-hdd-stack"></i>' 
+                        : '<i class="bi bi-browser-chrome"></i>'}
                 </button>
-                <button class="btn btn-outline-danger forget-project-folder" id="forgetProjectFolder-${profile.id}" data-id="${profile.id}" title="Forget this folder" style="display: none;"><i class="bi bi-x-lg"></i></button>
-            </div>
-            <!-- Server Mode -->
-            <div class="input-group input-group-sm server-mode-item">
-                <button class="btn btn-outline-secondary copy-profile" type="button" data-id="${profile.id}" title="Copy Profile"><i class="bi bi-copy"></i></button>
-                <input type="text" class="form-control project-path" id="projectPath-${profile.id}" placeholder="/path/to/project" value="${profile.projectPath}">
             </div>
         </div>
         
@@ -84,12 +92,6 @@ function getProfileCardHTML(profile) {
             <h5 class="mb-0">Settings</h5>
             <button type="button" class="btn-close close-settings" data-id="${profile.id}" aria-label="Close"></button>
         </div>
-        
-        <div class="form-check form-switch mb-3">
-            <input class="form-check-input backend-toggle" type="checkbox" role="switch" id="backendToggle-${profile.id}" data-id="${profile.id}" ${profile.useServerBackend ? 'checked' : ''}>
-            <label class="form-check-label" for="backendToggle-${profile.id}">Use Server Backend</label>
-        </div>
-        <hr>
         
         <!-- Server Mode Settings -->
         <div class="server-mode-item">

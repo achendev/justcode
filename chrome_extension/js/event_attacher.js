@@ -35,8 +35,8 @@ export function attachAllEventListeners(reRenderCallback) {
         button.addEventListener('click', (e) => profileHandlers.handleMoveProfileRight(e, reRenderCallback));
     });
     
-    document.querySelectorAll('.backend-toggle').forEach(checkbox => {
-        checkbox.addEventListener('change', (e) => settingsHandlers.handleBackendToggle(e, reRenderCallback));
+    document.querySelectorAll('.backend-toggle-btn').forEach(button => {
+        button.addEventListener('click', (e) => settingsHandlers.handleBackendToggle(e, reRenderCallback));
     });
 
 
