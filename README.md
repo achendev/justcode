@@ -3,7 +3,7 @@
 Just Code is a rapid development tool that bridges the gap between your local development environment and a Large Language Model (LLM) chat interface. It allows you to:
 
 <p align="center">
-  <img width="350" alt="justcode" src="https://github.com/user-attachments/assets/ea749492-430d-43a3-a3a7-d7b910d60e13" />
+  <img width="350" alt="justcode" src="https://github.com/user-attachments/assets/c6cd4674-f2b7-4db3-9567-9070283c6c58" />
 </p>
 
 1.  **Send your entire project's context** to an LLM with a single click and prompt your task.
@@ -17,27 +17,29 @@ This creates a tight, safe, and incredibly fast feedback loop for iterating on c
 
 ## ⚙️ How It Works
 
-The system consists of two main components:
+The system consists of a Chrome Extension that can operate in two different backend modes, which you can select per-profile within the extension:
 
-*   **🖥️ A Local Flask Server (`app.py`):** This server runs on your machine and acts as the bridge to your filesystem.
-    *   `/getcontext`: Scans a specified project directory, bundles all relevant source files into a single text block, and formats it as a prompt for the LLM.
-    *   `/deploycode`: Receives a shell script from the browser, creates an undo script, performs a security validation, and executes it to update your local files. This clears the "redo" history.
-    *   `/undo`: Executes the last generated undo script, moving the change to the "redo" history.
-    *   `/redo`: Executes the last "undone" action, moving it back to the "undo" history.
-    *   `/update`: Performs a `git pull` to update the JustCode application to the latest version.
+*   **🖥️ Browser (JS) Backend (Default & Recommended):** This mode runs entirely within your browser. It uses the modern [File System Access API](https://developer.chrome.com/docs/capabilities/fs) to directly and safely read your project files and write changes back.
+    *   **Pros:** No Python or server setup required. It's the simplest and fastest way to get started.
+    *   **Cons:** Requires you to grant permission twice for first project, then sinle per each project folder you want to work with.
 
-*   **🧩 Chrome Extension (`chrome_extension/`):** A user-friendly popup interface.
-    *   **Popup Interface:** Contains an input for the project path and the main action buttons: "Get Context," "Deploy Code," "Undo," and "Redo."
-    *   **Shortcuts:** 
-        *   `Alt + ↑`: Open the extension popup.
-        *   When the popup is open:
-            *   `Alt + ←`: Trigger "Get Context" for the active profile.
-            *   `Alt + →`: Trigger "Deploy Code" for the active profile.
-            *   `Alt + R`: Trigger "Undo" for the active profile.
-            *   `Alt + A`: Switch to the profile tab on the left (loops around).
-            *   `Alt + S`: Switch to the profile tab on the right (loops around).
+*   **🐍 Server Backend:** This optional mode uses a local Flask server (`app.py`) that you run on your machine. The extension communicates with this server to access your filesystem.
+    *   **Pros:** Can work with any project path you provide without needing per-folder browser permissions.
+    *   **Cons:** Requires Python and leaving a terminal process running in the background.
+
+The **Chrome Extension (`chrome_extension/`)** provides a unified user-friendly interface for both modes, including action buttons, profile management, and settings.
+
+### Shortcuts
+
+*   `Alt + ↑`: Open the extension popup.
+*   When the popup is open:
+    *   `Alt + ←`: Trigger "Get Context" for the active profile.
+    *   `Alt + →`: Trigger "Deploy Code" for the active profile.
+    *   `Alt + R`: Trigger "Undo" for the active profile.
+    *   `Alt + A`: Switch to the profile tab on the left (loops around).
+    *   `Alt + S`: Switch to the profile tab on the right (loops around).
     
-    > **Note on Shortcuts:** If the `Alt + ↑` shortcut to open the extension doesn't work, you may need to set or reset it. Go to `chrome://extensions/shortcuts` in your browser, find the "JustCode Extension", and assign your preferred shortcut for the "Open JustCode Popup" action.
+> **Note on Shortcuts:** If the `Alt + ↑` shortcut to open the extension doesn't work, you may need to set or reset it. Go to `chrome://extensions/shortcuts` in your browser, find the "JustCode Extension", and assign your preferred shortcut for the "Open JustCode Popup" action.
 
 ## ↩️ Automatic Undo/Redo History
 
@@ -53,23 +55,58 @@ This feature allows you to experiment and iterate with AI-generated code fearles
 
 ## ✅ Prerequisites
 
+*   🌐 Google Chrome or a Chromium-based browser that supports loading unpacked extensions.
+
+**For Server Mode Only:**
 *   🐍 Python 3.10 or higher
 *   📦 `pip` and `venv` (usually included with Python)
-*   🐙 Git for cloning the repository
-*   🌐 Google Chrome or a Chromium-based browser that supports loading unpacked extensions.
+*   🐙 Git (if you want to clone and update the application via `git pull`)
 
 ## 🛠️ Setup
 
-The setup process involves three main stages: cloning the code, setting up the local server, and installing the browser extension.
+### Stage 1: Get the Code
 
-### Stage 1: Clone the Repository
+You have two options:
 
-Open your terminal or command prompt and run the following command:
+*   **A) Download ZIP (Easiest):**
+    1.  Go to the [JustCode GitHub repository](https://github.com/achendev/justcode).
+    2.  Click `Code` > `Download ZIP`.
+    3.  Unzip the file on your computer.
 
+*   **B) Git Clone (For updates & server mode):**
+    ```bash
     git clone https://github.com/achendev/justcode.git
     cd justcode
+    ```
 
-### Stage 2: Set Up and Run the Local Server
+### Stage 2: Load the Chrome Extension (Required for Both Modes)
+
+1.  **Load the Extension:**
+    *   Open Chrome and navigate to `chrome://extensions/`.
+    *   Enable **Developer mode** using the toggle switch (usually in the top-right corner).
+    *   Click the **Load unpacked** button.
+    *   In the file dialog, select the `chrome_extension` folder located inside your unzipped or cloned `justcode` project directory.
+
+2.  **Pin the Extension & Grant Permissions:**
+    *   Click the puzzle piece icon 🧩 in the Chrome toolbar, find **JustCode**, and click the **pin** icon to keep it visible.
+    *   The first time you use certain features, the extension will guide you on granting necessary permissions.
+
+### Stage 3: Choose Your Backend
+
+When you open the JustCode popup, you can choose the backend for each profile using the toggle button next to the project location input (a browser icon for JS mode, a server icon for Server mode).
+
+*   **🖱️ To use the Browser (JS) Backend (Default):**
+    *   Make sure the browser icon is showing.
+    *   Click the "Select Project Folder" button for your profile. This will prompt you to choose a folder. You'll asked to allow edit files, reopen extension and second time you'll have to choose "Allow every visit".
+
+*   **🐍 To use the Server Backend:**
+    *   Make sure the server icon is showing.
+    *   Follow the OS-specific instructions below to run the server.
+    *   In the extension, enter the full, absolute path to your project.
+
+---
+
+### Running the Server (Optional - Only for Server Backend)
 
 Follow the instructions for your operating system to set up the Python environment and run the server.
 
@@ -148,31 +185,11 @@ Follow the instructions for your operating system to set up the Python environme
     .\app.bat
     ```
     Keep this terminal window open. You should see a message confirming the server is running.
-
-### Stage 3: Load and Configure the Chrome Extension
-
-These steps are the same for all operating systems.
-
-1.  **Load the Extension:**
-    *   Open Chrome and navigate to `chrome://extensions/`.
-    *   Enable **Developer mode** using the toggle switch (usually in the top-right corner).
-    *   Click the **Load unpacked** button.
-    *   In the file dialog, select the `chrome_extension` folder located inside your `justcode` project directory.
-
-2.  **Pin the Extension for Easy Access:**
-    *   After loading, click the puzzle piece icon 🧩 in the Chrome toolbar to see your list of extensions.
-    *   Find the **JustCode Extension** and click the **pin** icon next to it.
-    *   This will keep the JustCode icon visible in your toolbar for one-click access.
-
-3.  **Grant Clipboard Permission**
-
-    The first time you open the JustCode extension popup, it will check if it has the necessary permissions to access your clipboard. If not, it will display a screen with instructions to guide you through the process of enabling it.
-
-    This is a one-time setup step required by Chrome for security. The extension will help you get it right.
+---
 
 ## 🔧 Server Configuration
 
-You can configure the server's listening address and port using a `.env` file in the project root.
+This section applies only if you are using the **Server Backend**. You can configure the server's listening address and port using a `.env` file in the project root.
 
 1.  Copy the example file: `cp .env.example .env` (or `copy .env.example .env` on Windows).
 2.  Edit `.env`:
@@ -204,17 +221,16 @@ This workflow turns the tedious task of manually curating a large project's cont
 
 ## 🔄 Usage Workflow
 
-1.  **Start the Server:** Ensure the local Flask server is running.
+1.  **Select Backend & Location:** Open the JustCode popup (`Alt+↑`). For your profile, choose your desired backend (Browser or Server) and set the project location.
+    *   **Browser (JS) Mode:** Click "Select Project Folder" and choose your project's root directory.
+    *   **Server Mode:** Ensure the local server is running and enter the absolute path to your project.
 2.  **Go to LLM:** Navigate to your preferred LLM chat interface.
-3.  **Open Popup:** Click the JustCode extension icon in your browser toolbar or press `Alt+↑`.
-4.  **Set Path:** In the active profile, enter the absolute path to your project.
-5.  **Get Context:** Click the `Get Context` button or press `Alt+←`. Your project's entire code structure and content will be loaded into the LLM's prompt area.
-6.  **Add Your Task:** This is the key step. Press space or start typing to scroll to the **bottom** of the large code block that was just pasted, and add your instructions for the LLM. For example: "Add a new endpoint called `/status` that returns `{'status': 'ok'}`" or "Refactor the `handle_user_login` function to be more secure".
-7.  **Submit to LLM:** Send the combined context and your instructions to the model.
-8.  **Get Response:** The LLM will analyze your request and the provided code, then respond with a `bash` script designed to perform the changes.
-9.  **Deploy Code:** Click the `Deploy Code` button or press `Alt+→`. The extension will send this script to your local server for execution.
-10. **Verify:** Check your local files. They are now updated.
-
+3.  **Get Context:** Click the `Get Context` button or press `Alt+←`. Your project's code will be formatted.
+4.  **Paste & Prompt:** The context is either copied to your clipboard or pasted directly into your LLM chat interface. Scroll to the **bottom** of the context block and add your task instructions (e.g., "Add a new endpoint called `/status`").
+5.  **Submit to LLM:** Send the combined context and your instructions to the model.
+6.  **Get Response:** The LLM will analyze your request and respond with a `bash` script.
+7.  **Deploy Code:** Click the `Deploy Code` button or press `Alt+→`. The extension will apply the changes to your local files.
+8.  **Verify & Iterate:** Check your files. If something is wrong, just click **Undo**!
 
 > **💡 Pro Tip: What if a deployment goes wrong?**   
 > If a deployment fails or makes unwanted changes, just click the **Undo** button for that profile. It will instantly restore your files. Clicked Undo by mistake? Click **Redo**!
@@ -231,7 +247,7 @@ This tool executes code generated by an LLM directly on your machine. This is **
 ## 📂 Project Structure
 
     justcode/
-    ├── app.py                      # Main Flask application runner
+    ├── app.py                      # Main Flask application runner (for Server Backend)
     ├── server/                     # Backend server logic
     │   ├── __init__.py
     │   ├── deploy_code_endpoint.py # Handles /deploycode endpoint
@@ -243,25 +259,20 @@ This tool executes code generated by an LLM directly on your machine. This is **
     ├── app.sh                      # Helper script to run server on macOS/Linux
     ├── app.bat                     # Helper script to run server on Windows
     ├── chrome_extension/
-    │   ├── icons/                  # Extension icons (16, 48, 128)
     │   ├── js/                     # JavaScript modules
-    │   │   ├── deploy_code.js      # Logic for deploying code
-    │   │   ├── event_attacher.js   # Wires up all UI event listeners
-    │   │   ├── get_context.js      # Logic for getting project context
-    │   │   ├── undo_redo.js        # Logic for Undo/Redo actions
-    │   │   ├── storage.js          # Manages user profiles in storage
-    │   │   ├── ui.js               # Renders the popup UI and orchestrates events
-    │   │   └── ui_handlers/        # Small modules for handling specific UI events
-    │   │       ├── actions.js
-    │   │       ├── inputs.js
-    │   │       ├── message.js
-    │   │       ├── profile.js
-    │   │       ├── renderer.js
-    │   │       └── settings.js
+    │   │   ├── context_builder/    # Logic to scan files and build LLM prompts
+    │   │   ├── db/                 # IndexedDB wrapper for storing folder handles (JS mode)
+    │   │   ├── ui_handlers/        # Modules for handling specific UI events and rendering
+    │   │   ├── deploy_code.js      # Logic for deploying code (both modes)
+    │   │   ├── file_system_manager.js # Manages File System Access API (JS mode)
+    │   │   ├── get_context.js      # Logic for getting project context (both modes)
+    │   │   ├── storage.js          # Manages user profiles in chrome.storage
+    │   │   └── ... (other core JS files)
     │   ├── manifest.json           # Extension configuration
+    │   ├── picker.html             # A dedicated window for the folder picker
     │   ├── popup.html              # Extension popup UI
+    │   ├── popup.css               # Styles for the popup
     │   └── popup.js                # Main entry point for the popup
     ├── .env.example                # Example environment file for server config
-    ├── .gitignore                  # Standard git ignore file
-    ├── requirements.txt            # Python dependencies
+    ├── requirements.txt            # Python dependencies (for Server Backend)
     └── README.md                   # This file
