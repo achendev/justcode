@@ -21,7 +21,7 @@ export function handleAddProfile(reRenderCallback) {
             tolerateErrors: true,
             lastMessage: { text: '', type: 'info' },
             // Mode toggle
-            useServerBackend: false,
+            useServerBackend: true,
             // Server-specific fields
             projectPath: '',
             serverUrl: 'http://127.0.0.1:5010',

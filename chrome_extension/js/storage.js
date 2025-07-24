@@ -24,7 +24,7 @@ export function loadData(callback) {
                 tolerateErrors: true,
                 lastMessage: { text: '', type: 'info' },
                 // Mode toggle
-                useServerBackend: false,
+                useServerBackend: true,
                 // Server-specific fields
                 projectPath: '',
                 serverUrl: defaultServerUrl,
@@ -37,7 +37,10 @@ export function loadData(callback) {
 
         // Ensure all profiles have the latest fields
         profiles.forEach(profile => {
-            if (profile.useServerBackend === undefined) { profile.useServerBackend = false; needsSave = true; }
+            // If useServerBackend is undefined, default it to TRUE.
+            // This ensures users updating from the server-only version
+            // retain server mode on their existing profiles.
+            if (profile.useServerBackend === undefined) { profile.useServerBackend = true; needsSave = true; }
             if (profile.projectPath === undefined) { profile.projectPath = ''; needsSave = true; }
             if (profile.serverUrl === undefined) { profile.serverUrl = defaultServerUrl; needsSave = true; }
             if (profile.isAuthEnabled === undefined) { profile.isAuthEnabled = false; needsSave = true; }
