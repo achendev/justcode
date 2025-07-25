@@ -24,7 +24,7 @@ export function loadData(callback) {
                 tolerateErrors: true,
                 lastMessage: { text: '', type: 'info' },
                 // Mode toggle
-                useServerBackend: true,
+                useServerBackend: false,
                 // Server-specific fields
                 projectPath: '',
                 serverUrl: defaultServerUrl,
