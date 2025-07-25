@@ -1,6 +1,6 @@
 import { updateAndSaveMessage, updateTemporaryMessage } from './ui_handlers/message.js';
 import { getHandle, verifyPermission } from './file_system_manager.js';
-import { executeFileSystemScript } from './deploy_code.js';
+import { executeFileSystemScript } from './deploy_code/script_executor.js';
 import { refreshUndoRedoCounts } from './ui.js';
 
 // --- Common ---
