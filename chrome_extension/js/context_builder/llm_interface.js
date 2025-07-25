@@ -87,8 +87,7 @@ export async function pasteIntoLLM(text) {
                     // trigger Perplexity's custom paste handling, which creates the 'paste.txt'
                     // file attachment for large inputs.
                     try {
-                        try {document.querySelector('button[data-testid="remove-uploaded-file"]:last-of-type').click();} catch (e) {};
-                        try {document.querySelector('button[data-testid="remove-uploaded-file"]:last-of-type').click();} catch (e) {};
+                        document.querySelectorAll('button[data-testid="remove-uploaded-file"]').forEach(button => button.click());
                         const pasteEvent = new ClipboardEvent('paste', {
                             bubbles: true,
                             cancelable: true,
@@ -116,10 +115,10 @@ export async function pasteIntoLLM(text) {
                                             lastFile.click();
                                             console.log('JustCode: Removed duplicate uploaded file from Perplexity.');
                                         }
-                                    }, 1000); // Small additional delay for UI stability
+                                    }, 100); // Small additional delay for UI stability
                                 } else {
                                     // Upload not complete yet, check again
-                                    setTimeout(checkUploadComplete, 500);
+                                    setTimeout(checkUploadComplete, 100);
                                 }
                             };
                             
