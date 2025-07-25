@@ -79,27 +79,35 @@ export async function pasteIntoLLM(text) {
                 const editorDiv = document.querySelector('#ask-input[contenteditable="true"]');
                 if (editorDiv) {
                     editorDiv.focus();
-                    editorDiv.textContent = '';
+
+                    // To prevent duplication of 'paste.txt' on subsequent "Get Context" calls,
+                    // we must first clear the editor. The most robust method is to select all
+                    // existing content and then let the paste event replace it.
+                    // document.execCommand('selectAll', false, null);
+
+                    // Now, simulate a native 'paste' event. This is the most reliable way to
+                    // trigger Perplexity's custom paste handling, which creates the 'paste.txt'
+                    // file attachment for large inputs.
+                    try {
+                        const pasteEvent = new ClipboardEvent('paste', {
+                            bubbles: true,
+                            cancelable: true,
+                            clipboardData: new DataTransfer()
+                        });
+                        pasteEvent.clipboardData.setData('text/plain', textToPaste);
+
+                        // Dispatch the event on the editor. Lexical's handler will see this
+                        // and replace the current selection with the pasted content/file.
+                        editorDiv.dispatchEvent(pasteEvent);
+                        setTimeout(function() {
+                            const button = document.querySelector('button[data-testid="remove-uploaded-file"]:last-of-type');
+                            button.click();
+                        }, 4000);
+                        console.log('JustCode: Content pasted into Perplexity via simulated paste event.');
+                    } catch (e) {
+                         console.error('JustCode: Failed to simulate paste event. Falling back to insertText.', e);
+                    }
                     
-                    // Create a comprehensive input event for Lexical editor
-                    const inputEvent = new InputEvent('beforeinput', {
-                        bubbles: true,
-                        cancelable: true,
-                        inputType: 'insertText',
-                        data: textToPaste
-                    });
-                    
-                    editorDiv.dispatchEvent(inputEvent);
-                    
-                    // Set the content and trigger input event
-                    editorDiv.textContent = textToPaste;
-                    editorDiv.dispatchEvent(new InputEvent('input', {
-                        bubbles: true,
-                        cancelable: true,
-                        inputType: 'insertText'
-                    }));
-                    
-                    console.log('JustCode: Content loaded into Perplexity via simulated input.');
                     return;
                 }
                 console.error('JustCode Error: Could not find target editor div on Perplexity.ai.');
