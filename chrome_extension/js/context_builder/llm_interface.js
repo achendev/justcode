@@ -74,6 +74,38 @@ export async function pasteIntoLLM(text) {
                 return; // Stop if we're on Gemini and failed
             }
 
+            // --- Perplexity.ai ---
+            if (hostname.includes('perplexity.ai')) {
+                const editorDiv = document.querySelector('#ask-input[contenteditable="true"]');
+                if (editorDiv) {
+                    editorDiv.focus();
+                    editorDiv.textContent = '';
+                    
+                    // Create a comprehensive input event for Lexical editor
+                    const inputEvent = new InputEvent('beforeinput', {
+                        bubbles: true,
+                        cancelable: true,
+                        inputType: 'insertText',
+                        data: textToPaste
+                    });
+                    
+                    editorDiv.dispatchEvent(inputEvent);
+                    
+                    // Set the content and trigger input event
+                    editorDiv.textContent = textToPaste;
+                    editorDiv.dispatchEvent(new InputEvent('input', {
+                        bubbles: true,
+                        cancelable: true,
+                        inputType: 'insertText'
+                    }));
+                    
+                    console.log('JustCode: Content loaded into Perplexity via simulated input.');
+                    return;
+                }
+                console.error('JustCode Error: Could not find target editor div on Perplexity.ai.');
+                return; // Stop if we're on Perplexity and failed
+            }
+
             // --- Fallback for other sites (like Groq, etc.) ---
             // Find the most likely target element for pasting. This is more robust
             // than relying on `document.activeElement` which can be unreliable.
