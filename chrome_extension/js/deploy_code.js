@@ -308,10 +308,26 @@ async function deployCodeJs(profile) {
             const results = await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 func: () => {
-                    const allCodeBlocks = Array.from(document.querySelectorAll('code'));
-                    if (allCodeBlocks.length > 0) {
-                        return allCodeBlocks[allCodeBlocks.length - 1].innerText;
+                    // Strategy 1: Find `pre > code`. This is the most reliable selector for code blocks
+                    // and avoids grabbing inline `<code>` tags. It works well for Perplexity, ChatGPT, etc.
+                    const codeBlocks = Array.from(document.querySelectorAll('pre code'));
+                    if (codeBlocks.length > 0) {
+                        return codeBlocks[codeBlocks.length - 1].innerText;
                     }
+                    
+                    // Fallback 1: If no `pre > code` is found, look for just the last `<pre>` tag.
+                    const pres = Array.from(document.querySelectorAll('pre'));
+                    if (pres.length > 0) {
+                        return pres[pres.length - 1].innerText;
+                    }
+
+                    // Fallback 2: Find the last `<code>` element anywhere. This works for sites like Gemini
+                    // which may not wrap code blocks in `<pre>`.
+                    const allCode = Array.from(document.querySelectorAll('code'));
+                    if (allCode.length > 0) {
+                        return allCode[allCode.length - 1].innerText;
+                    }
+
                     return null;
                 }
             });
@@ -367,10 +383,26 @@ async function deployCodeServer(profile) {
             const results = await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 func: () => {
-                    const allCodeBlocks = Array.from(document.querySelectorAll('code'));
-                    if (allCodeBlocks.length > 0) {
-                        return allCodeBlocks[allCodeBlocks.length - 1].innerText;
+                    // Strategy 1: Find `pre > code`. This is the most reliable selector for code blocks
+                    // and avoids grabbing inline `<code>` tags. It works well for Perplexity, ChatGPT, etc.
+                    const codeBlocks = Array.from(document.querySelectorAll('pre code'));
+                    if (codeBlocks.length > 0) {
+                        return codeBlocks[codeBlocks.length - 1].innerText;
                     }
+                    
+                    // Fallback 1: If no `pre > code` is found, look for just the last `<pre>` tag.
+                    const pres = Array.from(document.querySelectorAll('pre'));
+                    if (pres.length > 0) {
+                        return pres[pres.length - 1].innerText;
+                    }
+
+                    // Fallback 2: Find the last `<code>` element anywhere. This works for sites like Gemini
+                    // which may not wrap code blocks in `<pre>`.
+                    const allCode = Array.from(document.querySelectorAll('code'));
+                    if (allCode.length > 0) {
+                        return allCode[allCode.length - 1].innerText;
+                    }
+
                     return null;
                 }
             });
