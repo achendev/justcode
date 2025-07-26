@@ -70,7 +70,7 @@ export function getProfileCardHTML(profile) {
                 <label class="form-check-label" for="copyToClipboard-${profile.id}">Get Context to clipboard</label>
             </div>
             <div class="form-check form-check-inline mb-0 context-as-file-container">
-                <input type="checkbox" class="form-check-input context-as-file" id="contextAsFile-${profile.id}" data-id="${profile.id}" ${profile.contextAsFile ? 'checked' : ''}>
+                <input type="checkbox" class="form-check-input context-as-file" id="contextAsFile-${profile.id}" data-id="${profile.id}" ${profile.contextAsFile ? 'checked' : ''} ${profile.copyToClipboard ? 'disabled' : ''}>
                 <label class="form-check-label" for="contextAsFile-${profile.id}">As file</label>
             </div>
         </div>

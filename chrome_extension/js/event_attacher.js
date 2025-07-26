@@ -66,7 +66,19 @@ export function attachAllEventListeners(reRenderCallback) {
         input.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'includePatterns'));
     });
     document.querySelectorAll('.copy-to-clipboard').forEach(checkbox => {
-        checkbox.addEventListener('change', (e) => inputHandlers.handleCheckboxChange(e, 'copyToClipboard'));
+        checkbox.addEventListener('change', (e) => {
+            const id = parseInt(e.target.dataset.id);
+            const asFileCheckbox = document.getElementById(`contextAsFile-${id}`);
+            if (asFileCheckbox) {
+                asFileCheckbox.disabled = e.target.checked;
+                if (e.target.checked && asFileCheckbox.checked) {
+                    asFileCheckbox.checked = false;
+                    // Manually trigger a change event so the state is saved
+                    asFileCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+            inputHandlers.handleCheckboxChange(e, 'copyToClipboard');
+        });
     });
     document.querySelectorAll('.context-as-file').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => inputHandlers.handleCheckboxChange(e, 'contextAsFile'));
