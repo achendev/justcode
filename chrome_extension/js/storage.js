@@ -15,6 +15,7 @@ export function loadData(callback) {
                 getContextTarget: 'ui', // 'ui' or 'clipboard'
                 deployCodeSource: 'ui', // 'ui' or 'clipboard'
                 contextAsFile: false,
+                separateInstructionsAsFile: true,
                 excludePatterns: defaultExcludePatterns,
                 includePatterns: '',
                 contextSizeLimit: 3000000,
@@ -69,6 +70,7 @@ export function loadData(callback) {
             if (profile.codeBlockDelimiter === undefined) { profile.codeBlockDelimiter = '```'; needsSave = true; }
             if (profile.tolerateErrors === undefined) { profile.tolerateErrors = true; needsSave = true; }
             if (profile.contextAsFile === undefined) { profile.contextAsFile = false; needsSave = true; }
+            if (profile.separateInstructionsAsFile === undefined) { profile.separateInstructionsAsFile = true; needsSave = true; }
         });
 
         let activeProfileId = data.activeProfileId;

@@ -31,14 +31,11 @@ export async function buildFileContentString(rootHandle, paths) {
 }
 
 /**
- * Formats the final prompt for the getContext action.
- * @param {string} treeString - The file tree structure.
- * @param {string} contentString - The string of file contents.
- * @param {object} profile - The active user profile.
- * @returns {string} The complete prompt to be sent to the LLM.
+ * Gets the formatted instructions block and other profile-based settings.
+ * @param {object} profile
+ * @returns {{instructionsBlock: string, codeBlockDelimiter: string}}
  */
-export function formatContextPrompt(treeString, contentString, profile) {
-    const fileContext = `${treeString}\n\n${contentString}`;
+export function getInstructionsBlock(profile) {
     const codeBlockDelimiter = profile.codeBlockDelimiter || '~~~';
     
     const baseInstructions = profile.isCriticalInstructionsEnabled 
@@ -52,10 +49,26 @@ export function formatContextPrompt(treeString, contentString, profile) {
     const instructionsBlock = baseInstructions
         .replace(/\{\{DELIMITER\}\}/g, codeBlockDelimiter)
         .replace(/\{\{FENCE_RULE\}\}/g, fenceRule);
+    
+    return { instructionsBlock, codeBlockDelimiter };
+}
 
+/**
+ * Formats the final prompt for the getContext action.
+ * @param {string} treeString - The file tree structure.
+ * @param {string} contentString - The string of file contents.
+ * @param {object} profile - The active user profile.
+ * @returns {string} The complete prompt to be sent to the LLM.
+ */
+export function formatContextPrompt(treeString, contentString, profile) {
+    const fileContext = `${treeString}\n\n${contentString}`;
+    const { instructionsBlock, codeBlockDelimiter } = getInstructionsBlock(profile);
+    
+    const fileContextBlock = `This is current state of project files:\n${codeBlockDelimiter}bash\n${fileContext}${codeBlockDelimiter}`;
+    
     const finalPrompt = profile.duplicateInstructions
-        ? `${instructionsBlock}\n\nThis is current state of project files:\n${codeBlockDelimiter}bash\n${fileContext}${codeBlockDelimiter}\n\n\n${instructionsBlock}\n\n\n \n`
-        : `This is current state of project files:\n${codeBlockDelimiter}bash\n${fileContext}${codeBlockDelimiter}\n\n\n${instructionsBlock}\n\n\n \n`;
+        ? `${instructionsBlock}\n\n${fileContextBlock}\n\n\n${instructionsBlock}\n\n\n \n`
+        : `${fileContextBlock}\n\n\n${instructionsBlock}\n\n\n \n`;
 
     return finalPrompt;
 }

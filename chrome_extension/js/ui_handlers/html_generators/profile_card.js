@@ -164,6 +164,10 @@ export function getProfileCardHTML(profile) {
             <label class="form-check-label" for="duplicateInstructions-${profile.id}">Duplicate Critical Instructions</label>
         </div>
         <div class="form-check mb-2">
+            <input type="checkbox" class="form-check-input separate-instructions-as-file" id="separateInstructionsAsFile-${profile.id}" data-id="${profile.id}" ${profile.separateInstructionsAsFile ? 'checked' : ''}>
+            <label class="form-check-label" for="separateInstructionsAsFile-${profile.id}">Separate instructions using 'As file'</label>
+        </div>
+        <div class="form-check mb-2">
             <input type="checkbox" class="form-check-input custom-instructions-enabled" id="customInstructionsEnabled-${profile.id}" data-id="${profile.id}" ${profile.isCriticalInstructionsEnabled ? 'checked' : ''}>
             <label class="form-check-label" for="customInstructionsEnabled-${profile.id}">Enable Custom Critical Instructions</label>
         </div>

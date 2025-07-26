@@ -129,6 +129,9 @@ export function attachAllEventListeners(reRenderCallback) {
     document.querySelectorAll('.duplicate-instructions').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => inputHandlers.handleCheckboxChange(e, 'duplicateInstructions'));
     });
+    document.querySelectorAll('.separate-instructions-as-file').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => inputHandlers.handleCheckboxChange(e, 'separateInstructionsAsFile'));
+    });
     document.querySelectorAll('.critical-instructions').forEach(textarea => {
         textarea.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'criticalInstructions'));
     });

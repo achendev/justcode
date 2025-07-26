@@ -3,8 +3,7 @@ import { getHandle, verifyPermission } from './file_system_manager.js';
 import { scanDirectory } from './context_builder/file_scanner.js';
 import { buildTree, buildTreeWithCounts } from './context_builder/tree_builder.js';
 import { pasteIntoLLM, uploadContextAsFile } from './context_builder/llm_interface.js';
-import { formatContextPrompt, formatExclusionPrompt, buildFileContentString } from './context_builder/prompt_formatter.js';
-import { defaultCriticalInstructions } from './default_instructions.js';
+import { formatContextPrompt, formatExclusionPrompt, buildFileContentString, getInstructionsBlock } from './context_builder/prompt_formatter.js';
 
 // --- JS Mode (Local File System) ---
 async function getContextJs(profile, fromShortcut) {
@@ -45,15 +44,27 @@ async function getContextJs(profile, fromShortcut) {
         const treeString = buildTree(filePaths);
         const contentString = await buildFileContentString(handle, filePaths);
         
-        const finalPrompt = formatContextPrompt(treeString, contentString, profile);
-
         if (profile.getContextTarget === 'clipboard' || isDetached) {
+            const finalPrompt = formatContextPrompt(treeString, contentString, profile);
             await navigator.clipboard.writeText(finalPrompt);
             updateAndSaveMessage(profile.id, 'Context copied to clipboard!', 'success');
         } else if (profile.contextAsFile) {
-            await uploadContextAsFile(finalPrompt);
-            updateAndSaveMessage(profile.id, 'Context uploaded as file!', 'success');
+            if (profile.separateInstructionsAsFile) {
+                const { instructionsBlock, codeBlockDelimiter } = getInstructionsBlock(profile);
+                const fileContextPayload = `${treeString}\n\n${contentString}`;
+                const fileContentForUpload = `This is current state of project files:\n${codeBlockDelimiter}bash\n${fileContextPayload}${codeBlockDelimiter}`;
+                const promptForPasting = `The project context is in the attached file \`context.txt\`. Please use it to fulfill the task described below.\n\n${instructionsBlock}\n\n\n \n`;
+
+                await uploadContextAsFile(fileContentForUpload);
+                await pasteIntoLLM(promptForPasting);
+                updateAndSaveMessage(profile.id, 'Context uploaded as file, instructions pasted!', 'success');
+            } else {
+                const finalPrompt = formatContextPrompt(treeString, contentString, profile);
+                await uploadContextAsFile(finalPrompt);
+                updateAndSaveMessage(profile.id, 'Context uploaded as file!', 'success');
+            }
         } else {
+            const finalPrompt = formatContextPrompt(treeString, contentString, profile);
             await pasteIntoLLM(finalPrompt);
             updateAndSaveMessage(profile.id, 'Context loaded successfully!', 'success');
         }
@@ -134,30 +145,28 @@ async function getContextServer(profile, fromShortcut) {
             return;
         }
 
-        const fileContext = responseText;
-        const codeBlockDelimiter = profile.codeBlockDelimiter || '~~~';
-        const baseInstructions = profile.isCriticalInstructionsEnabled 
-            ? profile.criticalInstructions 
-            : defaultCriticalInstructions;
+        const fileContextPayload = responseText;
+        const { instructionsBlock, codeBlockDelimiter } = getInstructionsBlock(profile);
         
-        const fenceRule = (codeBlockDelimiter === '```') 
-            ? `6.  **NO NESTED CODE FENCES:** Inside a file's content, no line can begin with three backticks. Use indentation.` 
-            : '';
-
-        const instructionsBlock = baseInstructions
-            .replace(/\{\{DELIMITER\}\}/g, codeBlockDelimiter)
-            .replace(/\{\{FENCE_RULE\}\}/g, fenceRule);
-
+        const fileContextBlock = `This is current state of project files:\n${codeBlockDelimiter}bash\n${fileContextPayload}${codeBlockDelimiter}`;
+        
         const finalPrompt = profile.duplicateInstructions
-            ? `${instructionsBlock}\n\nThis is current state of project files:\n${codeBlockDelimiter}bash\n${fileContext}${codeBlockDelimiter}\n\n\n${instructionsBlock}\n\n\n \n`
-            : `This is current state of project files:\n${codeBlockDelimiter}bash\n${fileContext}${codeBlockDelimiter}\n\n\n${instructionsBlock}\n\n\n \n`;
+            ? `${instructionsBlock}\n\n${fileContextBlock}\n\n\n${instructionsBlock}\n\n\n \n`
+            : `${fileContextBlock}\n\n\n${instructionsBlock}\n\n\n \n`;
 
         if (profile.getContextTarget === 'clipboard' || isDetached) {
             await navigator.clipboard.writeText(finalPrompt);
             updateAndSaveMessage(profile.id, 'Context copied to clipboard!', 'success');
         } else if (profile.contextAsFile) {
-            await uploadContextAsFile(finalPrompt);
-            updateAndSaveMessage(profile.id, 'Context uploaded as file!', 'success');
+            if (profile.separateInstructionsAsFile) {
+                const promptForPasting = `The project context is in the attached file \`context.txt\`. Please use it to fulfill the task described below.\n\n${instructionsBlock}\n\n\n \n`;
+                await uploadContextAsFile(fileContextBlock);
+                await pasteIntoLLM(promptForPasting);
+                updateAndSaveMessage(profile.id, 'Context uploaded as file, instructions pasted!', 'success');
+            } else {
+                await uploadContextAsFile(finalPrompt);
+                updateAndSaveMessage(profile.id, 'Context uploaded as file!', 'success');
+            }
         } else {
             await pasteIntoLLM(finalPrompt);
             updateAndSaveMessage(profile.id, 'Context loaded successfully!', 'success');
