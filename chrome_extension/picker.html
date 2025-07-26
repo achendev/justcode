@@ -41,6 +41,10 @@
             margin-left: auto;
             margin-right: auto;
         }
+         #permission-tip {
+            font-style: italic;
+            font-size: 0.75rem;
+        }
         #selectFolderBtn {
             font-size: 1rem;
             padding: 10px 20px;
@@ -79,6 +83,7 @@
     <div>
         <div id="message">Confirm Folder Selection</div>
         <p class="sub-message">For security, please click the button below to open the folder dialog.</p>
+        <p id="permission-tip" class="sub-message" style="display: none;"></p>
         <button id="selectFolderBtn">Select Folder</button>
     </div>
     <script type="module" src="./js/picker.js"></script>

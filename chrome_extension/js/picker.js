@@ -8,7 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const profileId = parseInt(urlParams.get('profileId'));
     
     const messageDiv = document.getElementById('message');
-    const subMessageP = document.querySelector('.sub-message');
+    const subMessageP = document.querySelector('.sub-message'); // Gets the first one
+    const permissionTipP = document.getElementById('permission-tip');
     const selectFolderBtn = document.getElementById('selectFolderBtn');
 
     if (!profileId) {
@@ -42,6 +43,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     profileId: profileId,
                     folderName: handle.name
                 }).catch(e => console.log("Could not send message, probably because the popup closed. This is expected."));
+
+                if (permissionTipP) {
+                    permissionTipP.textContent = 'Note: You may have to select folder again and choose "Allow on every visit" to bypass Chrome limitation.';
+                    permissionTipP.style.display = 'block';
+                }
 
                 let countdown = 7;
                 subMessageP.textContent = `This window will close automatically in ${countdown} seconds...`;
