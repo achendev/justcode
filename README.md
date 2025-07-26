@@ -21,7 +21,7 @@ The system consists of a Chrome Extension that can operate in two different back
 
 *   **🖥️ Browser (JS) Backend (Default & Recommended):** This mode runs entirely within your browser. It uses the modern [File System Access API](https://developer.chrome.com/docs/capabilities/fs) to directly and safely read your project files and write changes back.
     *   **Pros:** No Python or server setup required. It's the simplest and fastest way to get started.
-    *   **Cons:** Requires you to grant permission twice for first project, then sinle per each project folder you want to work with.
+    *   **Cons:** Requires you to grant permission for each project folder you want to work with, for first project permissions should be granted twice.
 
 *   **🐍 Server Backend:** This optional mode uses a local Flask server (`app.py`) that you run on your machine. The extension communicates with this server to access your filesystem.
     *   **Pros:** Can work with any project path you provide without needing per-folder browser permissions.
@@ -43,7 +43,7 @@ The **Chrome Extension (`chrome_extension/`)** provides a unified user-friendly 
 
 ## ↩️ Automatic Undo/Redo History
 
-Never fear a bad deployment again. Just Code includes a powerful safety net:
+Never fear a bad deployment again. Just Code includes a powerful safety net that works for **both Browser (JS) and Server modes**:
 
 *   **Automatic History:** When you click **Deploy Code**, two scripts are saved:
     1.  The deployment script itself (which becomes the "redo" script).
@@ -87,9 +87,8 @@ You have two options:
     *   Click the **Load unpacked** button.
     *   In the file dialog, select the `chrome_extension` folder located inside your unzipped or cloned `justcode` project directory.
 
-2.  **Pin the Extension & Grant Permissions:**
-    *   Click the puzzle piece icon 🧩 in the Chrome toolbar, find **JustCode**, and click the **pin** icon to keep it visible.
-    *   The first time you use certain features, the extension will guide you on granting necessary permissions.
+2.  **Pin the Extension:**
+    *   Click the rocket icon 🚀 in the Chrome toolbar, find **JustCode**, and click the **pin** icon to keep it visible.
 
 ### Stage 3: Choose Your Backend
 
@@ -108,83 +107,26 @@ When you open the JustCode popup, you can choose the backend for each profile us
 
 ### Running the Server (Optional - Only for Server Backend)
 
-Follow the instructions for your operating system to set up the Python environment and run the server.
+The provided helper scripts (`app.sh` for macOS/Linux, `app.bat` for Windows) automate the entire server setup process, including creating a virtual environment and installing dependencies.
 
-#### 🍎 macOS & 🐧 Linux (Ubuntu, AlmaLinux, etc.)
+#### 🍎 macOS & 🐧 Linux
 
-1.  **Configure the Server (Optional)**
-    The server listens on `127.0.0.1:5010` by default. You can change this by creating a `.env` file. See the [Server Configuration](#-server-configuration) section for more details.
+1.  Open a terminal in the `justcode` directory.
+2.  Run the helper script:
     ```bash
-    # Copy the example config to a new .env file
-    cp .env.example .env
-    ```
-    Now you can edit `.env` to change the host or port.
-
-2.  **Create and Activate Virtual Environment**
-    In the `justcode` directory, run:
-    ```bash
-    # Create a Python virtual environment
-    python3 -m venv venv
-
-    # Activate the environment
-    source venv/bin/activate
-    ```
-
-3.  **Install Dependencies**
-    With the environment active, install the required packages:
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-4.  **Run the Server**
-    You can run the server directly with `python app.py`, or use the provided helper script:
-    ```bash
-    # Run the server
     ./app.sh
     ```
-    Keep this terminal window open. You should see a message confirming the server is running.
-
+    The script will create a `venv` directory, install requirements, and start the server. Keep this terminal window open while you use the server backend.
 
 #### 🪟 Windows
 
-1.  **Configure the Server (Optional)**
-    The server listens on `127.0.0.1:5010` by default. You can change this by creating a `.env` file. See the [Server Configuration](#-server-configuration) section for more details.
-    
-    In PowerShell or CMD, run:
-    ```powershell
-    # Copy the example config to a new .env file
-    copy .env.example .env
-    ```
-    Now you can edit `.env` with Notepad or another editor to change the host or port.
-
-2.  **Create and Activate Virtual Environment**
-    In the `justcode` directory, open **PowerShell** (recommended) or **Command Prompt (`cmd`)**.
-
-    ```powershell
-    # Create a Python virtual environment
-    # You may need to use 'py', 'python.exe' or 'python3.exe' if 'python' is not in your PATH
-    python -m venv venv
-
-    # Activate the environment in PowerShell
-    .\venv\Scripts\Activate.ps1
-    ```
-    > **Note for PowerShell:** If you get an error about script execution being disabled, run `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process` and try activating again.
-
-    > If using the classic **Command Prompt (`cmd.exe`)**, activate with this command instead of:
-    > `venv\Scripts\activate.bat`
-
-3.  **Install Dependencies**
-    Once the environment is active (your prompt will be prefixed with `(venv)`), run:
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-4.  **Run the Server**
-    You can run the server directly with `python app.py`. Alternatively, you can run the provided batch script from your terminal or by double-clicking it in the file explorer.
+1.  Open PowerShell or Command Prompt in the `justcode` directory.
+2.  Run the helper script:
     ```batch
     .\app.bat
     ```
-    Keep this terminal window open. You should see a message confirming the server is running.
+    Alternatively, you can simply double-click the `app.bat` file in Windows Explorer. The script will create a `venv` directory, install dependencies, and start the server. Keep the terminal window open.
+
 ---
 
 ## 🔧 Server Configuration
@@ -194,8 +136,8 @@ This section applies only if you are using the **Server Backend**. You can confi
 1.  Copy the example file: `cp .env.example .env` (or `copy .env.example .env` on Windows).
 2.  Edit `.env`:
     *   `FLASK_RUN_HOST`: The IP address to bind to.
-        *   `127.0.0.1` (Default): Accessible only from your own computer. Debug mode is **ON**.
-        *   `0.0.0.0`: Accessible from other devices on your network. **Debug mode is automatically turned OFF for security.**
+        *   `127.0.0.1` (Default): Accessible only from your own computer.
+        *   `0.0.0.0`: Accessible from other devices on your network. **Use with caution on trusted networks only.**
     *   `FLASK_RUN_PORT`: The port to listen on (e.g., `5010`).
 
 If you change the server URL or port, remember to update it in the extension's profile settings.
@@ -245,7 +187,7 @@ This tool executes code generated by an LLM directly on your machine. This is **
 *   **Use at your own risk.**
 
 ## 📂 Project Structure
-    ```
+
     justcode/
     ├── app.py                      # Main Flask application runner (for Server Backend)
     ├── app.sh                      # Helper script to run server on macOS/Linux
@@ -253,14 +195,15 @@ This tool executes code generated by an LLM directly on your machine. This is **
     ├── chrome_extension/
     │   ├── css/                    # Stylesheets for the extension popup
     │   ├── js/                     # JavaScript modules
-    │   │   ├── context_builder/    # Logic to build prompts for the LLM
+    │   │   ├── context_builder/    # Logic for building prompts for the LLM
     │   │   │   └── paste_handlers/ # Site-specific logic for pasting text/files
     │   │   ├── db/                 # IndexedDB wrapper for storing folder handles
     │   │   ├── deploy_code/        # Logic for parsing and executing deployment scripts
     │   │   ├── event_listeners/    # Attaches event listeners to UI elements
     │   │   ├── get_context/        # Strategies for getting project context
     │   │   ├── ui_handlers/        # Modules for handling UI events and rendering
-    │   │   │   └── html_generators/ # Functions that generate HTML strings for UI components
+    │   │   │   ├── html_generators/ # Functions that generate HTML strings for UI components
+    │   │   │   └── profile_actions/# Handlers for profile creation, navigation, and state
     │   │   ├── default_instructions.js # The default prompt instructions for the LLM
     │   │   ├── deploy_code.js      # Main facade for deploying code
     │   │   ├── event_attacher.js   # Central point for attaching all event listeners
@@ -272,16 +215,18 @@ This tool executes code generated by an LLM directly on your machine. This is **
     │   │   └── undo_redo.js        # Handles Undo/Redo logic for both modes
     │   ├── manifest.json           # Extension configuration
     │   ├── picker.html             # A dedicated window for the folder picker (JS mode)
-    │   ├── popup.html              # Extension popup UI
-    │   └── popup.js                # Main entry point for the popup
+    │   └── popup.html              # Extension popup UI
     ├── server/                     # Backend server logic (for Server Mode)
+    │   ├── tools/                  # Utility modules for the server
+    │   │   ├── context_generator.py # Generates project context string
+    │   │   ├── history_manager.py  # Manages undo/redo script files
+    │   │   ├── script_executor.py  # Parses and executes deployment scripts
+    │   │   └── utils.py            # Common server utilities (path safety, etc.)
     │   ├── deploy_code_endpoint.py # Handles /deploycode endpoint
     │   ├── get_context_endpoint.py # Handles /getcontext endpoint
     │   ├── redo_endpoint.py        # Handles /redo endpoint
-    │   ├── tools.py                # Common utility functions for the server
     │   ├── undo_endpoint.py        # Handles /undo endpoint
     │   └── update_endpoint.py      # Handles /update endpoint for git pull
     ├── .env.example                # Example environment file for server config
     ├── requirements.txt            # Python dependencies (for Server Backend)
     └── README.md                   # This file
-    ```
