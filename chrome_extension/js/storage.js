@@ -14,6 +14,7 @@ export function loadData(callback) {
                 // Universal fields
                 copyToClipboard: false,
                 deployFromClipboard: false,
+                contextAsFile: false,
                 excludePatterns: defaultExcludePatterns,
                 includePatterns: '',
                 contextSizeLimit: 3000000,
@@ -56,6 +57,7 @@ export function loadData(callback) {
             if (profile.duplicateInstructions === undefined) { profile.duplicateInstructions = false; needsSave = true; }
             if (profile.codeBlockDelimiter === undefined) { profile.codeBlockDelimiter = '```'; needsSave = true; }
             if (profile.tolerateErrors === undefined) { profile.tolerateErrors = true; needsSave = true; }
+            if (profile.contextAsFile === undefined) { profile.contextAsFile = false; needsSave = true; }
         });
 
         let activeProfileId = data.activeProfileId;

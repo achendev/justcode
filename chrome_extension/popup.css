@@ -20,9 +20,7 @@ body.detached {
 .action-buttons-container > .btn.flex-grow-1 {
     flex-basis: 0;
 }
-.form-check-label { 
-    margin-left: 8px; 
-}
+
 .form-check { 
     margin-bottom: 8px; 
 }
@@ -123,6 +121,18 @@ body.detached {
     display: block;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* Action button font size adjustment */
+.action-btn-main {
+    font-size: 0.875rem;
+    padding-top: 0.3rem;
+    padding-bottom: 0.3rem;
+}
+
+/* "as file" checkbox styling */
+.context-as-file-container label {
+    font-style: italic;
 }
 
 /* Mode-specific UI visibility */

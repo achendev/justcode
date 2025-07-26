@@ -1,3 +1,5 @@
+import { pasteAsFile } from './paste_handlers/file_uploader.js';
+
 /**
  * Pastes text into the most likely input field in the active tab.
  * This function contains specific logic for different LLM provider websites
@@ -33,5 +35,26 @@ export async function pasteIntoLLM(text) {
         target: { tabId: tab.id },
         func: pasteFunc,
         args: [text]
+    });
+}
+
+
+/**
+ * Creates a file from the given text and "uploads" it to the active LLM tab.
+ * @param {string} text The content for the file.
+ */
+export async function uploadContextAsFile(text) {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab) {
+        console.error('JustCode Error: No active tab found.');
+        return;
+    }
+
+    // We use a generic file uploader because site-specific logic for file inputs
+    // can be complex and brittle. This uploader tries common methods that work across many platforms.
+    await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: pasteAsFile,
+        args: ['context.txt', text]
     });
 }

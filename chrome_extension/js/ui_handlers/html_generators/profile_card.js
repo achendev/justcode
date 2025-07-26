@@ -64,9 +64,15 @@ export function getProfileCardHTML(profile) {
             <input type="text" class="form-control form-control-sm include-patterns" id="includePatterns-${profile.id}" placeholder="*.py,*.js,*.html" value="${profile.includePatterns || ''}">
         </div>
 
-        <div class="form-check mb-2">
-            <input type="checkbox" class="form-check-input copy-to-clipboard" id="copyToClipboard-${profile.id}" ${profile.copyToClipboard ? 'checked' : ''}>
-            <label class="form-check-label" for="copyToClipboard-${profile.id}">Get Context to clipboard</label>
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="form-check form-check-inline me-auto mb-0">
+                <input type="checkbox" class="form-check-input copy-to-clipboard" id="copyToClipboard-${profile.id}" data-id="${profile.id}" ${profile.copyToClipboard ? 'checked' : ''}>
+                <label class="form-check-label" for="copyToClipboard-${profile.id}">Get Context to clipboard</label>
+            </div>
+            <div class="form-check form-check-inline mb-0 context-as-file-container">
+                <input type="checkbox" class="form-check-input context-as-file" id="contextAsFile-${profile.id}" data-id="${profile.id}" ${profile.contextAsFile ? 'checked' : ''} ${profile.copyToClipboard ? 'disabled' : ''}>
+                <label class="form-check-label" for="contextAsFile-${profile.id}">As file</label>
+            </div>
         </div>
         <div class="form-check mb-3">
             <input type="checkbox" class="form-check-input deploy-from-clipboard" id="deployFromClipboard-${profile.id}" ${profile.deployFromClipboard ? 'checked' : ''}>
@@ -74,8 +80,8 @@ export function getProfileCardHTML(profile) {
         </div>
         
         <div class="d-flex gap-2 action-buttons-container">
-            <button class="btn btn-primary btn-sm flex-grow-1 get-context" data-id="${profile.id}"><i class="bi bi-box-arrow-up"></i> Get Context</button>
-            <button class="btn btn-success btn-sm flex-grow-1 deploy-code" data-id="${profile.id}"><i class="bi bi-box-arrow-in-down"></i> Deploy Code</button>
+            <button class="btn btn-primary btn-sm flex-grow-1 get-context action-btn-main" data-id="${profile.id}"><i class="bi bi-box-arrow-up"></i> Get Context</button>
+            <button class="btn btn-success btn-sm flex-grow-1 deploy-code action-btn-main" data-id="${profile.id}"><i class="bi bi-box-arrow-in-down"></i> Deploy Code</button>
         </div>
         
         <div class="status-container mt-3 ${!message.text ? 'd-none' : ''}">

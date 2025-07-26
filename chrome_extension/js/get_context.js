@@ -2,7 +2,7 @@ import { updateAndSaveMessage, updateTemporaryMessage } from './ui_handlers/mess
 import { getHandle, verifyPermission } from './file_system_manager.js';
 import { scanDirectory } from './context_builder/file_scanner.js';
 import { buildTree, buildTreeWithCounts } from './context_builder/tree_builder.js';
-import { pasteIntoLLM } from './context_builder/llm_interface.js';
+import { pasteIntoLLM, uploadContextAsFile } from './context_builder/llm_interface.js';
 import { formatContextPrompt, formatExclusionPrompt, buildFileContentString } from './context_builder/prompt_formatter.js';
 import { defaultCriticalInstructions } from './default_instructions.js';
 
@@ -50,6 +50,9 @@ async function getContextJs(profile, fromShortcut) {
         if (profile.copyToClipboard || isDetached) {
             await navigator.clipboard.writeText(finalPrompt);
             updateAndSaveMessage(profile.id, 'Context copied to clipboard!', 'success');
+        } else if (profile.contextAsFile) {
+            await uploadContextAsFile(finalPrompt);
+            updateAndSaveMessage(profile.id, 'Context uploaded as file!', 'success');
         } else {
             await pasteIntoLLM(finalPrompt);
             updateAndSaveMessage(profile.id, 'Context loaded successfully!', 'success');
@@ -152,6 +155,9 @@ async function getContextServer(profile, fromShortcut) {
         if (profile.copyToClipboard || isDetached) {
             await navigator.clipboard.writeText(finalPrompt);
             updateAndSaveMessage(profile.id, 'Context copied to clipboard!', 'success');
+        } else if (profile.contextAsFile) {
+            await uploadContextAsFile(finalPrompt);
+            updateAndSaveMessage(profile.id, 'Context uploaded as file!', 'success');
         } else {
             await pasteIntoLLM(finalPrompt);
             updateAndSaveMessage(profile.id, 'Context loaded successfully!', 'success');
