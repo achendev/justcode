@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }).catch(e => console.log("Could not send message, probably because the popup closed. This is expected."));
 
                 if (permissionTipP) {
-                    permissionTipP.textContent = 'Note: You may have to select folder again and choose "Allow on every visit" to bypass Chrome limitation.';
+                    permissionTipP.innerHTML = 'Note: You may have to select folder again and choose <strong class="highlight">"Allow on every visit"</strong> to bypass Chrome limitation.';
                     permissionTipP.style.display = 'block';
                 }
 
