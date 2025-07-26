@@ -32,14 +32,6 @@ export function attachInputEventListeners() {
             if (asFileContainer) {
                 asFileContainer.classList.toggle('d-none', e.target.value === 'clipboard');
             }
-            
-            if (e.target.value === 'clipboard') {
-                const asFileCheckbox = document.getElementById(`contextAsFile-${profileId}`);
-                if (asFileCheckbox && asFileCheckbox.checked) {
-                    asFileCheckbox.checked = false;
-                    asFileCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
-                }
-            }
     
             const mockEvent = { target: { id: `getContextTarget-${profileId}`, value: e.target.value }};
             inputHandlers.handleInputChange(mockEvent, 'getContextTarget');
