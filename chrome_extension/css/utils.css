@@ -1,0 +1,3 @@
+/* Mode-specific UI visibility */
+.profile-card.server-mode .js-mode-item { display: none !important; }
+.profile-card.js-mode .server-mode-item { display: none !important; }

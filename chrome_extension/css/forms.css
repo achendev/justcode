@@ -1,0 +1,35 @@
+.form-check {
+    margin-bottom: 8px;
+}
+.form-label {
+    margin-bottom: 0;
+    font-size: smaller;
+}
+.include-patterns-container {
+    max-height: 100px;
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out, margin-bottom 0.3s ease-in-out;
+}
+.include-patterns-container.collapsed {
+    max-height: 0;
+    margin-bottom: 0 !important;
+}
+.form-check-inline {
+    display: inline-block;
+    margin-right: 0.7rem;
+}
+/* Input control section styling */
+.input-control-label {
+    width: 80px;
+    font-size: 0.9rem;
+    text-align: left;
+    margin-right: 8px !important;
+    white-space: nowrap;
+}
+.input-controls-wrapper .form-check-label {
+    font-size: 0.8rem;
+}
+/* "as file" checkbox styling */
+.context-as-file-container .form-check-label {
+    font-style: italic;
+}

@@ -1,0 +1,32 @@
+.profile-card {
+    border: 1px solid; /* color will be in theme.css */
+    border-radius: 0.25rem;
+    padding: 10px;
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+}
+.profile-header {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 10px;
+}
+.archived-profile-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    margin-bottom: 5px;
+    border: 1px solid #6c757d;
+    border-radius: 0.25rem;
+}
+.archived-profile-card .profile-info {
+    flex-grow: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+.archived-profile-card .profile-info > * {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

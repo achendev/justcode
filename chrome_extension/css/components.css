@@ -1,0 +1,21 @@
+.action-buttons-container > .btn.flex-grow-1 {
+    flex-basis: 0;
+}
+.status-message {
+    font-size: 0.875rem;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+.message-text {
+    word-break: break-word;
+}
+/* Action button font size adjustment */
+.action-btn-main {
+    font-size: 0.875rem;
+    padding-top: 0.3rem;
+    padding-bottom: 0.3rem;
+}

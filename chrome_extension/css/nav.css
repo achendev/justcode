@@ -1,0 +1,25 @@
+.nav-tabs {
+    margin-bottom: 10px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.nav-tabs::-webkit-scrollbar {
+    display: none;
+}
+.nav-link {
+    padding: 5px 10px;
+    font-size: 0.875rem;
+    transition: background-color 0.3s, color 0.3s;
+    white-space: nowrap;
+}
+.nav-link.active {
+    border-bottom: none;
+}
+.tab-content {
+    display: none;
+}
+.tab-content.active {
+    display: block;
+}
