@@ -65,26 +65,38 @@ export function attachAllEventListeners(reRenderCallback) {
     document.querySelectorAll('.include-patterns').forEach(input => {
         input.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'includePatterns'));
     });
-    document.querySelectorAll('.copy-to-clipboard').forEach(checkbox => {
-        checkbox.addEventListener('change', (e) => {
-            const id = parseInt(e.target.dataset.id);
-            const asFileCheckbox = document.getElementById(`contextAsFile-${id}`);
-            if (asFileCheckbox) {
-                asFileCheckbox.disabled = e.target.checked;
-                if (e.target.checked && asFileCheckbox.checked) {
+    
+    document.querySelectorAll('.get-context-target').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            const profileId = e.target.name.split('-')[1];
+            const asFileContainer = document.querySelector(`#profile-${profileId} .context-as-file-container`);
+            if (asFileContainer) {
+                asFileContainer.classList.toggle('d-none', e.target.value === 'clipboard');
+            }
+            
+            if (e.target.value === 'clipboard') {
+                const asFileCheckbox = document.getElementById(`contextAsFile-${profileId}`);
+                if (asFileCheckbox && asFileCheckbox.checked) {
                     asFileCheckbox.checked = false;
-                    // Manually trigger a change event so the state is saved
                     asFileCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
                 }
             }
-            inputHandlers.handleCheckboxChange(e, 'copyToClipboard');
+    
+            const mockEvent = { target: { id: `getContextTarget-${profileId}`, value: e.target.value }};
+            inputHandlers.handleInputChange(mockEvent, 'getContextTarget');
         });
     });
+
+    document.querySelectorAll('.deploy-code-source').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            const profileId = e.target.name.split('-')[1];
+            const mockEvent = { target: { id: `deployCodeSource-${profileId}`, value: e.target.value }};
+            inputHandlers.handleInputChange(mockEvent, 'deployCodeSource');
+        });
+    });
+
     document.querySelectorAll('.context-as-file').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => inputHandlers.handleCheckboxChange(e, 'contextAsFile'));
-    });
-    document.querySelectorAll('.deploy-from-clipboard').forEach(checkbox => {
-        checkbox.addEventListener('change', (e) => inputHandlers.handleCheckboxChange(e, 'deployFromClipboard'));
     });
 
     // --- Main action buttons ---

@@ -5,7 +5,7 @@
  * @returns {Promise<string|null>} The deployment script text, or null if not found.
  */
 export async function extractCodeToDeploy(profile, isDetached) {
-    if (profile.deployFromClipboard || isDetached) {
+    if (profile.deployCodeSource === 'clipboard' || isDetached) {
         return await navigator.clipboard.readText();
     }
     

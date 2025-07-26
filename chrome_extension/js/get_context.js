@@ -47,7 +47,7 @@ async function getContextJs(profile, fromShortcut) {
         
         const finalPrompt = formatContextPrompt(treeString, contentString, profile);
 
-        if (profile.copyToClipboard || isDetached) {
+        if (profile.getContextTarget === 'clipboard' || isDetached) {
             await navigator.clipboard.writeText(finalPrompt);
             updateAndSaveMessage(profile.id, 'Context copied to clipboard!', 'success');
         } else if (profile.contextAsFile) {
@@ -83,7 +83,7 @@ async function getExclusionSuggestionJs(profile) {
     
     const prompt = formatExclusionPrompt(treeString, totalChars, profile);
     
-    if (profile.copyToClipboard) {
+    if (profile.getContextTarget === 'clipboard') {
         await navigator.clipboard.writeText(prompt);
         updateAndSaveMessage(profile.id, 'Exclusion suggestion prompt copied!', 'success');
     } else {
@@ -124,7 +124,7 @@ async function getContextServer(profile, fromShortcut) {
         
         // Server returns suggestion prompt directly if size is too large
         if (responseText.startsWith("PROJECT FILE TREE")) {
-            if (profile.copyToClipboard || isDetached) {
+            if (profile.getContextTarget === 'clipboard' || isDetached) {
                 await navigator.clipboard.writeText(responseText);
                 updateAndSaveMessage(profile.id, 'Context too large. Suggestion prompt copied!', 'success');
             } else {
@@ -152,7 +152,7 @@ async function getContextServer(profile, fromShortcut) {
             ? `${instructionsBlock}\n\nThis is current state of project files:\n${codeBlockDelimiter}bash\n${fileContext}${codeBlockDelimiter}\n\n\n${instructionsBlock}\n\n\n \n`
             : `This is current state of project files:\n${codeBlockDelimiter}bash\n${fileContext}${codeBlockDelimiter}\n\n\n${instructionsBlock}\n\n\n \n`;
 
-        if (profile.copyToClipboard || isDetached) {
+        if (profile.getContextTarget === 'clipboard' || isDetached) {
             await navigator.clipboard.writeText(finalPrompt);
             updateAndSaveMessage(profile.id, 'Context copied to clipboard!', 'success');
         } else if (profile.contextAsFile) {
@@ -197,7 +197,7 @@ async function getExclusionSuggestionServer(profile) {
         const responseText = await response.text();
         if (!response.ok) throw new Error(`Server error: ${response.status} ${responseText}`);
         
-        if (profile.copyToClipboard) {
+        if (profile.getContextTarget === 'clipboard') {
             await navigator.clipboard.writeText(responseText);
             updateAndSaveMessage(profile.id, 'Exclusion suggestion prompt copied!', 'success');
         } else {

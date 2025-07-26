@@ -64,19 +64,39 @@ export function getProfileCardHTML(profile) {
             <input type="text" class="form-control form-control-sm include-patterns" id="includePatterns-${profile.id}" placeholder="*.py,*.js,*.html" value="${profile.includePatterns || ''}">
         </div>
 
-        <div class="d-flex align-items-center justify-content-between mb-2">
-            <div class="form-check form-check-inline me-auto mb-0">
-                <input type="checkbox" class="form-check-input copy-to-clipboard" id="copyToClipboard-${profile.id}" data-id="${profile.id}" ${profile.copyToClipboard ? 'checked' : ''}>
-                <label class="form-check-label" for="copyToClipboard-${profile.id}">Get Context to clipboard</label>
+        <!-- Input Controls Wrapper -->
+        <div class="input-controls-wrapper mb-3">
+            <!-- Get Context Row -->
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center flex-grow-1">
+                    <label class="form-label mb-0 input-control-label">Context to:</label>
+                    <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input get-context-target" type="radio" name="getContextTarget-${profile.id}" id="getContextTargetUi-${profile.id}" value="ui" ${profile.getContextTarget === 'ui' ? 'checked' : ''}>
+                        <label class="form-check-label" for="getContextTargetUi-${profile.id}">UI</label>
+                    </div>
+                    <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input get-context-target" type="radio" name="getContextTarget-${profile.id}" id="getContextTargetClipboard-${profile.id}" value="clipboard" ${profile.getContextTarget === 'clipboard' ? 'checked' : ''}>
+                        <label class="form-check-label" for="getContextTargetClipboard-${profile.id}">Clipboard</label>
+                    </div>
+                </div>
+                <div class="form-check form-check-inline mb-0 context-as-file-container ${profile.getContextTarget === 'clipboard' ? 'd-none' : ''}">
+                    <input type="checkbox" class="form-check-input context-as-file" id="contextAsFile-${profile.id}" data-id="${profile.id}" ${profile.contextAsFile ? 'checked' : ''}>
+                    <label class="form-check-label" for="contextAsFile-${profile.id}">As file</label>
+                </div>
             </div>
-            <div class="form-check form-check-inline mb-0 context-as-file-container">
-                <input type="checkbox" class="form-check-input context-as-file" id="contextAsFile-${profile.id}" data-id="${profile.id}" ${profile.contextAsFile ? 'checked' : ''} ${profile.copyToClipboard ? 'disabled' : ''}>
-                <label class="form-check-label" for="contextAsFile-${profile.id}">As file</label>
+
+            <!-- Deploy Code Row -->
+            <div class="d-flex align-items-center mt-2">
+                <label class="form-label mb-0 input-control-label">Deploy from:</label>
+                <div class="form-check form-check-inline mb-0">
+                    <input class="form-check-input deploy-code-source" type="radio" name="deployCodeSource-${profile.id}" id="deployCodeSourceUi-${profile.id}" value="ui" ${profile.deployCodeSource === 'ui' ? 'checked' : ''}>
+                    <label class="form-check-label" for="deployCodeSourceUi-${profile.id}">UI</label>
+                </div>
+                <div class="form-check form-check-inline mb-0">
+                    <input class="form-check-input deploy-code-source" type="radio" name="deployCodeSource-${profile.id}" id="deployCodeSourceClipboard-${profile.id}" value="clipboard" ${profile.deployCodeSource === 'clipboard' ? 'checked' : ''}>
+                    <label class="form-check-label" for="deployCodeSourceClipboard-${profile.id}">Clipboard</label>
+                </div>
             </div>
-        </div>
-        <div class="form-check mb-3">
-            <input type="checkbox" class="form-check-input deploy-from-clipboard" id="deployFromClipboard-${profile.id}" ${profile.deployFromClipboard ? 'checked' : ''}>
-            <label class="form-check-label" for="deployFromClipboard-${profile.id}">Deploy Code from clipboard</label>
         </div>
         
         <div class="d-flex gap-2 action-buttons-container">

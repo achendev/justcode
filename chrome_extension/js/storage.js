@@ -12,8 +12,8 @@ export function loadData(callback) {
                 id: Date.now(),
                 name: 'Default',
                 // Universal fields
-                copyToClipboard: false,
-                deployFromClipboard: false,
+                getContextTarget: 'ui', // 'ui' or 'clipboard'
+                deployCodeSource: 'ui', // 'ui' or 'clipboard'
                 contextAsFile: false,
                 excludePatterns: defaultExcludePatterns,
                 includePatterns: '',
@@ -38,9 +38,21 @@ export function loadData(callback) {
 
         // Ensure all profiles have the latest fields
         profiles.forEach(profile => {
-            // If useServerBackend is undefined, default it to TRUE.
-            // This ensures users updating from the server-only version
-            // retain server mode on their existing profiles.
+            // Migration from old boolean flags to new radio button values
+            if (profile.copyToClipboard !== undefined) {
+                profile.getContextTarget = profile.copyToClipboard ? 'clipboard' : 'ui';
+                delete profile.copyToClipboard;
+                needsSave = true;
+            }
+            if (profile.deployFromClipboard !== undefined) {
+                profile.deployCodeSource = profile.deployFromClipboard ? 'clipboard' : 'ui';
+                delete profile.deployFromClipboard;
+                needsSave = true;
+            }
+
+            // Standard field existence checks
+            if (profile.getContextTarget === undefined) { profile.getContextTarget = 'ui'; needsSave = true; }
+            if (profile.deployCodeSource === undefined) { profile.deployCodeSource = 'ui'; needsSave = true; }
             if (profile.useServerBackend === undefined) { profile.useServerBackend = true; needsSave = true; }
             if (profile.projectPath === undefined) { profile.projectPath = ''; needsSave = true; }
             if (profile.serverUrl === undefined) { profile.serverUrl = defaultServerUrl; needsSave = true; }
@@ -49,7 +61,6 @@ export function loadData(callback) {
             if (profile.password === undefined) { profile.password = ''; needsSave = true; }
             if (profile.excludePatterns === undefined) { profile.excludePatterns = defaultExcludePatterns; needsSave = true; }
             if (profile.includePatterns === undefined) { profile.includePatterns = ''; needsSave = true; }
-            if (profile.deployFromClipboard === undefined) { profile.deployFromClipboard = false; needsSave = true; }
             if (profile.contextSizeLimit === undefined) { profile.contextSizeLimit = 3000000; needsSave = true; }
             if (profile.lastMessage === undefined) { profile.lastMessage = { text: '', type: 'info' }; needsSave = true; }
             if (profile.criticalInstructions === undefined) { profile.criticalInstructions = defaultCriticalInstructions; needsSave = true; }
