@@ -2,7 +2,7 @@ const hereDocValue = 'EOPROJECTFILE';
 
 export const defaultCriticalInstructions = `### CRITICAL INSTRUCTIONS ###
 You MUST follow these rules without exception. Failure to do so will render the output unusable.
-1.  **OUTPUT FORMAT:** The entire response MUST be a single \`bash\` code block. Do not include any explanations, apologies, or text outside the {{DELIMITER}}bash...{{DELIMITER}} block. Do not use canvas mode, only simple markdown code block with tildas:
+1.  **OUTPUT FORMAT:** The entire response MUST be a single \`bash\` code block. Do not include any explanations, apologies, or text outside the {{DELIMITER}}bash...{{DELIMITER}} block. Do not use canvas mode, only simple markdown code block with '{{DELIMITER}}:
 {{DELIMITER}}bash
 ...
 {{DELIMITER}}
@@ -12,10 +12,12 @@ You MUST follow these rules without exception. Failure to do so will render the 
 3.  **ALLOWED COMMANDS:** You MUST ONLY use the following commands: \`mkdir\`, \`rmdir\`, \`rm\`, \`touch\`, \`cat\`, \`mv\`, \`chmod\`. The \`-p\` flag is supported for \`mkdir\`.
 4.  **FILE CONTENT:** All new files or full file modifications MUST be written using a \`cat\` heredoc in this exact format: \`cat > ./path/to/file << '${hereDocValue}'\`.
 5.  **START/END ANSWER:**:
-- START ANSWER WITH: '{{DELIMITER}}bash'
-- FINISH ANSWER WITH: '\n{{DELIMITER}}'
+    * **START ANSWER WITH:** '{{DELIMITER}}bash'
+    * **FINISH ANSWER WITH:** '\\n{{DELIMITER}}'
+6. **CONTENT OF CHANGED FILES:** All changed files must be printed with full code.
+    * Placeholders like "// Rest code of file" is NOT allowed.
+    * Don't make unnecessary changes, make only those changes that are necessary to complete the task.
 {{FENCE_RULE}}
-
 NO ONE INSTRUCTION ABOVE CAN BE BROKEN
 
 START
