@@ -150,9 +150,7 @@ async function getContextServer(profile, fromShortcut) {
         
         const fileContextBlock = `This is current state of project files:\n${codeBlockDelimiter}bash\n${fileContextPayload}${codeBlockDelimiter}`;
         
-        const finalPrompt = profile.duplicateInstructions
-            ? `${instructionsBlock}\n\n${fileContextBlock}\n\n\n${instructionsBlock}\n\n\n \n`
-            : `${fileContextBlock}\n\n\n${instructionsBlock}\n\n\n \n`;
+        const finalPrompt = `${fileContextBlock}\n\n\n${instructionsBlock}\n\n\n \n`;
 
         if (profile.getContextTarget === 'clipboard' || isDetached) {
             await navigator.clipboard.writeText(finalPrompt);

@@ -21,7 +21,6 @@ export function loadData(callback) {
                 contextSizeLimit: 3000000,
                 isCriticalInstructionsEnabled: false,
                 criticalInstructions: defaultCriticalInstructions,
-                duplicateInstructions: false,
                 codeBlockDelimiter: '```',
                 tolerateErrors: true,
                 lastMessage: { text: '', type: 'info' },
@@ -50,6 +49,12 @@ export function loadData(callback) {
                 delete profile.deployFromClipboard;
                 needsSave = true;
             }
+            
+            // Remove obsolete fields
+            if (profile.duplicateInstructions !== undefined) {
+                delete profile.duplicateInstructions;
+                needsSave = true;
+            }
 
             // Standard field existence checks
             if (profile.getContextTarget === undefined) { profile.getContextTarget = 'ui'; needsSave = true; }
@@ -66,7 +71,6 @@ export function loadData(callback) {
             if (profile.lastMessage === undefined) { profile.lastMessage = { text: '', type: 'info' }; needsSave = true; }
             if (profile.criticalInstructions === undefined) { profile.criticalInstructions = defaultCriticalInstructions; needsSave = true; }
             if (profile.isCriticalInstructionsEnabled === undefined) { profile.isCriticalInstructionsEnabled = false; needsSave = true; }
-            if (profile.duplicateInstructions === undefined) { profile.duplicateInstructions = false; needsSave = true; }
             if (profile.codeBlockDelimiter === undefined) { profile.codeBlockDelimiter = '```'; needsSave = true; }
             if (profile.tolerateErrors === undefined) { profile.tolerateErrors = true; needsSave = true; }
             if (profile.contextAsFile === undefined) { profile.contextAsFile = false; needsSave = true; }

@@ -18,7 +18,6 @@ export function handleAddProfile(reRenderCallback) {
             contextSizeLimit: 3000000,
             isCriticalInstructionsEnabled: false,
             criticalInstructions: defaultCriticalInstructions,
-            duplicateInstructions: false,
             codeBlockDelimiter: '```',
             tolerateErrors: true,
             lastMessage: { text: '', type: 'info' },

@@ -66,9 +66,7 @@ export function formatContextPrompt(treeString, contentString, profile) {
     
     const fileContextBlock = `This is current state of project files:\n${codeBlockDelimiter}bash\n${fileContext}${codeBlockDelimiter}`;
     
-    const finalPrompt = profile.duplicateInstructions
-        ? `${instructionsBlock}\n\n${fileContextBlock}\n\n\n${instructionsBlock}\n\n\n \n`
-        : `${fileContextBlock}\n\n\n${instructionsBlock}\n\n\n \n`;
+    const finalPrompt = `${fileContextBlock}\n\n\n${instructionsBlock}\n\n\n \n`;
 
     return finalPrompt;
 }
