@@ -2,7 +2,7 @@ const hereDocValue = 'EOPROJECTFILE';
 
 export const defaultCriticalInstructions = `### CRITICAL INSTRUCTIONS ###
 You MUST follow these rules without exception. Failure to do so will render the output unusable.
-1.  **OUTPUT FORMAT:** The entire response MUST be a single \`bash\` code block. Do not include any explanations, apologies, or text outside the {{DELIMITER}}bash...{{DELIMITER}} block. Do not use canvas mode, only simple markdown code block with '{{DELIMITER}}:
+1.  **OUTPUT FORMAT:** The entire response MUST be a single \`bash\` code block. Do not include any explanations, apologies, or text outside the {{DELIMITER}}bash...{{DELIMITER}} block. Do not use canvas mode, only simple markdown code block with '{{DELIMITER}}':
 {{DELIMITER}}bash
 ...
 {{DELIMITER}}

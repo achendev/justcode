@@ -5,8 +5,9 @@ import { pasteAsFile } from './paste_handlers/file_uploader.js';
  * This function contains specific logic for different LLM provider websites
  * to ensure robust pasting behavior.
  * @param {string} text The text to paste.
+ * @param {object} [options={}] - Optional parameters for the paste handler.
  */
-export async function pasteIntoLLM(text) {
+export async function pasteIntoLLM(text, options = {}) {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) {
         console.error('JustCode Error: No active tab found.');
@@ -34,7 +35,7 @@ export async function pasteIntoLLM(text) {
     await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: pasteFunc,
-        args: [text]
+        args: [text, options]
     });
 }
 

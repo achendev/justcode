@@ -56,7 +56,7 @@ async function getContextJs(profile, fromShortcut) {
                 const promptForPasting = `The project context is in the attached file \`context.txt\`. Please use it to fulfill the task described below.\n\n${instructionsBlock}\n\n\n \n`;
 
                 await uploadContextAsFile(fileContentForUpload);
-                await pasteIntoLLM(promptForPasting);
+                await pasteIntoLLM(promptForPasting, { isInstruction: true });
                 updateAndSaveMessage(profile.id, 'Context uploaded as file, instructions pasted!', 'success');
             } else {
                 const finalPrompt = formatContextPrompt(treeString, contentString, profile);
@@ -161,7 +161,7 @@ async function getContextServer(profile, fromShortcut) {
             if (profile.separateInstructionsAsFile) {
                 const promptForPasting = `The project context is in the attached file \`context.txt\`. Please use it to fulfill the task described below.\n\n${instructionsBlock}\n\n\n \n`;
                 await uploadContextAsFile(fileContextBlock);
-                await pasteIntoLLM(promptForPasting);
+                await pasteIntoLLM(promptForPasting, { isInstruction: true });
                 updateAndSaveMessage(profile.id, 'Context uploaded as file, instructions pasted!', 'success');
             } else {
                 await uploadContextAsFile(finalPrompt);
