@@ -10,10 +10,10 @@ You MUST follow these rules without exception. Failure to do so will render the 
     *   **To delete a file:** You MUST use \`rm ./path/to/file.ext\`. You can optionally use the \`-f\` flag.
     *   **To delete an empty directory:** You MUST use \`rmdir ./path/to/directory\`.
 3.  **ALLOWED COMMANDS:** You MUST ONLY use the following commands: \`mkdir\`, \`rmdir\`, \`rm\`, \`touch\`, \`cat\`, \`mv\`, \`chmod\`. The \`-p\` flag is supported for \`mkdir\`.
-4.  **FILE CONTENT:** All new files or full file modifications MUST be written using a \`cat\` heredoc in this exact format: 
-\`cat > ./path/to/file << '${hereDocValue}'\`
+4.  **FILE CONTENT:** All new files or full file modifications MUST be written using a \`cat\` heredoc in this exact format:
+cat > ./path/to/file << '${hereDocValue}'
 <Full code of the file>
-\`'${hereDocValue}'\`
+${hereDocValue}
 {{FENCE_RULE}}
 
 ### EXAMPLE OF A PERFECT RESPONSE ###
