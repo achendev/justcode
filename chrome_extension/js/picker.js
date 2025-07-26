@@ -36,13 +36,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 messageDiv.textContent = `Folder '${handle.name}' selected successfully!`;
                 messageDiv.className = 'success';
-                subMessageP.textContent = 'You can now close this window. The change will be reflected when you re-open the JustCode popup.';
                 
                 chrome.runtime.sendMessage({
                     type: "folderSelected", 
                     profileId: profileId,
                     folderName: handle.name
                 }).catch(e => console.log("Could not send message, probably because the popup closed. This is expected."));
+
+                let countdown = 7;
+                subMessageP.textContent = `This window will close automatically in ${countdown} seconds...`;
+
+                const countdownInterval = setInterval(() => {
+                    countdown--;
+                    if (countdown > 0) {
+                        subMessageP.textContent = `This window will close automatically in ${countdown} seconds...`;
+                    } else {
+                        clearInterval(countdownInterval);
+                        window.close();
+                    }
+                }, 1000);
 
             } else {
                 messageDiv.textContent = 'Permission to access folder was denied.';
