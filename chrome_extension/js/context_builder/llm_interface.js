@@ -42,6 +42,7 @@ export async function pasteIntoLLM(text, options = {}) {
 
 /**
  * Creates a file from the given text and "uploads" it to the active LLM tab.
+ * This function dispatches to site-specific handlers where available.
  * @param {string} text The content for the file.
  */
 export async function uploadContextAsFile(text) {
@@ -51,11 +52,21 @@ export async function uploadContextAsFile(text) {
         return;
     }
 
-    // We use a generic file uploader because site-specific logic for file inputs
-    // can be complex and brittle. This uploader tries common methods that work across many platforms.
+    const url = new URL(tab.url);
+    const hostname = url.hostname;
+    let uploadFunc;
+
+    if (hostname.includes('chatgpt.com')) {
+        const { pasteAsFileChatGPT } = await import('./paste_handlers/chatgpt.js');
+        uploadFunc = pasteAsFileChatGPT;
+    } else {
+        // Fallback to the generic uploader for other sites.
+        uploadFunc = pasteAsFile;
+    }
+
     await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        func: pasteAsFile,
+        func: uploadFunc,
         args: ['context.txt', text]
     });
 }
