@@ -2,7 +2,8 @@ import os
 import shutil
 import traceback
 from flask import request, Response
-from .tools import get_sorted_stack_timestamps, execute_script, _get_history_dir
+from .tools.history_manager import get_sorted_stack_timestamps, get_history_dir
+from .tools.script_executor import execute_script
 
 def redo():
     path = request.args.get('path')
@@ -25,8 +26,8 @@ def redo():
 
         latest_timestamp = all_redo_timestamps[-1] # Get the newest one from the redo stack
         
-        undo_stack_dir = _get_history_dir(project_path, 'undo')
-        redo_stack_dir = _get_history_dir(project_path, 'redo')
+        undo_stack_dir = get_history_dir(project_path, 'undo')
+        redo_stack_dir = get_history_dir(project_path, 'redo')
         
         undo_script_path_in_redo = os.path.join(redo_stack_dir, f"{latest_timestamp}.sh")
         redo_script_path_in_redo = os.path.join(redo_stack_dir, f"{latest_timestamp}.redo")

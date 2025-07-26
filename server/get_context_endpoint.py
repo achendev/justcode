@@ -1,7 +1,7 @@
 import os
 import traceback
 from flask import request, Response
-from .tools import generate_context_from_path, generate_tree_with_char_counts
+from .tools.context_generator import generate_context_from_path, generate_tree_with_char_counts
 
 def get_context():
     path = request.args.get('path')

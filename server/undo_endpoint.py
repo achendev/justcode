@@ -2,7 +2,8 @@ import os
 import traceback
 import shutil
 from flask import request, Response
-from .tools import get_sorted_stack_timestamps, execute_script, _get_history_dir
+from .tools.history_manager import get_sorted_stack_timestamps, get_history_dir
+from .tools.script_executor import execute_script
 
 def undo(): # This is the UNDO action
     path = request.args.get('path')
@@ -25,8 +26,8 @@ def undo(): # This is the UNDO action
 
         latest_timestamp = all_undo_timestamps[-1]
         
-        undo_stack_dir = _get_history_dir(project_path, 'undo')
-        redo_stack_dir = _get_history_dir(project_path, 'redo')
+        undo_stack_dir = get_history_dir(project_path, 'undo')
+        redo_stack_dir = get_history_dir(project_path, 'redo')
 
         undo_script_path = os.path.join(undo_stack_dir, f"{latest_timestamp}.sh")
         redo_script_path = os.path.join(undo_stack_dir, f"{latest_timestamp}.redo")

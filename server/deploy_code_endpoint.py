@@ -5,7 +5,9 @@ import traceback
 import stat
 import time
 from flask import request, Response
-from .tools import is_safe_path, execute_script, here_doc_value, _get_history_dir, clear_stack, get_sorted_stack_timestamps
+from .tools.utils import is_safe_path, here_doc_value
+from .tools.script_executor import execute_script
+from .tools.history_manager import get_history_dir, clear_stack, get_sorted_stack_timestamps
 
 def deploy_code():
     path = request.args.get('path')
@@ -129,7 +131,7 @@ def deploy_code():
 
     # Create new script files in the undo_stack.
     timestamp = str(int(time.time() * 1000))
-    undo_stack_dir = _get_history_dir(project_path, 'undo')
+    undo_stack_dir = get_history_dir(project_path, 'undo')
     undo_script_content = "\n".join(rollback_commands)
     undo_filepath = os.path.join(undo_stack_dir, f"{timestamp}.sh")
     redo_filepath = os.path.join(undo_stack_dir, f"{timestamp}.redo") # The redo file is the original deploy script
