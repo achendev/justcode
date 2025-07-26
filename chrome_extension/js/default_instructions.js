@@ -40,8 +40,7 @@ cat > ./path/to/new/bin/myscript << '${hereDocValue}'
 #!/bin/bash
 echo "Hello from my new script!"
 ${hereDocValue}
-chmod +x ./path/to/new/bin/myscript
-rm -f ./path/to/old_file_to_remove.txt
+rm ./path/to/old_file_to_remove.txt
 rmdir ./path/to/empty_directory_to_remove
 mv ./path/to/old_name.txt ./path/to/new_name.txt
 {{DELIMITER}}`;
