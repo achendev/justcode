@@ -9,8 +9,10 @@ export function handleAddProfile(reRenderCallback) {
             id: Date.now(),
             name: `Profile ${profiles.length + 1}`,
             // Universal fields
-            copyToClipboard: false,
-            deployFromClipboard: false,
+            getContextTarget: 'ui',
+            deployCodeSource: 'ui',
+            contextAsFile: true,
+            separateInstructionsAsFile: true,
             excludePatterns: '.git/,venv/,.env,log/,*logs/,tmp/,node_modules/',
             includePatterns: '',
             contextSizeLimit: 3000000,
@@ -170,6 +172,6 @@ export function handlePermanentDeleteProfile(event, reRenderCallback) {
         forgetHandle(id); // Clean up IndexedDB
         const updatedArchivedProfiles = archivedProfiles.filter(p => p.id !== id);
         saveData(profiles, activeProfileId, updatedArchivedProfiles);
-        reRenderCallback(profiles, activeProfileId, updatedArchivedProfiles);
+        reRenderCallback(profiles, activeProfileId, archivedProfiles);
     });
 }

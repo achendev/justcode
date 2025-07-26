@@ -14,7 +14,7 @@ export function loadData(callback) {
                 // Universal fields
                 getContextTarget: 'ui', // 'ui' or 'clipboard'
                 deployCodeSource: 'ui', // 'ui' or 'clipboard'
-                contextAsFile: false,
+                contextAsFile: true,
                 separateInstructionsAsFile: true,
                 excludePatterns: defaultExcludePatterns,
                 includePatterns: '',
