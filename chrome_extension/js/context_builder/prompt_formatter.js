@@ -43,7 +43,7 @@ export function getInstructionsBlock(profile) {
         : defaultCriticalInstructions;
     
     let fenceRule = (codeBlockDelimiter === '```') 
-        ? `6.  **NO NESTED CODE FENCES:** Inside a file's content, no line can begin with three backticks. Use indentation.`
+        ? `5.  **NO NESTED CODE FENCES:** Inside a file's content, no line can begin with three backticks. Use indentation.`
         : '';
 
     const instructionsBlock = baseInstructions
