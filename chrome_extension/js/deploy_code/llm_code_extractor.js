@@ -1,5 +1,7 @@
 /**
  * Extracts the deployment script from either the clipboard or the active LLM page.
+ * This function acts as a dispatcher, choosing the correct extraction strategy
+ * based on the active tab's URL.
  * @param {object} profile - The active user profile.
  * @param {boolean} isDetached - Whether the popup is in a detached window.
  * @returns {Promise<string|null>} The deployment script text, or null if not found.
@@ -15,56 +17,24 @@ export async function extractCodeToDeploy(profile, isDetached) {
         return null;
     }
 
+    const url = new URL(tab.url);
+    const hostname = url.hostname;
+    let extractFunc;
+
+    if (hostname.includes('aistudio.google.com') || hostname.includes('gemini.google.com')) {
+        const { extractGeminiAnswer } = await import('./answer_extractors/gemini.js');
+        extractFunc = extractGeminiAnswer;
+    } else if (hostname.includes('chatgpt.com')) {
+        const { extractChatGPTAnswer } = await import('./answer_extractors/chatgpt.js');
+        extractFunc = extractChatGPTAnswer;
+    } else {
+        const { extractFallbackAnswer } = await import('./answer_extractors/fallback.js');
+        extractFunc = extractFallbackAnswer;
+    }
+
     const results = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        func: (shouldExtractFullAnswer) => {
-            // This function is always available as a fallback to get just the code.
-            const getCodeBlock = () => {
-                const codeBlocks = Array.from(document.querySelectorAll('pre code'));
-                if (codeBlocks.length > 0) return codeBlocks[codeBlocks.length - 1].innerText;
-                
-                const pres = Array.from(document.querySelectorAll('pre'));
-                if (pres.length > 0) return pres[pres.length - 1].innerText;
-
-                const allCode = Array.from(document.querySelectorAll('code'));
-                if (allCode.length > 0) return allCode[allCode.length - 1].innerText;
-
-                return null;
-            };
-
-            // If we only want the code block, we're done.
-            if (!shouldExtractFullAnswer) {
-                return getCodeBlock();
-            }
-
-            // --- Logic to get the full answer text from the page ---
-            const hostname = window.location.hostname;
-
-            // Specific and robust selector for Google AI Studio / Gemini
-            if (hostname.includes('aistudio.google.com') || hostname.includes('gemini.google.com')) {
-                // This selector targets the content div inside a turn that is identified as coming from the 'model'.
-                // This is based on the user-provided HTML and should be much more reliable.
-                const modelContentBlocks = document.querySelectorAll('.chat-turn-container.model .turn-content');
-                if (modelContentBlocks.length > 0) {
-                    return modelContentBlocks[modelContentBlocks.length - 1].innerText;
-                }
-            }
-            
-            // Selector for ChatGPT
-            if (hostname.includes('chatgpt.com')) {
-                const turns = document.querySelectorAll('[data-message-author-role="assistant"]');
-                if (turns.length > 0) {
-                    const lastTurn = turns[turns.length - 1];
-                    // ChatGPT nests the content, so we target a specific child for cleaner text.
-                    const content = lastTurn.querySelector('.markdown');
-                    return content ? content.innerText : lastTurn.innerText;
-                }
-            }
-
-            // If "Answer" is checked but we don't have a specific selector for the site,
-            // we fall back to just getting the last code block. This is a safe default.
-            return getCodeBlock();
-        },
+        func: extractFunc,
         args: [profile.deployFromFullAnswer]
     });
 

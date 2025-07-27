@@ -36,3 +36,9 @@
 .deploy-as-answer-container .form-check-label {
     font-style: italic;
 }
+.form-check.form-check-inline.mb-0.context-as-file-container {
+    width: 100%;
+}
+.form-check.form-check-inline.mb-0.deploy-as-answer-container {
+    width: 100%;
+}
