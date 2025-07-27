@@ -2,18 +2,20 @@ import { hereDocValue } from '../default_instructions.js';
 
 /**
  * Parses and executes a bash-like script using the File System Access API.
- * Exported for use by undo_redo.js
  * @param {FileSystemDirectoryHandle} rootHandle The root directory handle for the project.
  * @param {string} script The script to execute.
  * @param {boolean} tolerateErrors If true, continues execution on error.
+ * @returns {Promise<string[]>} A list of error messages encountered.
  */
 export async function executeFileSystemScript(rootHandle, script, tolerateErrors) {
-    // Normalize line endings to prevent issues on Windows
     const lines = script.replace(/\r\n/g, '\n').split('\n');
     let i = 0;
+    const errors = [];
 
     while (i < lines.length) {
         const line = lines[i].trim();
+        const originalLineForError = lines[i];
+        const lineNumForError = i + 1;
         i++; // Move to the next line immediately
 
         if (!line || line.startsWith('#')) continue;
@@ -101,7 +103,6 @@ export async function executeFileSystemScript(rootHandle, script, tolerateErrors
                     try {
                         await parentDir.removeEntry(fileName, { recursive: false });
                     } catch (e) {
-                        // If -f flag is used or we tolerate errors, ignore NotFoundError.
                         if ((fFlag || tolerateErrors) && e.name === 'NotFoundError') {
                             console.log(`File not found for 'rm', but ignoring: ${filePath}`);
                         } else {
@@ -122,7 +123,6 @@ export async function executeFileSystemScript(rootHandle, script, tolerateErrors
                     try {
                         await parentDir.removeEntry(dirName, { recursive: false });
                     } catch (e) {
-                        // If tolerating errors, ignore not-found or not-empty errors for rmdir.
                         if (tolerateErrors && (e.name === 'NotFoundError' || e.name === 'InvalidModificationError')) {
                              console.log(`Ignoring safe error for rmdir on '${dirPath}': ${e.message}`);
                         } else {
@@ -163,8 +163,14 @@ export async function executeFileSystemScript(rootHandle, script, tolerateErrors
                  throw new Error(`Unsupported command in deploy script: ${command}`);
             }
         } catch(error) {
-            console.error(`Error executing line: '${line}'`, error);
-            if (!tolerateErrors) throw error;
+            const errorMessage = `Error on line ${lineNumForError}: '${originalLineForError.trim()}'\n  -> ${error.message}`;
+            console.error(errorMessage, error);
+            if (tolerateErrors) {
+                errors.push(errorMessage);
+            } else {
+                throw error;
+            }
         }
     }
+    return errors;
 }

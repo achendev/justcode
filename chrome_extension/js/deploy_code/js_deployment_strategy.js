@@ -8,6 +8,7 @@ import { executeFileSystemScript } from './script_executor.js';
 /**
  * Handles the deployment process for the JS (File System Access API) backend.
  * @param {object} profile - The active user profile.
+ * @returns {Promise<string>} A status message upon completion.
  */
 export async function handleJsDeployment(profile) {
     const isDetached = new URLSearchParams(window.location.search).get('view') === 'window';
@@ -30,7 +31,7 @@ export async function handleJsDeployment(profile) {
     const undoScript = await generateUndoScript(handle, codeToDeploy);
 
     updateTemporaryMessage(profile.id, 'Deploying code locally...');
-    await executeFileSystemScript(handle, codeToDeploy, profile.tolerateErrors !== false);
+    const errors = await executeFileSystemScript(handle, codeToDeploy, profile.tolerateErrors !== false);
     
     // On success, update history
     const undoKey = `undo_stack_${profile.id}`;
@@ -41,9 +42,15 @@ export async function handleJsDeployment(profile) {
     
     undoStack.push({ undoScript: undoScript, redoScript: codeToDeploy });
     
-    // Save the updated undo stack and clear the redo stack
     await chrome.storage.local.set({ [undoKey]: undoStack.slice(-20) }); // Limit stack size
     await chrome.storage.local.remove(redoKey);
     
     console.log('JustCode Deploy Result: Local file system updated.');
+    
+    if (errors.length > 0) {
+        const errorDetails = errors.join('\n---\n');
+        return `Deployed with ${errors.length} ignored error(s):\n${errorDetails}`;
+    }
+    
+    return 'Code deployed successfully!';
 }

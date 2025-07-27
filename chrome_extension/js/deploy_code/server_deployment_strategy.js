@@ -4,6 +4,7 @@ import { extractCodeToDeploy } from './llm_code_extractor.js';
 /**
  * Handles the deployment process for the server backend.
  * @param {object} profile - The active user profile.
+ * @returns {Promise<string>} A status message upon completion.
  */
 export async function handleServerDeployment(profile) {
     const isDetached = new URLSearchParams(window.location.search).get('view') === 'window';
@@ -39,4 +40,5 @@ export async function handleServerDeployment(profile) {
     }
     
     console.log('JustCode Deploy Result:', resultText);
+    return resultText; // Return the server's response message
 }

@@ -151,11 +151,22 @@ def deploy_code():
     
     # --- Pass 2: Execute Deployment Script ---
     try:
-        output_log = execute_script(script_content, project_path, tolerate_errors)
-        success_message = f"Successfully deployed code.\n--- LOG ---\n" + "\n".join(output_log)
-        return Response(success_message, mimetype='text/plain')
+        output_log, error_log = execute_script(script_content, project_path, tolerate_errors)
+        
+        message = ""
+        if error_log:
+            message += "Deployed with some ignored errors:\n\n"
+            message += "\n---\n".join(error_log)
+            message += "\n\n--- SUCCESSFUL ACTIONS LOG ---\n"
+        else:
+            message = "Successfully deployed code.\n--- LOG ---\n"
+
+        message += "\n".join(output_log)
+        
+        return Response(message, mimetype='text/plain')
+
     except Exception as e:
-        # On failure, remove the undo/redo files we just created.
+        # This block will now only be reached if tolerate_errors is false and an error occurs.
         try:
             if os.path.exists(undo_filepath): os.remove(undo_filepath)
             if os.path.exists(redo_filepath): os.remove(redo_filepath)

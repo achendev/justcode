@@ -11,14 +11,15 @@ import { handleServerDeployment } from './deploy_code/server_deployment_strategy
  */
 export async function deployCode(profile) {
     updateTemporaryMessage(profile.id, '');
+    let successMessage = 'Code deployed successfully!'; // Default
 
     try {
         if (profile.useServerBackend) {
-            await handleServerDeployment(profile);
+            successMessage = await handleServerDeployment(profile);
         } else {
-            await handleJsDeployment(profile);
+            successMessage = await handleJsDeployment(profile);
         }
-        updateAndSaveMessage(profile.id, 'Code deployed successfully!', 'success');
+        updateAndSaveMessage(profile.id, successMessage, 'success');
     } catch (error) {
         updateAndSaveMessage(profile.id, `Error: ${error.message}`, 'error');
         console.error('JustCode Error:', error);
