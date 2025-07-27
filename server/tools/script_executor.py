@@ -27,7 +27,7 @@ def execute_script(script_content, project_path, tolerate_errors=False):
                 if not is_safe_path(project_path, relative_path):
                     raise PermissionError(f"Path traversal attempt detected: {relative_path}")
                 
-                full_path = os.path.join(project_path, relative_path)
+                full_path = os.path.join(project_path, relative_path.replace('/', os.sep))
                 
                 content_lines = []
                 while i < len(lines):
@@ -70,7 +70,7 @@ def execute_script(script_content, project_path, tolerate_errors=False):
                 for arg in paths_to_create:
                     relative_path = re.sub(r'^\./', '', arg)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
-                    full_path = os.path.join(project_path, relative_path)
+                    full_path = os.path.join(project_path, relative_path.replace('/', os.sep))
                     if use_p_flag:
                         os.makedirs(full_path, exist_ok=True)
                         output_log.append(f"Created directory (with -p): {relative_path}")
@@ -85,7 +85,7 @@ def execute_script(script_content, project_path, tolerate_errors=False):
                 for arg in args:
                     relative_path = re.sub(r'^\./', '', arg)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
-                    full_path = os.path.join(project_path, relative_path)
+                    full_path = os.path.join(project_path, relative_path.replace('/', os.sep))
                     os.makedirs(os.path.dirname(full_path), exist_ok=True)
                     with open(full_path, 'a'): os.utime(full_path, None)
                     output_log.append(f"Touched file: {relative_path}")
@@ -107,7 +107,7 @@ def execute_script(script_content, project_path, tolerate_errors=False):
                 for relative_path in file_paths:
                     relative_path = re.sub(r'^\./', '', relative_path)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
-                    full_path = os.path.join(project_path, relative_path)
+                    full_path = os.path.join(project_path, relative_path.replace('/', os.sep))
                     try:
                         if os.path.isdir(full_path): raise IsADirectoryError(f"Cannot 'rm' a directory: {relative_path}")
                         os.remove(full_path)
@@ -119,7 +119,7 @@ def execute_script(script_content, project_path, tolerate_errors=False):
                 for arg in args:
                     relative_path = re.sub(r'^\./', '', arg)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
-                    full_path = os.path.join(project_path, relative_path)
+                    full_path = os.path.join(project_path, relative_path.replace('/', os.sep))
                     try:
                         os.rmdir(full_path)
                         output_log.append(f"Removed directory: {relative_path}")
@@ -138,7 +138,7 @@ def execute_script(script_content, project_path, tolerate_errors=False):
                     if not is_safe_path(project_path, relative_path):
                         raise PermissionError(f"Traversal: {relative_path}")
                     
-                    full_path = os.path.join(project_path, relative_path)
+                    full_path = os.path.join(project_path, relative_path.replace('/', os.sep))
                     if not os.path.exists(full_path):
                         raise FileNotFoundError(f"chmod: cannot access '{relative_path}': No such file or directory")
 
@@ -159,8 +159,8 @@ def execute_script(script_content, project_path, tolerate_errors=False):
                 if len(args) != 2: raise ValueError("'mv' requires two arguments.")
                 src, dest = re.sub(r'^\./', '', args[0]), re.sub(r'^\./', '', args[1])
                 if not is_safe_path(project_path, src) or not is_safe_path(project_path, dest): raise PermissionError(f"Traversal: {src} or {dest}")
-                full_src = os.path.join(project_path, src)
-                full_dest = os.path.join(project_path, dest)
+                full_src = os.path.join(project_path, src.replace('/', os.sep))
+                full_dest = os.path.join(project_path, dest.replace('/', os.sep))
                 os.makedirs(os.path.dirname(full_dest), exist_ok=True)
                 os.rename(full_src, full_dest)
                 output_log.append(f"Moved: {src} to {dest}")

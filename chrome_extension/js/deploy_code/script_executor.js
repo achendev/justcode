@@ -8,7 +8,8 @@ import { hereDocValue } from '../default_instructions.js';
  * @param {boolean} tolerateErrors If true, continues execution on error.
  */
 export async function executeFileSystemScript(rootHandle, script, tolerateErrors) {
-    const lines = script.split('\n');
+    // Normalize line endings to prevent issues on Windows
+    const lines = script.replace(/\r\n/g, '\n').split('\n');
     let i = 0;
 
     while (i < lines.length) {

@@ -40,7 +40,7 @@ def deploy_code():
                 relative_path = re.sub(r'^\./', '', match.group('path').strip("'\""))
                 if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                 
-                full_path = os.path.join(project_path, relative_path)
+                full_path = os.path.join(project_path, relative_path.replace('/', os.sep))
                 quoted_rel_path = shlex.quote('./' + relative_path)
                 if os.path.isfile(full_path):
                     with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
@@ -73,13 +73,13 @@ def deploy_code():
                 for arg in paths_to_create:
                     relative_path = re.sub(r'^\./', '', arg)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
-                    if not os.path.isdir(os.path.join(project_path, relative_path)):
+                    if not os.path.isdir(os.path.join(project_path, relative_path.replace('/', os.sep))):
                         rollback_commands.insert(0, f"rmdir {shlex.quote('./' + relative_path)}")
             elif command == 'touch':
                 for arg in args:
                     relative_path = re.sub(r'^\./', '', arg)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
-                    if not os.path.exists(os.path.join(project_path, relative_path)):
+                    if not os.path.exists(os.path.join(project_path, relative_path.replace('/', os.sep))):
                         rollback_commands.insert(0, f"rm -f {shlex.quote('./' + relative_path)}")
             elif command == 'rm':
                 for arg in args:
@@ -89,7 +89,7 @@ def deploy_code():
                 for relative_path_arg in file_paths:
                     relative_path = re.sub(r'^\./', '', relative_path_arg)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
-                    full_path = os.path.join(project_path, relative_path)
+                    full_path = os.path.join(project_path, relative_path.replace('/', os.sep))
                     if os.path.isfile(full_path):
                         with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
                             original_content = f.read()
@@ -99,7 +99,7 @@ def deploy_code():
                 for arg in args:
                     relative_path = re.sub(r'^\./', '', arg)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
-                    if os.path.isdir(os.path.join(project_path, relative_path)):
+                    if os.path.isdir(os.path.join(project_path, relative_path.replace('/', os.sep))):
                         rollback_commands.insert(0, f"mkdir {shlex.quote('./' + relative_path)}")
             elif command == 'mv':
                 if len(args) != 2: raise ValueError("'mv' requires two arguments.")
@@ -111,7 +111,7 @@ def deploy_code():
                 for arg in file_args:
                     relative_path = re.sub(r'^\./', '', arg)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
-                    full_path = os.path.join(project_path, relative_path)
+                    full_path = os.path.join(project_path, relative_path.replace('/', os.sep))
                     if os.path.exists(full_path) and not os.path.isdir(full_path):
                         try:
                             original_permissions = stat.S_IMODE(os.stat(full_path).st_mode)

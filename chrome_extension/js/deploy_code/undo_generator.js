@@ -8,7 +8,8 @@ import { getFileContent, entryExists } from './fs_helpers.js';
  * @returns {Promise<string>} The generated undo script.
  */
 export async function generateUndoScript(rootHandle, deployScript) {
-    const lines = deployScript.split('\n');
+    // Normalize line endings to prevent issues on Windows
+    const lines = deployScript.replace(/\r\n/g, '\n').split('\n');
     const rollbackCmds = [];
     let i = 0;
 
