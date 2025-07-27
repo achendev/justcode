@@ -91,14 +91,11 @@ def execute_script(script_content, project_path, tolerate_errors=False):
                     output_log.append(f"Touched file: {relative_path}")
 
             elif command == 'rm':
-                # Check for any unsupported flags.
+                use_f_flag = '-f' in args
                 for arg in args:
                     if arg.startswith('-') and arg != '-f':
                         raise ValueError(f"Unsupported flag for 'rm': '{arg}'. Only '-f' is supported.")
                 
-                if args.count('-f') > 1:
-                    raise ValueError("Multiple '-f' flags are not allowed for 'rm'.")
-
                 file_paths = [arg for arg in args if not arg.startswith('-')]
                 
                 if not file_paths:
@@ -113,7 +110,10 @@ def execute_script(script_content, project_path, tolerate_errors=False):
                         os.remove(full_path)
                         output_log.append(f"Removed file: {relative_path}")
                     except FileNotFoundError:
-                        output_log.append(f"Skipped removal (not found): {relative_path}")
+                        if use_f_flag or tolerate_errors:
+                            output_log.append(f"Skipped removal (not found): {relative_path}")
+                        else:
+                            raise
 
             elif command == 'rmdir':
                 for arg in args:
@@ -124,7 +124,10 @@ def execute_script(script_content, project_path, tolerate_errors=False):
                         os.rmdir(full_path)
                         output_log.append(f"Removed directory: {relative_path}")
                     except OSError as e:
-                        raise OSError(f"Could not rmdir '{relative_path}': {e}")
+                        if tolerate_errors:
+                            output_log.append(f"Skipped rmdir for '{relative_path}', ignoring error: {e}")
+                        else:
+                            raise OSError(f"Could not rmdir '{relative_path}': {e}") from e
             
             elif command == 'chmod':
                 if len(args) < 2:

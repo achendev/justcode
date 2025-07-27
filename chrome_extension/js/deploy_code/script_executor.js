@@ -86,6 +86,7 @@ export async function executeFileSystemScript(rootHandle, script, tolerateErrors
                     }
                 }
             } else if (command === 'rm') {
+                const fFlag = args.includes('-f');
                 const filePaths = args.filter(p => !p.startsWith('-'));
                 for (let filePath of filePaths) {
                     filePath = filePath.replace(/^['"]|['"]$/g, '').replace('./', '');
@@ -97,7 +98,16 @@ export async function executeFileSystemScript(rootHandle, script, tolerateErrors
                     for (const part of pathParts) {
                         if (part) parentDir = await parentDir.getDirectoryHandle(part);
                     }
-                    await parentDir.removeEntry(fileName, { recursive: false });
+                    try {
+                        await parentDir.removeEntry(fileName, { recursive: false });
+                    } catch (e) {
+                        // If -f flag is used or we tolerate errors, ignore NotFoundError.
+                        if ((fFlag || tolerateErrors) && e.name === 'NotFoundError') {
+                            console.log(`File not found for 'rm', but ignoring: ${filePath}`);
+                        } else {
+                            throw e; // Let the outer catch handle it.
+                        }
+                    }
                 }
             } else if (command === 'rmdir') {
                  const dirPaths = args;
@@ -109,7 +119,16 @@ export async function executeFileSystemScript(rootHandle, script, tolerateErrors
                     for (const part of pathParts) {
                         if(part) parentDir = await parentDir.getDirectoryHandle(part);
                     }
-                    await parentDir.removeEntry(dirName, { recursive: false });
+                    try {
+                        await parentDir.removeEntry(dirName, { recursive: false });
+                    } catch (e) {
+                        // If tolerating errors, ignore not-found or not-empty errors for rmdir.
+                        if (tolerateErrors && (e.name === 'NotFoundError' || e.name === 'InvalidModificationError')) {
+                             console.log(`Ignoring safe error for rmdir on '${dirPath}': ${e.message}`);
+                        } else {
+                            throw e;
+                        }
+                    }
                  }
             } else if (command === 'mv') {
                 if (args.length !== 2) throw new Error("mv requires exactly two arguments.");
