@@ -19,7 +19,7 @@ This creates a tight, safe, and incredibly fast feedback loop for iterating on c
 
 The system consists of a Chrome Extension that can operate in two different backend modes, which you can select per-profile within the extension:
 
-*   **🖥️ Browser (JS) Backend (Default & Recommended):** This mode runs entirely within your browser. It uses the modern [File System Access API](https://developer.chrome.com/docs/capabilities/fs) to directly and safely read your project files and write changes back.
+*   **🖱️ Browser (JS) Backend (Default & Recommended):** This mode runs entirely within your browser. It uses the modern [File System Access API](https://developer.chrome.com/docs/capabilities/fs) to directly and safely read your project files and write changes back.
     *   **Pros:** No Python or server setup required. It's the simplest and fastest way to get started.
     *   **Cons:** Requires you to grant permission for each project folder you want to work with, for first project permissions should be granted twice.
 
@@ -27,7 +27,7 @@ The system consists of a Chrome Extension that can operate in two different back
     *   **Pros:** Can work with any project path you provide without needing per-folder browser permissions.
     *   **Cons:** Requires Python and leaving a terminal process running in the background.
 
-The **Chrome Extension (`chrome_extension/`)** provides a unified user-friendly interface for both modes, including action buttons, profile management, and settings.
+The **Chrome Extension (`chrome_extension/`)** provides a unified user-friendly interface for both modes, including multi-profile management, settings, and direct action buttons.
 
 ### Shortcuts
 
@@ -39,7 +39,7 @@ The **Chrome Extension (`chrome_extension/`)** provides a unified user-friendly 
     *   `Alt + A`: Switch to the profile tab on the left (loops around).
     *   `Alt + S`: Switch to the profile tab on the right (loops around).
     
-> **Note on Shortcuts:** If the `Alt + ↑` shortcut to open the extension doesn't work, you may need to set or reset it. Go to `chrome://extensions/shortcuts` in your browser, find the "JustCode Extension", and assign your preferred shortcut for the "Open JustCode Popup" action.
+> **Note on Shortcuts:** If the `Alt + ↑` shortcut to open the extension doesn't work, you may need to set or reset it. Go to `chrome://extensions/shortcuts` in your browser, find "JustCode", and assign your preferred shortcut for the "Open the extension" action.
 
 ## ↩️ Automatic Undo/Redo History
 
@@ -60,7 +60,7 @@ This feature allows you to experiment and iterate with AI-generated code fearles
 **For Server Mode Only:**
 *   🐍 Python 3.10 or higher
 *   📦 `pip` and `venv` (usually included with Python)
-*   🐙 Git (if you want to clone and update the application via `git pull`)
+*   🐙 Git (if you want to use the built-in update feature via `git pull`)
 
 ## 🛠️ Setup
 
@@ -79,7 +79,7 @@ You have two options:
     cd justcode
     ```
 
-### Stage 2: Load the Chrome Extension (Required for Both Modes)
+### Stage 2: Load the Chrome Extension
 
 1.  **Load the Extension:**
     *   Open Chrome and navigate to `chrome://extensions/`.
@@ -88,20 +88,26 @@ You have two options:
     *   In the file dialog, select the `chrome_extension` folder located inside your unzipped or cloned `justcode` project directory.
 
 2.  **Pin the Extension:**
-    *   Click the rocket icon 🚀 in the Chrome toolbar, find **JustCode**, and click the **pin** icon to keep it visible.
+    *   Click the puzzle piece icon 🧩 in the Chrome toolbar, find **JustCode**, and click the **pin** icon to keep it visible.
 
-### Stage 3: Choose Your Backend
+### Stage 3: Configure a Profile
 
-When you open the JustCode popup, you can choose the backend for each profile using the toggle button next to the project location input (a browser icon for JS mode, a server icon for Server mode).
+1. Open the JustCode extension popup. A default profile is already created for you.
+2. **Choose your backend mode** using the toggle button next to the project location input:
+   - **🖱️ Browser (JS) Mode (Default):** Runs entirely in the browser.
+   - **🐍 Server Mode:** Connects to a local Python server.
 
-*   **🖱️ To use the Browser (JS) Backend (Default):**
-    *   Make sure the browser icon is showing.
-    *   Click the "Select Project Folder" button for your profile. This will prompt you to choose a folder. You'll asked to allow edit files, reopen extension and second time you'll have to choose "Allow every visit".
+#### Using Browser (JS) Mode
+1. Make sure the **browser icon** is selected in the backend toggle.
+2. Click the **Select Project Folder** button. A new small window will open.
+3. In the new window, click the "Select Folder" button again. This user gesture is required for Chrome to show the folder picker.
+4. Choose your project's root directory and click **Allow**.
+5. **Granting Persistent Access:** Due to Chrome's security policies, you'll have to grant permission more than once to establish persistent access for a project. For second time the browser will offer an "Allow on every visit", it's required.
 
-*   **🐍 To use the Server Backend:**
-    *   Make sure the server icon is showing.
-    *   Follow the OS-specific instructions below to run the server.
-    *   In the extension, enter the full, absolute path to your project.
+#### Using Server Mode
+1. Make sure the **server icon** is selected in the backend toggle.
+2. Follow the OS-specific instructions in the **"Running the Server (Optional)"** section below to start the local Python server.
+3. In the extension, enter the **full, absolute path** to your project in the "Project Location" text field (e.g., `/Users/yourname/projects/my-app` or `C:\Users\yourname\projects\my-app`).
 
 ---
 
@@ -133,7 +139,7 @@ The provided helper scripts (`app.sh` for macOS/Linux, `app.bat` for Windows) au
 
 This section applies only if you are using the **Server Backend**. You can configure the server's listening address and port using a `.env` file in the project root.
 
-1.  Copy the example file: `cp .env.example .env` (or `copy .env.example .env` on Windows).
+1.  Copy the example file: `cp env.example .env` (or `copy .env.example .env` on Windows).
 2.  Edit `.env`:
     *   `FLASK_RUN_HOST`: The IP address to bind to.
         *   `127.0.0.1` (Default): Accessible only from your own computer.
@@ -164,15 +170,13 @@ This workflow turns the tedious task of manually curating a large project's cont
 ## 🔄 Usage Workflow
 
 1.  **Select Backend & Location:** Open the JustCode popup (`Alt+↑`). For your profile, choose your desired backend (Browser or Server) and set the project location.
-    *   **Browser (JS) Mode:** Click "Select Project Folder" and choose your project's root directory.
-    *   **Server Mode:** Ensure the local server is running and enter the absolute path to your project.
-2.  **Go to LLM:** Navigate to your preferred LLM chat interface.
-3.  **Get Context:** Click the `Get Context` button or press `Alt+←`. Your project's code will be formatted.
-4.  **Paste & Prompt:** The context is either copied to your clipboard or pasted directly into your LLM chat interface. Scroll to the **bottom** of the context block and add your task instructions (e.g., "Add a new endpoint called `/status`").
+2.  **Go to LLM:** Navigate to your preferred LLM chat interface (e.g., Google AI Studio, Grok.com, Perplexity.ai).
+3.  **Get Context:** Click the `Get Context` button or press `Alt+←`.
+4.  **Paste & Prompt:** The context is either copied to your clipboard or pasted directly into your LLM chat. Scroll to the **bottom** of the context block and add your task instructions (e.g., "Add a new endpoint called `/status`").
 5.  **Submit to LLM:** Send the combined context and your instructions to the model.
 6.  **Get Response:** The LLM will analyze your request and respond with a `bash` script.
-7.  **Deploy Code:** Click the `Deploy Code` button or press `Alt+→`. The extension will apply the changes to your local files.
-8.  **Verify & Iterate:** Check your files. If something is wrong, just click **Undo**!
+7.  **Deploy Code:** Click the `Deploy Code` button or press `Alt+→`. The extension will extract the script from the LLM's response or your clipboard and apply the changes to your local files.
+8.  **Verify & Iterate:** Check your files. If something is wrong, just click **Undo** (`Alt+R`)!
 
 > **💡 Pro Tip: What if a deployment goes wrong?**   
 > If a deployment fails or makes unwanted changes, just click the **Undo** button for that profile. It will instantly restore your files. Clicked Undo by mistake? Click **Redo**!
@@ -199,22 +203,23 @@ This tool executes code generated by an LLM directly on your machine. This is **
     │   │   │   └── paste_handlers/ # Site-specific logic for pasting text/files
     │   │   ├── db/                 # IndexedDB wrapper for storing folder handles
     │   │   ├── deploy_code/        # Logic for parsing and executing deployment scripts
+    │   │   │   └── answer_extractors/ # Site-specific logic for extracting code from LLM answers
     │   │   ├── event_listeners/    # Attaches event listeners to UI elements
-    │   │   ├── get_context/        # Strategies for getting project context
+    │   │   ├── get_context/        # Strategies for getting project context (JS vs Server)
     │   │   ├── ui_handlers/        # Modules for handling UI events and rendering
     │   │   │   ├── html_generators/ # Functions that generate HTML strings for UI components
     │   │   │   └── profile_actions/# Handlers for profile creation, navigation, and state
     │   │   ├── default_instructions.js # The default prompt instructions for the LLM
     │   │   ├── deploy_code.js      # Main facade for deploying code
     │   │   ├── event_attacher.js   # Central point for attaching all event listeners
-    │   │   ├── file_system_manager.js # Manages File System Access API handles
+    │   │   ├── file_system_manager.js # Manages File System Access API handles (for JS Backend)
     │   │   ├── get_context.js      # Main facade for getting context
-    │   │   ├── picker.js           # Logic for the folder picker window
+    │   │   ├── picker.js           # Logic for the folder picker window (JS Backend)
     │   │   ├── storage.js          # Manages user profiles in chrome.storage
     │   │   ├── ui.js               # Main UI rendering and state management
     │   │   └── undo_redo.js        # Handles Undo/Redo logic for both modes
     │   ├── manifest.json           # Extension configuration
-    │   ├── picker.html             # A dedicated window for the folder picker (JS mode)
+    │   ├── picker.html             # A dedicated window for the folder picker (JS Backend)
     │   └── popup.html              # Extension popup UI
     ├── server/                     # Backend server logic (for Server Mode)
     │   ├── tools/                  # Utility modules for the server
