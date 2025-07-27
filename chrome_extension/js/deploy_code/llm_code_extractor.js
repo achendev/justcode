@@ -27,6 +27,9 @@ export async function extractCodeToDeploy(profile, isDetached) {
     } else if (hostname.includes('chatgpt.com')) {
         const { extractChatGPTAnswer } = await import('./answer_extractors/chatgpt.js');
         extractFunc = extractChatGPTAnswer;
+    } else if (hostname.includes('grok.com')) {
+        const { extractGrokAnswer } = await import('./answer_extractors/grok.js');
+        extractFunc = extractGrokAnswer;
     } else {
         const { extractFallbackAnswer } = await import('./answer_extractors/fallback.js');
         extractFunc = extractFallbackAnswer;
