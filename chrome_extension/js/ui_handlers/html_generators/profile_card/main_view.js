@@ -28,7 +28,7 @@ export function getMainViewHTML(profile) {
                      <button class="btn btn-outline-primary flex-grow-1 select-project-folder" id="selectProjectFolder-${profile.id}" data-id="${profile.id}" title="Select Project Folder">
                         <span class="folder-name" id="selectedProjectName-${profile.id}">No Folder Selected</span>
                     </button>
-                    <button class="btn btn-outline-danger forget-project-folder" id="forgetProjectFolder-${profile.id}" data-id="${profile.id}" title="Forget this folder" style="display: none;"><i class="bi bi-x-lg"></i></button>
+                    <button class="btn btn-outline-secondary forget-project-folder" id="forgetProjectFolder-${profile.id}" data-id="${profile.id}" title="Forget this folder" style="display: none;"><i class="bi bi-x-lg"></i></button>
                 </div>
                 <!-- Server Mode -->
                 <div class="input-group input-group-sm server-mode-item flex-grow-1">
