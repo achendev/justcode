@@ -17,29 +17,55 @@ export async function extractCodeToDeploy(profile, isDetached) {
 
     const results = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        func: () => {
-            // Strategy 1: Find `pre > code`. This is the most reliable selector for code blocks
-            // and avoids grabbing inline `<code>` tags. It works well for Perplexity, ChatGPT, etc.
-            const codeBlocks = Array.from(document.querySelectorAll('pre code'));
-            if (codeBlocks.length > 0) {
-                return codeBlocks[codeBlocks.length - 1].innerText;
+        func: (shouldExtractFullAnswer) => {
+            // This function is always available as a fallback to get just the code.
+            const getCodeBlock = () => {
+                const codeBlocks = Array.from(document.querySelectorAll('pre code'));
+                if (codeBlocks.length > 0) return codeBlocks[codeBlocks.length - 1].innerText;
+                
+                const pres = Array.from(document.querySelectorAll('pre'));
+                if (pres.length > 0) return pres[pres.length - 1].innerText;
+
+                const allCode = Array.from(document.querySelectorAll('code'));
+                if (allCode.length > 0) return allCode[allCode.length - 1].innerText;
+
+                return null;
+            };
+
+            // If we only want the code block, we're done.
+            if (!shouldExtractFullAnswer) {
+                return getCodeBlock();
+            }
+
+            // --- Logic to get the full answer text from the page ---
+            const hostname = window.location.hostname;
+
+            // Specific and robust selector for Google AI Studio / Gemini
+            if (hostname.includes('aistudio.google.com') || hostname.includes('gemini.google.com')) {
+                // This selector targets the content div inside a turn that is identified as coming from the 'model'.
+                // This is based on the user-provided HTML and should be much more reliable.
+                const modelContentBlocks = document.querySelectorAll('.chat-turn-container.model .turn-content');
+                if (modelContentBlocks.length > 0) {
+                    return modelContentBlocks[modelContentBlocks.length - 1].innerText;
+                }
             }
             
-            // Fallback 1: If no `pre > code` is found, look for just the last `<pre>` tag.
-            const pres = Array.from(document.querySelectorAll('pre'));
-            if (pres.length > 0) {
-                return pres[pres.length - 1].innerText;
+            // Selector for ChatGPT
+            if (hostname.includes('chatgpt.com')) {
+                const turns = document.querySelectorAll('[data-message-author-role="assistant"]');
+                if (turns.length > 0) {
+                    const lastTurn = turns[turns.length - 1];
+                    // ChatGPT nests the content, so we target a specific child for cleaner text.
+                    const content = lastTurn.querySelector('.markdown');
+                    return content ? content.innerText : lastTurn.innerText;
+                }
             }
 
-            // Fallback 2: Find the last `<code>` element anywhere. This works for sites like Gemini
-            // which may not wrap code blocks in `<pre>`.
-            const allCode = Array.from(document.querySelectorAll('code'));
-            if (allCode.length > 0) {
-                return allCode[allCode.length - 1].innerText;
-            }
-
-            return null;
-        }
+            // If "Answer" is checked but we don't have a specific selector for the site,
+            // we fall back to just getting the last code block. This is a safe default.
+            return getCodeBlock();
+        },
+        args: [profile.deployFromFullAnswer]
     });
 
     return results[0]?.result || null;

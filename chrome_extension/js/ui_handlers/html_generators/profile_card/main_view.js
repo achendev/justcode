@@ -85,15 +85,21 @@ export function getMainViewHTML(profile) {
             </div>
 
             <!-- Deploy Code Row -->
-            <div class="d-flex align-items-center mt-2">
-                <label class="form-label mb-0 input-control-label">Deploy from:</label>
-                <div class="form-check form-check-inline mb-0">
-                    <input class="form-check-input deploy-code-source" type="radio" name="deployCodeSource-${profile.id}" id="deployCodeSourceUi-${profile.id}" value="ui" ${profile.deployCodeSource === 'ui' ? 'checked' : ''}>
-                    <label class="form-check-label" for="deployCodeSourceUi-${profile.id}">UI</label>
+            <div class="d-flex align-items-center justify-content-between mt-2">
+                <div class="d-flex align-items-center flex-grow-1">
+                    <label class="form-label mb-0 input-control-label">Deploy from:</label>
+                    <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input deploy-code-source" type="radio" name="deployCodeSource-${profile.id}" id="deployCodeSourceUi-${profile.id}" value="ui" ${profile.deployCodeSource === 'ui' ? 'checked' : ''}>
+                        <label class="form-check-label" for="deployCodeSourceUi-${profile.id}">UI</label>
+                    </div>
+                    <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input deploy-code-source" type="radio" name="deployCodeSource-${profile.id}" id="deployCodeSourceClipboard-${profile.id}" value="clipboard" ${profile.deployCodeSource === 'clipboard' ? 'checked' : ''}>
+                        <label class="form-check-label" for="deployCodeSourceClipboard-${profile.id}">Clipboard</label>
+                    </div>
                 </div>
-                <div class="form-check form-check-inline mb-0">
-                    <input class="form-check-input deploy-code-source" type="radio" name="deployCodeSource-${profile.id}" id="deployCodeSourceClipboard-${profile.id}" value="clipboard" ${profile.deployCodeSource === 'clipboard' ? 'checked' : ''}>
-                    <label class="form-check-label" for="deployCodeSourceClipboard-${profile.id}">Clipboard</label>
+                <div class="form-check form-check-inline mb-0 deploy-as-answer-container ${profile.deployCodeSource === 'clipboard' ? 'd-none' : ''}">
+                    <input type="checkbox" class="form-check-input deploy-as-answer" id="deployAsAnswer-${profile.id}" data-id="${profile.id}" ${profile.deployFromFullAnswer ? 'checked' : ''}>
+                    <label class="form-check-label" for="deployAsAnswer-${profile.id}" id="deployAsAnswerLabel-${profile.id}">${profile.deployFromFullAnswer ? 'Answer' : 'Code'}</label>
                 </div>
             </div>
         </div>

@@ -14,6 +14,7 @@ export function loadData(callback) {
                 // Universal fields
                 getContextTarget: 'ui', // 'ui' or 'clipboard'
                 deployCodeSource: 'ui', // 'ui' or 'clipboard'
+                deployFromFullAnswer: false,
                 contextAsFile: true,
                 separateInstructionsAsFile: true,
                 excludePatterns: defaultExcludePatterns,
@@ -59,6 +60,7 @@ export function loadData(callback) {
             // Standard field existence checks
             if (profile.getContextTarget === undefined) { profile.getContextTarget = 'ui'; needsSave = true; }
             if (profile.deployCodeSource === undefined) { profile.deployCodeSource = 'ui'; needsSave = true; }
+            if (profile.deployFromFullAnswer === undefined) { profile.deployFromFullAnswer = false; needsSave = true; }
             if (profile.useServerBackend === undefined) { profile.useServerBackend = true; needsSave = true; }
             if (profile.projectPath === undefined) { profile.projectPath = ''; needsSave = true; }
             if (profile.serverUrl === undefined) { profile.serverUrl = defaultServerUrl; needsSave = true; }

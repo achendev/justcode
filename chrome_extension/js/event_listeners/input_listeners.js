@@ -41,6 +41,11 @@ export function attachInputEventListeners() {
     document.querySelectorAll('.deploy-code-source').forEach(radio => {
         radio.addEventListener('change', (e) => {
             const profileId = e.target.name.split('-')[1];
+            const asAnswerContainer = document.querySelector(`#profile-${profileId} .deploy-as-answer-container`);
+            if (asAnswerContainer) {
+                asAnswerContainer.classList.toggle('d-none', e.target.value === 'clipboard');
+            }
+
             const mockEvent = { target: { id: `deployCodeSource-${profileId}`, value: e.target.value }};
             inputHandlers.handleInputChange(mockEvent, 'deployCodeSource');
         });
@@ -48,5 +53,16 @@ export function attachInputEventListeners() {
 
     document.querySelectorAll('.context-as-file').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => inputHandlers.handleCheckboxChange(e, 'contextAsFile'));
+    });
+
+    document.querySelectorAll('.deploy-as-answer').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+            const profileId = e.target.dataset.id;
+            const label = document.getElementById(`deployAsAnswerLabel-${profileId}`);
+            if (label) {
+                label.textContent = e.target.checked ? 'Answer' : 'Code';
+            }
+            inputHandlers.handleCheckboxChange(e, 'deployFromFullAnswer');
+        });
     });
 }
