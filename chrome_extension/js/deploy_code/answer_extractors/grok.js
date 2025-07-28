@@ -1,5 +1,5 @@
 // This function is injected into grok.com.
-export function extractGrokAnswer(shouldExtractFullAnswer) {
+export function extractGrokAnswer(shouldExtractFullAnswer, delimiter = '```') {
     // Find all message bubbles on the page.
     const messageBubbles = document.querySelectorAll('.message-bubble');
     if (messageBubbles.length === 0) {
@@ -14,22 +14,37 @@ export function extractGrokAnswer(shouldExtractFullAnswer) {
         if (!fullContent) {
             return null;
         }
+
         const extractedParts = [];
         for (const child of fullContent.children) {
-            const codeBlock = child.querySelector('code[style*="white-space: pre"]');
-            if (codeBlock) {
-                if (codeBlock.children.length > 0) {
-                    extractedParts.push(Array.from(codeBlock.children).map(line => line.textContent).join('\n'));
+            const codeElement = child.querySelector('code[style*="white-space: pre"]');
+            
+            if (codeElement) {
+                // This 'child' element contains a code block.
+                // Try to find the language identifier, assuming it's in a span within the child, but not inside the code element itself.
+                const langSpans = Array.from(child.querySelectorAll('span'));
+                const headerSpans = langSpans.filter(span => !codeElement.contains(span));
+                const language = headerSpans.length > 0 ? headerSpans[0].innerText.trim().toLowerCase() : '';
+                
+                let codeContent;
+                if (codeElement.children.length > 0) {
+                    codeContent = Array.from(codeElement.children).map(line => line.textContent).join('\n');
                 } else {
-                    extractedParts.push(codeBlock.innerText);
+                    codeContent = codeElement.innerText;
                 }
+
+                // Reconstruct the markdown fence.
+                const langPart = language ? `${language}\n` : '';
+                extractedParts.push(`${delimiter}${langPart}${codeContent}\n${delimiter}`);
             } else {
+                // This is a regular text element, like a <p>.
                 if (child.innerText && child.innerText.trim()) {
                     extractedParts.push(child.innerText);
                 }
             }
         }
-        return extractedParts.join('\n');
+        // Join with double newlines to simulate paragraphs between elements.
+        return extractedParts.length > 0 ? extractedParts.join('\n\n') : null;
     }
 
     // Default to finding only the code block within the last message.

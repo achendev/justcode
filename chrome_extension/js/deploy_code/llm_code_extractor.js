@@ -37,6 +37,9 @@ export async function extractCodeToDeploy(profile, isDetached) {
     } else if (hostname.includes('grok.com')) {
         const { extractGrokAnswer } = await import('./answer_extractors/grok.js');
         extractFunc = extractGrokAnswer;
+        if (profile.deployFromFullAnswer) {
+            args.push(profile.codeBlockDelimiter || '```');
+        }
     } else if (hostname.includes('x.com') && profile.deployFromFullAnswer) {
         // Only use the special x.com extractor if we are in "full answer" mode.
         const { extractGrokAnswerX } = await import('./answer_extractors/x_grok.js');
