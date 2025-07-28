@@ -22,9 +22,15 @@ export async function extractCodeToDeploy(profile, isDetached) {
     let extractFunc;
     let args = [profile.deployFromFullAnswer]; // Default arguments
 
-    if (hostname.includes('aistudio.google.com') || hostname.includes('gemini.google.com')) {
+    if (hostname.includes('aistudio.google.com')) {
+        const { extractAIStudioAnswer } = await import('./answer_extractors/aistudio.js');
+        extractFunc = extractAIStudioAnswer;
+    } else if (hostname.includes('gemini.google.com')) {
         const { extractGeminiAnswer } = await import('./answer_extractors/gemini.js');
         extractFunc = extractGeminiAnswer;
+        if (profile.deployFromFullAnswer) {
+            args.push(profile.codeBlockDelimiter || '```');
+        }
     } else if (hostname.includes('chatgpt.com')) {
         const { extractChatGPTAnswer } = await import('./answer_extractors/chatgpt.js');
         extractFunc = extractChatGPTAnswer;
