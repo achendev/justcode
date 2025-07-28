@@ -24,7 +24,7 @@ export async function handleJsDeployment(profile) {
     const codeToDeploy = await extractCodeToDeploy(profile, isDetached);
 
     if (!codeToDeploy || !codeToDeploy.includes(hereDocValue)) {
-        throw new Error('Clipboard content is not a valid deploy script.');
+        throw new Error('No valid deploy script found on page or in clipboard.');
     }
     
     updateTemporaryMessage(profile.id, 'Generating undo script...');

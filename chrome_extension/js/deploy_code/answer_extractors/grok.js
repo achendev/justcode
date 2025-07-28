@@ -10,23 +10,40 @@ export function extractGrokAnswer(shouldExtractFullAnswer) {
     const lastMessage = messageBubbles[messageBubbles.length - 1];
 
     if (shouldExtractFullAnswer) {
-        // The .response-content-markdown contains the entire rendered output.
         const fullContent = lastMessage.querySelector('.response-content-markdown');
-        return fullContent ? fullContent.innerText : null;
+        if (!fullContent) {
+            return null;
+        }
+        const extractedParts = [];
+        for (const child of fullContent.children) {
+            const codeBlock = child.querySelector('code[style*="white-space: pre"]');
+            if (codeBlock) {
+                if (codeBlock.children.length > 0) {
+                    extractedParts.push(Array.from(codeBlock.children).map(line => line.textContent).join('\n'));
+                } else {
+                    extractedParts.push(codeBlock.innerText);
+                }
+            } else {
+                if (child.innerText && child.innerText.trim()) {
+                    extractedParts.push(child.innerText);
+                }
+            }
+        }
+        return extractedParts.join('\n');
     }
 
     // Default to finding only the code block within the last message.
-    // Find all code blocks within the last message and return the last one.
     const codeBlocks = lastMessage.querySelectorAll('code[style*="white-space: pre"]');
     if (codeBlocks.length > 0) {
-        return codeBlocks[codeBlocks.length - 1].innerText;
+        const codeBlock = codeBlocks[codeBlocks.length - 1];
+        if (codeBlock.children.length > 0) {
+            return Array.from(codeBlock.children).map(child => child.textContent).join('\n');
+        }
+        return codeBlock.innerText;
     }
-
-    // Fallback for just a pre tag if the styled code element isn't found.
     const pres = lastMessage.querySelectorAll('pre');
     if (pres.length > 0) {
         return pres[pres.length - 1].innerText;
     }
-
     return null;
 }

@@ -20,6 +20,7 @@ export async function extractCodeToDeploy(profile, isDetached) {
     const url = new URL(tab.url);
     const hostname = url.hostname;
     let extractFunc;
+    let args = [profile.deployFromFullAnswer]; // Default arguments
 
     if (hostname.includes('aistudio.google.com') || hostname.includes('gemini.google.com')) {
         const { extractGeminiAnswer } = await import('./answer_extractors/gemini.js');
@@ -30,7 +31,14 @@ export async function extractCodeToDeploy(profile, isDetached) {
     } else if (hostname.includes('grok.com')) {
         const { extractGrokAnswer } = await import('./answer_extractors/grok.js');
         extractFunc = extractGrokAnswer;
+    } else if (hostname.includes('x.com') && profile.deployFromFullAnswer) {
+        // Only use the special x.com extractor if we are in "full answer" mode.
+        const { extractGrokAnswerX } = await import('./answer_extractors/x_grok.js');
+        extractFunc = extractGrokAnswerX;
+        // Pass the delimiter as an additional argument for markdown reconstruction.
+        args.push(profile.codeBlockDelimiter || '```');
     } else {
+        // For all other sites, OR for x.com in "code block" mode, use the reliable fallback.
         const { extractFallbackAnswer } = await import('./answer_extractors/fallback.js');
         extractFunc = extractFallbackAnswer;
     }
@@ -38,7 +46,7 @@ export async function extractCodeToDeploy(profile, isDetached) {
     const results = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: extractFunc,
-        args: [profile.deployFromFullAnswer]
+        args: args
     });
 
     return results[0]?.result || null;
