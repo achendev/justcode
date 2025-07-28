@@ -17,26 +17,21 @@ ${hereDocValue}
 {{FENCE_RULE}}
 
 ### EXAMPLE OF A PERFECT RESPONSE ###
+# Changes explanation
 {{DELIMITER}}bash
-# Creating a file for binaries
 mkdir -p ./path/to/new/bin
-# New function implemented
 cat > ./path/to/changed_file.py << '${hereDocValue}'
 # full content of the changed python file
 # every line is exactly as it should be in the final file
 def new_function():
     pass
 ${hereDocValue}
-# Hello world script to return hello
 cat > ./path/to/new/bin/myscript << '${hereDocValue}'
 #!/bin/bash
 echo "Hello from my new script!"
 ${hereDocValue}
-# File is no longer required
 rm ./path/to/old_file_to_remove.txt
-# Delete empty dir
 rmdir ./path/to/empty_directory_to_remove
-# Rename file
 mv ./path/to/old_name.txt ./path/to/new_name.txt
 {{DELIMITER}}`;
 
