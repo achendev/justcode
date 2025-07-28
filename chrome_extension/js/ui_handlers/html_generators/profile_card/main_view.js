@@ -80,7 +80,7 @@ export function getMainViewHTML(profile) {
                 </div>
                 <div class="form-check form-check-inline mb-0 context-as-file-container ${profile.getContextTarget === 'clipboard' ? 'd-none' : ''}">
                     <input type="checkbox" class="form-check-input context-as-file" id="contextAsFile-${profile.id}" data-id="${profile.id}" ${profile.contextAsFile ? 'checked' : ''}>
-                    <label class="form-check-label" for="contextAsFile-${profile.id}">As file</label>
+                    <label class="form-check-label" for="contextAsFile-${profile.id}" id="contextAsFileLabel-${profile.id}">${profile.contextAsFile ? 'As file' : 'As text'}</label>
                 </div>
             </div>
 

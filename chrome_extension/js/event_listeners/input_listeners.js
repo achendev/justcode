@@ -52,7 +52,14 @@ export function attachInputEventListeners() {
     });
 
     document.querySelectorAll('.context-as-file').forEach(checkbox => {
-        checkbox.addEventListener('change', (e) => inputHandlers.handleCheckboxChange(e, 'contextAsFile'));
+        checkbox.addEventListener('change', (e) => {
+            const profileId = e.target.dataset.id;
+            const label = document.getElementById(`contextAsFileLabel-${profileId}`);
+            if (label) {
+                label.textContent = e.target.checked ? 'As file' : 'As text';
+            }
+            inputHandlers.handleCheckboxChange(e, 'contextAsFile');
+        });
     });
 
     document.querySelectorAll('.deploy-as-answer').forEach(checkbox => {
