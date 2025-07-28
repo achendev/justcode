@@ -25,4 +25,5 @@
 .input-group > .select-project-folder.btn-outline-primary {
     position: relative;
     z-index: 2;
+    border-color: gray;
 }
