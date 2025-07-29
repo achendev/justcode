@@ -3,7 +3,7 @@
 Just Code is a rapid development tool that bridges the gap between your local development environment and a Large Language Model (LLM) chat interface. It allows you to:
 
 <p align="center">
-  <img width="350" alt="justcode" src="https://github.com/user-attachments/assets/a87ea43d-3e4b-4e41-bd30-9bbd8daccdd5" />
+  <img width="350" alt="justcode" src="https://github.com/user-attachments/assets/5c8817ef-980f-4d2e-a9a5-0a916f29aead" />
 </p>
 
 1.  **Send your entire project's context** to an LLM with a single click and prompt your task.
