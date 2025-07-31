@@ -39,7 +39,7 @@ def execute_script(script_content, project_path, tolerate_errors=False):
                 content_start_index = i + 1
                 temp_i = content_start_index
                 while temp_i < len(lines):
-                    if lines[temp_i] == here_doc_value:
+                    if lines[temp_i].startswith(here_doc_value):
                         heredoc_found = True
                         content_lines = lines[content_start_index:temp_i]
                         i = temp_i + 1 # Set main counter past the heredoc block

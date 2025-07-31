@@ -16,8 +16,10 @@ cat > ./path/to/file << '${hereDocValue}'
 ${hereDocValue}
 {{FENCE_RULE}}
 
+
+
 ### EXAMPLE OF A PERFECT RESPONSE ###
-# Changes explanation
+Changes explanation here
 {{DELIMITER}}bash
 mkdir -p ./path/to/new/bin
 cat > ./path/to/changed_file.py << '${hereDocValue}'
