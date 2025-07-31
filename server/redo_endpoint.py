@@ -39,14 +39,23 @@ def redo():
             script_content = f.read() # This is the original deploy script
         
         try:
-            output_log = execute_script(script_content, project_path, tolerate_errors)
+            output_log, error_log = execute_script(script_content, project_path, tolerate_errors)
             
             # Move the script pair back to the undo stack
             shutil.move(undo_script_path_in_redo, os.path.join(undo_stack_dir, f"{latest_timestamp}.sh"))
             shutil.move(redo_script_path_in_redo, os.path.join(undo_stack_dir, f"{latest_timestamp}.redo"))
             
-            success_message = f"Successfully redone changes.\n--- LOG ---\n" + "\n".join(output_log)
-            return Response(success_message, mimetype='text/plain')
+            message = ""
+            if error_log:
+                message += "Redo completed with some ignored errors:\n\n"
+                message += "\n---\n".join(error_log)
+                message += "\n\n--- SUCCESSFUL ACTIONS LOG ---\n"
+            else:
+                message = "Successfully redone changes.\n--- LOG ---\n"
+            message += "\n".join(output_log)
+            
+            return Response(message, mimetype='text/plain')
+
         except Exception as e:
             error_details = f"Error during redo operation:\n{str(e)}\n{traceback.format_exc()}"
             print(error_details)
