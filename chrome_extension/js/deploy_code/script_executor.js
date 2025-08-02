@@ -34,7 +34,7 @@ export async function executeFileSystemScript(rootHandle, script, tolerateErrors
                 let content = '';
                 let contentEnded = false;
                 while (i < lines.length) {
-                    if (lines[i] === hereDocValue) {
+                    if (lines[i].startsWith(hereDocValue)) {
                         contentEnded = true;
                         i++;
                         break;
