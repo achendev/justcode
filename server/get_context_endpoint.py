@@ -1,5 +1,6 @@
 import os
 import traceback
+import json
 from flask import request, Response
 from .tools.context_generator import generate_context_from_path, generate_tree_with_char_counts
 
@@ -23,71 +24,22 @@ def get_context():
     exclude_patterns = [p.strip() for p in exclude_str.split(',') if p.strip()]
     include_patterns = [p.strip() for p in include_str.split(',') if p.strip()]
 
-    def _generate_suggestion_prompt():
-        """Generates the exclusion suggestion prompt."""
-        code_block_delimiter = '~~~'
-        tree_with_counts, total_size = generate_tree_with_char_counts(project_path, include_patterns, exclude_patterns)
-        return f"""PROJECT FILE TREE (with character and line counts):
-{code_block_delimiter}bash
-{tree_with_counts}
-{code_block_delimiter}
-
-
-### Context and Your Mission ###
-You are an expert assistant for a developer using a tool called **JustCode**. This tool allows the developer to send their project's source code to an LLM like you for help with coding tasks.
-
-The developer just tried to send their project, but it's too big! The total size is **{total_size:,} characters**, which is over their configured limit of **{context_size_limit:,} characters**.
-
-**Your mission is to help them fix this.** You must analyze the project's file tree above (which includes character and line counts for each entry) and generate a new, more effective "exclude patterns" list. This list will tell JustCode to ignore irrelevant files and directories, shrinking the project context to a manageable size. The developer will take your output and paste it directly into the JustCode extension to try again.
-
-Focus on excluding directories or file types that are unlikely to be relevant to the code type task, such as:
-- **Dependencies & Packages:** `node_modules/`, `venv/`, `packages/`, etc. These are almost never needed.
-- **Build & Distributable Files:** `dist/`, `build/`, `target/`, `.next/`. These are generated from the source, so the source is all that matters.
-- **Large Data & Media Assets:** Look for large `.csv`, `.json`, `.db`, image, or video files. Pay attention to both character and line counts.
-- **Logs, Caches, and Temp Files:** `*.log`, `tmp/`, `.cache/`, etc.
-- **IDE & System-Specific Config:** `.vscode/`, `.idea/`, `.DS_Store`.
-- **Version Control:** The `.git/` directory is critical to exclude.
-- **Tests (maybe):** Consider if test files are necessary for the user's *immediate* coding task. If the project is still too large, `tests/` or `__tests__/` are good candidates for exclusion.
-- Documentation that isn't needed for coding
-- Any type of credentials
-- Any type of logs and sessions files
-- Any type of files contains personal information
-- Any type of temporary folders
-
-The goal is to provide final a comma-separated list of glob patterns appended to the existing exclude list.
-
-CURRENT EXCLUDE PATTERNS:
-{exclude_str}
-
-CURRENT INCLUDE PATTERNS:
-{include_str if include_str else 'All files (no specific include pattern)'}
-
-### CRITICAL INSTRUCTIONS ###
-You MUST follow these rules without exception.
-1.  **OUTPUT FORMAT:** Your entire response MUST be a single line of text. It should be a comma-separated list of glob patterns to add to the exclusion list.
-2.  **DO NOT** include any explanations, apologies, or text outside of this list.
-3.  **FINAL LIST**: Provide final list, take CURRENT EXCLUDE PATTERNS as a base and append new patterns to it.
-4.  **CODE BLOCK**: Answer must be in code block.
-5.  **EXCLUDING FORMAT**: Don't use **/folder/ it doesn't work, use *folder/ instead to reliably exclude it
-
-### EXAMPLE OF A PERFECT RESPONSE ###
-{code_block_delimiter}bash
-*.git/,*node_modules/,*.log,*tmp/,*data/,assets/
-{code_block_delimiter}
-"""
     try:
-        # If suggesting exclusions, we must generate the tree anyway.
-        if suggest_exclusions:
-            print("Forced exclusion suggestion prompt requested.")
-            return Response(_generate_suggestion_prompt(), mimetype='text/plain')
+        tree_with_counts, total_size = generate_tree_with_char_counts(project_path, include_patterns, exclude_patterns)
 
-        # Check the total size *before* generating the full content string.
-        _, total_size = generate_tree_with_char_counts(project_path, include_patterns, exclude_patterns)
+        if suggest_exclusions:
+            print("Exclusion suggestion data requested. Returning tree and size.")
+            response_data = {
+                "treeString": tree_with_counts,
+                "totalChars": total_size
+            }
+            return Response(json.dumps(response_data), mimetype='application/json')
+
         if total_size > context_size_limit:
-            print(f"Context size ({total_size}) exceeds limit ({context_size_limit}). Generating exclusion suggestion prompt.")
-            return Response(_generate_suggestion_prompt(), mimetype='text/plain')
+            print(f"Context size ({total_size}) exceeds limit ({context_size_limit}). Returning error.")
+            error_message = f"Context size (~{total_size:,}) exceeds limit ({context_size_limit:,})."
+            return Response(error_message, status=413, mimetype='text/plain')
         
-        # Size is OK, now generate the full file context.
         file_contents = generate_context_from_path(project_path, include_patterns, exclude_patterns)
         
         return Response(file_contents, mimetype='text/plain')

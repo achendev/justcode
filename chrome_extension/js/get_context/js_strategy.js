@@ -3,7 +3,8 @@ import { getHandle, verifyPermission } from '../file_system_manager.js';
 import { scanDirectory } from '../context_builder/file_scanner.js';
 import { buildTree, buildTreeWithCounts } from '../context_builder/tree_builder.js';
 import { pasteIntoLLM, uploadContextAsFile } from '../context_builder/llm_interface.js';
-import { formatContextPrompt, formatExclusionPrompt, buildFileContentString, getInstructionsBlock } from '../context_builder/prompt_formatter.js';
+import { formatContextPrompt, buildFileContentString, getInstructionsBlock } from '../context_builder/prompt_formatter.js';
+import { formatExclusionPrompt } from '../exclusion_prompt.js';
 
 export async function getContextFromJS(profile, fromShortcut) {
     const isDetached = new URLSearchParams(window.location.search).get('view') === 'window';
@@ -91,7 +92,7 @@ export async function getExclusionSuggestionFromJS(profile) {
     const allFileStats = await scanDirectory(handle, { excludePatterns, includePatterns });
     const { treeString, totalChars } = buildTreeWithCounts(allFileStats);
     
-    const prompt = formatExclusionPrompt(treeString, totalChars, profile);
+    const prompt = formatExclusionPrompt({ treeString, totalChars, profile });
     
     if (profile.getContextTarget === 'clipboard') {
         await navigator.clipboard.writeText(prompt);

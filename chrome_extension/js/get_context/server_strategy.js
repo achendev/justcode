@@ -1,6 +1,7 @@
 import { updateAndSaveMessage, updateTemporaryMessage } from '../ui_handlers/message.js';
 import { pasteIntoLLM, uploadContextAsFile } from '../context_builder/llm_interface.js';
 import { getInstructionsBlock } from '../context_builder/prompt_formatter.js';
+import { formatExclusionPrompt } from '../exclusion_prompt.js';
 
 export async function getContextFromServer(profile, fromShortcut) {
     const isDetached = new URLSearchParams(window.location.search).get('view') === 'window';
@@ -27,21 +28,17 @@ export async function getContextFromServer(profile, fromShortcut) {
         }
 
         const response = await fetch(endpoint, { method: 'GET', headers: headers });
-        const responseText = await response.text();
-        if (!response.ok) throw new Error(`Server error: ${response.status} ${responseText}`);
-        
-        // Server returns suggestion prompt directly if size is too large
-        if (responseText.startsWith("PROJECT FILE TREE")) {
-            if (profile.getContextTarget === 'clipboard' || isDetached) {
-                await navigator.clipboard.writeText(responseText);
-                updateAndSaveMessage(profile.id, 'Context too large. Suggestion prompt copied!', 'success');
-            } else {
-                await pasteIntoLLM(responseText);
-                updateAndSaveMessage(profile.id, 'Context too large. Suggestion prompt loaded!', 'success');
-            }
+
+        if (response.status === 413) {
+            const responseText = await response.text();
+            updateAndSaveMessage(profile.id, responseText, 'error');
+            await getExclusionSuggestionFromServer(profile);
             return;
         }
 
+        const responseText = await response.text();
+        if (!response.ok) throw new Error(`Server error: ${response.status} ${responseText}`);
+        
         const fileContextPayload = responseText;
         const { instructionsBlock, codeBlockDelimiter } = getInstructionsBlock(profile);
         
@@ -98,14 +95,23 @@ export async function getExclusionSuggestionFromServer(profile) {
         }
 
         const response = await fetch(endpoint, { method: 'GET', headers: headers });
-        const responseText = await response.text();
-        if (!response.ok) throw new Error(`Server error: ${response.status} ${responseText}`);
+        if (!response.ok) {
+            const responseText = await response.text();
+            throw new Error(`Server error: ${response.status} ${responseText}`);
+        }
+        
+        const data = await response.json();
+        const prompt = formatExclusionPrompt({
+            treeString: data.treeString,
+            totalChars: data.totalChars,
+            profile: profile
+        });
         
         if (profile.getContextTarget === 'clipboard') {
-            await navigator.clipboard.writeText(responseText);
+            await navigator.clipboard.writeText(prompt);
             updateAndSaveMessage(profile.id, 'Exclusion suggestion prompt copied!', 'success');
         } else {
-            await pasteIntoLLM(responseText);
+            await pasteIntoLLM(prompt);
             updateAndSaveMessage(profile.id, 'Exclusion suggestion prompt loaded!', 'success');
         }
     } catch (error) {

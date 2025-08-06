@@ -3,22 +3,34 @@ import fnmatch
 import shlex
 from .utils import here_doc_value
 
+def is_binary(file_path):
+    """
+    Checks if a file is likely binary by reading a chunk and looking for null bytes.
+    This mimics the logic from the JavaScript implementation.
+    """
+    try:
+        with open(file_path, 'rb') as f:
+            chunk = f.read(1024)
+            return b'\x00' in chunk
+    except OSError:
+        return True # Cannot read, treat as binary/inaccessible
+
 def generate_context_from_path(project_path, include_patterns, exclude_patterns):
     """
     Generates a project context string including a file tree and file contents,
     all implemented in pure Python to avoid shell command dependencies.
     """
-    
-    # 1. Walk the filesystem to get all files, respecting exclusions.
     matching_files = []
+    
+    # Process patterns to mimic JS "startswith" behavior for directories
+    processed_exclude_patterns = [p + '*' if p.endswith('/') else p for p in exclude_patterns]
+
     for dirpath, dirnames, filenames in os.walk(project_path, topdown=True):
-        # Exclude directories by modifying dirnames in place
         excluded_dirs = []
         for d in dirnames:
             dir_rel_path = os.path.relpath(os.path.join(dirpath, d), project_path)
-            # Normalize path for matching, and match against patterns
             dir_rel_path_norm = dir_rel_path.replace('\\', '/')
-            if any(fnmatch.fnmatch(dir_rel_path_norm, pat) or fnmatch.fnmatch(dir_rel_path_norm + '/', pat) for pat in exclude_patterns):
+            if any(fnmatch.fnmatch(dir_rel_path_norm, pat) for pat in processed_exclude_patterns):
                 excluded_dirs.append(d)
         
         for d in excluded_dirs:
@@ -26,100 +38,99 @@ def generate_context_from_path(project_path, include_patterns, exclude_patterns)
 
         for filename in filenames:
             file_full_path = os.path.join(dirpath, filename)
+            
+            if is_binary(file_full_path):
+                continue
+
             file_rel_path = os.path.relpath(file_full_path, project_path)
-            # Normalize path for matching
             file_rel_path_norm = file_rel_path.replace('\\', '/')
             
-            # Check exclusion patterns against relative path
-            if any(fnmatch.fnmatch(file_rel_path_norm, pat) for pat in exclude_patterns):
+            if any(fnmatch.fnmatch(file_rel_path_norm, pat) for pat in processed_exclude_patterns):
                 continue
             
-            # Check inclusion patterns against filename (basename)
-            if include_patterns:
-                if not any(fnmatch.fnmatch(filename, pat) for pat in include_patterns):
-                    continue
+            if include_patterns and not any(fnmatch.fnmatch(filename, pat) for pat in include_patterns):
+                continue
             
-            # Skip non-text files, but allow empty text files (like __init__.py)
-            try:
-                # Simple check to avoid including binary files by trying to read it as text
-                with open(file_full_path, 'r', encoding='utf-8') as f:
-                    f.read(1024) # Try reading a small chunk
-            except (OSError, UnicodeDecodeError):
-                continue # Skip binary files or files we can't read
-
             matching_files.append(file_rel_path_norm)
 
     matching_files.sort()
 
-    # 2. Generate the tree structure from the list of files.
+    # Generate the tree structure from the list of files.
     tree_dict = {}
     for f in matching_files:
         parts = f.split('/')
         d = tree_dict
         for part in parts[:-1]:
             d = d.setdefault(part, {})
-        d[parts[-1]] = None  # Using None to signify a file
+        d[parts[-1]] = None
 
     tree_lines = ["."]
     def build_tree_str(d, prefix=""):
-        items = sorted(d.keys())
+        # Sort items: directories first, then alphabetically by name
+        items = sorted(d.keys(), key=lambda k: (d[k] is None, k))
         pointers = ['├── '] * (len(items) - 1) + ['└── ']
         for i, name in enumerate(items):
             pointer = pointers[i]
-            tree_lines.append(f"{prefix}{pointer}{name}")
-            if d[name] is not None:  # It's a directory, so recurse
+            is_dir = d[name] is not None
+            tree_lines.append(f"{prefix}{pointer}{name}{'/' if is_dir else ''}")
+            if is_dir:
                 extension = '│   ' if pointer == '├── ' else '    '
                 build_tree_str(d[name], prefix + extension)
     
     build_tree_str(tree_dict)
     tree_str = "\n".join(tree_lines)
     
-    # 3. Read file contents and format the final output string.
+    # Read file contents and format the final output string.
     output_parts = [tree_str, "\n\n"]
     for rel_path in matching_files:
-        # For reading, use the OS-specific path.
         full_path = os.path.join(project_path, rel_path.replace('/', os.sep))
         try:
             with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
             
-            # For the command sent to the LLM, always use Unix-style paths.
-            # Quote the path to handle spaces correctly.
             quoted_path = shlex.quote('./' + rel_path)
             output_parts.append(f"cat > {quoted_path} << '{here_doc_value}'\n")
             output_parts.append(content)
-            output_parts.append(f"\n{here_doc_value}\n")
+            output_parts.append(f"\n{here_doc_value}\n\n") # Added extra newline for spacing
 
         except Exception as e:
             print(f"Warning: Could not read file '{full_path}': {e}")
             continue
             
-    return "".join(output_parts)
+    return "".join(output_parts).strip()
 
 
 def generate_tree_with_char_counts(project_path, include_patterns, exclude_patterns):
     """
     Generates a file tree string with character and line counts for each file and directory.
     Returns the formatted tree string and the total character count.
+    This version is aligned with the JavaScript implementation's counting and matching logic.
     """
-    matching_files_data = [] # List of tuples (rel_path_norm, content_length, line_count)
+    matching_files_data = []
+    
+    # Process patterns to mimic JS "startswith" behavior for directories
+    processed_exclude_patterns = [p + '*' if p.endswith('/') else p for p in exclude_patterns]
+
     for dirpath, dirnames, filenames in os.walk(project_path, topdown=True):
-        # Exclude directories by modifying dirnames in place
         excluded_dirs = []
         for d in dirnames:
             dir_rel_path = os.path.relpath(os.path.join(dirpath, d), project_path)
             dir_rel_path_norm = dir_rel_path.replace('\\', '/')
-            if any(fnmatch.fnmatch(dir_rel_path_norm, pat) or fnmatch.fnmatch(dir_rel_path_norm + '/', pat) for pat in exclude_patterns):
+            if any(fnmatch.fnmatch(dir_rel_path_norm, pat) for pat in processed_exclude_patterns):
                 excluded_dirs.append(d)
         for d in excluded_dirs:
             dirnames.remove(d)
 
         for filename in filenames:
             file_full_path = os.path.join(dirpath, filename)
+            
+            if is_binary(file_full_path):
+                continue
+            
             file_rel_path = os.path.relpath(file_full_path, project_path)
             file_rel_path_norm = file_rel_path.replace('\\', '/')
             
-            if any(fnmatch.fnmatch(file_rel_path_norm, pat) for pat in exclude_patterns):
+            if any(fnmatch.fnmatch(file_rel_path_norm, pat) for pat in processed_exclude_patterns):
                 continue
             if include_patterns and not any(fnmatch.fnmatch(filename, pat) for pat in include_patterns):
                 continue
@@ -127,10 +138,11 @@ def generate_tree_with_char_counts(project_path, include_patterns, exclude_patte
             try:
                 with open(file_full_path, 'r', encoding='utf-8', errors='ignore') as f:
                     content = f.read()
-                    content_length = len(content)
-                    line_count = len(content.splitlines())
+                content_length = len(content)
+                # Align with JS logic: content.split('\n').length
+                line_count = len(content.split('\n'))
                 matching_files_data.append((file_rel_path_norm, content_length, line_count))
-            except (OSError, UnicodeDecodeError):
+            except OSError:
                 continue
     
     file_stats = {path: {'chars': chars, 'lines': lines} for path, chars, lines in matching_files_data}
@@ -143,11 +155,8 @@ def generate_tree_with_char_counts(project_path, include_patterns, exclude_patte
     for path, stats in file_stats.items():
         parts = path.split('/')
         current_path_prefix = ''
-        for part in parts[:-1]:
-            if current_path_prefix:
-                current_path_prefix = f"{current_path_prefix}/{part}"
-            else:
-                current_path_prefix = part
+        for i, part in enumerate(parts[:-1]):
+            current_path_prefix = '/'.join(parts[:i+1])
             
             current_dir_stat = dir_stats.get(current_path_prefix, {'chars': 0, 'lines': 0})
             current_dir_stat['chars'] += stats['chars']
@@ -165,24 +174,20 @@ def generate_tree_with_char_counts(project_path, include_patterns, exclude_patte
     tree_lines = [f". {format_stats(total_chars, total_lines)}"]
 
     def build_tree_str(d, current_dir_path="", prefix=""):
-        # Sort items: directories first, then alphabetically by name
         items = sorted(d.keys(), key=lambda k: (d[k] is None, k))
         pointers = ['├── '] * (len(items) - 1) + ['└── ']
         for i, name in enumerate(items):
             pointer = pointers[i]
             
-            if current_dir_path:
-                rel_path = f"{current_dir_path}/{name}"
-            else:
-                rel_path = name
+            rel_path = f"{current_dir_path}/{name}" if current_dir_path else name
             
-            if d[name] is not None:  # It's a directory
+            if d[name] is not None:
                 stats = dir_stats.get(rel_path, {'chars': 0, 'lines': 0})
                 stats_str = format_stats(stats['chars'], stats['lines'])
                 tree_lines.append(f"{prefix}{pointer}{name}/ {stats_str}")
                 extension = '│   ' if pointer == '├── ' else '    '
                 build_tree_str(d[name], rel_path, prefix + extension)
-            else: # It's a file
+            else:
                 stats = file_stats.get(rel_path, {'chars': 0, 'lines': 0})
                 stats_str = format_stats(stats['chars'], stats['lines'])
                 tree_lines.append(f"{prefix}{pointer}{name} {stats_str}")
