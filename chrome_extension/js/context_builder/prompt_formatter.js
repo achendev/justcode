@@ -99,15 +99,25 @@ Focus on excluding:
 CURRENT EXCLUDE PATTERNS:
 ${profile.excludePatterns || 'none'}
 
-### CRITICAL INSTRUCTIONS ###
-1.  **OUTPUT FORMAT:** Your entire response MUST be a single line of comma-separated glob patterns.
-2.  **DO NOT** include any explanations or text outside the list.
-3.  **APPEND**: Append new patterns to the existing list. Your response should contain the full, updated list.
-4.  **CODE BLOCK**: Your answer must be in a \`bash\` code block.
+### CRITICAL INSTRUCTIONS (Machine-Readable Output) ###
+Your output will be read by a machine. It must follow these rules perfectly.
 
-### EXAMPLE RESPONSE ###
+1.  **FINAL OUTPUT MUST BE A CODE BLOCK**: Your entire response must be a single \`bash\` code block and nothing else. No text or explanations before or after.
+2.  **ONE LINE ONLY**: The code block must contain only one single line of text.
+3.  **COMBINE AND APPEND**: Start with the "CURRENT EXCLUDE PATTERNS" list and add your new suggestions to it. Your final output must be the complete, combined, comma-separated list.
+4.  **VALID PATTERNS**:
+    *   To exclude a directory everywhere, use a wildcard, e.g., \`*node_modules/\`.
+    *   To exclude a file type everywhere, use a wildcard, e.g., \`*.log\`.
+    *   To exclude a specific top-level folder, use its name, e.g., \`dist/\`.
+    *   To exclude a specific no top folder, use full relative path, e.g., \`full/relative/path/to/folder/\`.
+    *   **DO NOT** use leading slashes (e.g., \`/dist/\`) or unsupported patterns.
+
+### EXAMPLE SCENARIO ###
+*   **CURRENT PATTERNS:** \`.git/,venv/\`
+*   **YOUR ANALYSIS:** You see a large \`build/\` directory and many \`.tmp\` files.
+*   **CORRECT FINAL OUTPUT:**
 ${codeBlockDelimiter}bash
-.git/,venv/,node_modules/,dist/,build/,*.log,*.tmp,large_data_folder/
+.git/,venv/,build/,*.tmp
 ${codeBlockDelimiter}`;
 
     return prompt;
