@@ -26,7 +26,10 @@
     "commands": {
         "_execute_action": {
             "suggested_key": {
-                "default": "Alt+Up"
+                "default": "Alt+Up",
+                "mac": "Alt+Up",
+                "windows": "Alt+Up",
+                "linux": "Alt+Up"
             },
             "description": "Open JustCode Popup"
         }

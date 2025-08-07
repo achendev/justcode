@@ -6,8 +6,6 @@
     <style>
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
-            background-color: #f8f9fa;
-            color: #212529;
             text-align: center;
             margin: 0;
             overflow: hidden;
@@ -15,27 +13,49 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
+            transition: background-color 0.2s, color 0.2s;
         }
-        @media (prefers-color-scheme: dark) {
-            body {
-                background-color: #212529;
-                color: #f8f9fa;
-            }
+
+        /* Light Theme */
+        body.light-theme {
+            background-color: #f8f9fa;
+            color: #212529;
         }
+        body.light-theme #message.success { color: #198754; }
+        body.light-theme #message.error { color: #dc3545; }
+        body.light-theme p.sub-message { color: #6c757d; }
+        body.light-theme #permission-tip .highlight { color: #198754; font-weight: bold; }
+        body.light-theme #selectFolderBtn {
+            border: 1px solid #0d6efd;
+            background-color: #0d6efd;
+            color: white;
+        }
+        body.light-theme #selectFolderBtn:hover { background-color: #0b5ed7; }
+
+        /* Dark Theme */
+        body.dark-theme {
+            background-color: #212529;
+            color: #f8f9fa;
+        }
+        body.dark-theme #message.success { color: #20c997; }
+        body.dark-theme #message.error { color: #ff6b6b; }
+        body.dark-theme p.sub-message { color: #adb5bd; }
+        body.dark-theme #permission-tip .highlight { color: #20c997; font-weight: bold; }
+        body.dark-theme #selectFolderBtn {
+            border-color: #80bdff;
+            background-color: #80bdff;
+            color: #212529;
+        }
+        body.dark-theme #selectFolderBtn:hover { background-color: #a0cfff; }
+
+        /* Common Styles */
         #message {
             font-size: 1rem;
             font-weight: 500;
             margin-bottom: 15px;
         }
-        #message.success {
-             color: #198754;
-        }
-        #message.error {
-             color: #dc3545;
-        }
         p.sub-message {
             font-size: 0.8rem;
-            color: #6c757d;
             margin-top: 8px;
             max-width: 300px;
             margin-left: auto;
@@ -45,44 +65,12 @@
             font-style: italic;
             font-size: 0.75rem;
         }
-        #permission-tip .highlight {
-            color: #198754;
-            font-weight: bold;
-        }
         #selectFolderBtn {
             font-size: 1rem;
             padding: 10px 20px;
             border-radius: 5px;
-            border: 1px solid #0d6efd;
-            background-color: #0d6efd;
-            color: white;
             cursor: pointer;
             transition: background-color 0.2s;
-        }
-        #selectFolderBtn:hover {
-            background-color: #0b5ed7;
-        }
-        @media (prefers-color-scheme: dark) {
-            #message.success {
-                color: #20c997;
-            }
-            #message.error {
-                color: #ff6b6b;
-            }
-            p.sub-message {
-                color: #adb5bd;
-            }
-             #permission-tip .highlight {
-                color: #20c997;
-            }
-            #selectFolderBtn {
-                border-color: #80bdff;
-                background-color: #80bdff;
-                color: #212529;
-            }
-            #selectFolderBtn:hover {
-                 background-color: #a0cfff;
-            }
         }
     </style>
 </head>

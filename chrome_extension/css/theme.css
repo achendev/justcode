@@ -1,110 +1,112 @@
-/* Light theme (default) */
+/* --- Default styles, applied to both themes --- */
 body {
     font-family: Arial, sans-serif;
     width: 350px;
     padding: 15px;
     transition: background-color 0.3s, color 0.3s;
     overflow-y: hidden;
+}
+
+/* --- Light Theme --- */
+body.light-theme {
     background-color: #f8f9fa;
     color: #212529;
 }
-.profile-card {
+body.light-theme .profile-card {
     background-color: #fff;
     border-color: #dee2e6;
 }
-.nav-link.active {
+body.light-theme .nav-link.active {
     background-color: #fff;
     color: #212529;
 }
-.status-error {
+body.light-theme .status-error {
     color: #dc3545;
     background-color: rgba(220, 53, 69, 0.15);
 }
-.status-success {
+body.light-theme .status-success {
     color: #198754;
     background-color: rgba(25, 135, 84, 0.15);
 }
-.status-info {
+body.light-theme .status-info {
     color: #212529;
     background-color: #e9ecef;
 }
 
-/* Dark theme */
-@media (prefers-color-scheme: dark) {
-    body {
-        background-color: #212529;
-        color: #f8f9fa;
-    }
-    .btn-close {
-        filter: invert(1) grayscale(100%) brightness(200%);
-    }
-    .profile-card {
-        background-color: #343a40;
-        border-color: #495057;
-    }
-    .nav-link {
-        color: #f8f9fa;
-    }
-    .nav-link.active {
-        background-color: #343a40;
-        color: #f8f9fa;
-    }
-    .form-label, .form-check-label {
-        color: #adb5bd;
-    }
-    .input-group-text {
-        color: #adb5bd;
-        background-color: #212529;
-        border-color: #6c757d;
-    }
-    .form-control, .form-select {
-        background-color: #495057;
-        color: #f8f9fa;
-        border-color: #6c757d;
-    }
-    .form-select {
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23dee2e6' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
-    }
-    .form-control:focus, .form-select:focus {
-        background-color: #495057;
-        color: #f8f9fa;
-        border-color: #80bdff;
-        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-    }
-    .form-control:disabled {
-        background-color: #212529;
-        color: #6c757d;
-        opacity: 0.75;
-    }
-    .btn-outline-primary {
-        color: #80bdff;
-        border-color: #80bdff;
-    }
-    .btn-outline-primary:hover {
-        background-color: #80bdff;
-        color: #212529;
-    }
-    .btn-outline-danger {
-        color: #ff6b6b;
-        border-color: #ff6b6b;
-    }
-    .btn-outline-danger:hover {
-        background-color: #ff6b6b;
-        color: #212529;
-    }
-    .text-muted {
-        color: #adb5bd !important;
-    }
-    .status-error {
-        color: #ff6b6b;
-        background-color: rgba(255, 107, 107, 0.15);
-    }
-    .status-success {
-        color: #20c997;
-        background-color: rgba(32, 201, 151, 0.1);
-    }
-    .status-info {
-        color: #adb5bd;
-        background-color: #495057;
-    }
+/* --- Dark Theme --- */
+body.dark-theme {
+    background-color: #212529;
+    color: #f8f9fa;
+}
+body.dark-theme .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+body.dark-theme .profile-card {
+    background-color: #343a40;
+    border-color: #495057;
+}
+body.dark-theme .nav-link {
+    color: #f8f9fa;
+}
+body.dark-theme .nav-link.active {
+    background-color: #343a40;
+    color: #f8f9fa;
+}
+body.dark-theme .form-label, body.dark-theme .form-check-label {
+    color: #adb5bd;
+}
+body.dark-theme .input-group-text {
+    color: #adb5bd;
+    background-color: #212529;
+    border-color: #6c757d;
+}
+body.dark-theme .form-control, body.dark-theme .form-select {
+    background-color: #495057;
+    color: #f8f9fa;
+    border-color: #6c757d;
+}
+body.dark-theme .form-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23dee2e6' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+}
+body.dark-theme .form-control:focus, body.dark-theme .form-select:focus {
+    background-color: #495057;
+    color: #f8f9fa;
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+body.dark-theme .form-control:disabled {
+    background-color: #212529;
+    color: #6c757d;
+    opacity: 0.75;
+}
+body.dark-theme .btn-outline-primary {
+    color: #80bdff;
+    border-color: #80bdff;
+}
+body.dark-theme .btn-outline-primary:hover {
+    background-color: #80bdff;
+    color: #212529;
+}
+body.dark-theme .btn-outline-danger {
+    color: #ff6b6b;
+    border-color: #ff6b6b;
+}
+body.dark-theme .btn-outline-danger:hover {
+    background-color: #ff6b6b;
+    color: #212529;
+}
+body.dark-theme .text-muted {
+    color: #adb5bd !important;
+}
+body.dark-theme .status-error {
+    color: #ff6b6b;
+    background-color: rgba(255, 107, 107, 0.15);
+}
+body.dark-theme .status-success {
+    color: #20c997;
+    background-color: rgba(32, 201, 151, 0.1);
+}
+body.dark-theme .status-info {
+    color: #adb5bd;
+    background-color: #495057;
 }

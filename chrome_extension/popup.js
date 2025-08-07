@@ -4,6 +4,45 @@ import { handleGetContextClick, handleUndoCodeClick } from './js/ui_handlers/act
 import { updateAndSaveMessage } from './js/ui_handlers/message.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // --- THEME LOGIC ---
+    const themeSwitcher = document.getElementById('theme-switcher');
+    const sunIcon = '<i class="bi bi-brightness-high-fill"></i>';
+    const cloudyIcon = '<i class="bi bi-cloud-sun-fill"></i>';
+
+    const applyTheme = (theme) => {
+        if (theme === 'dark') {
+            document.body.classList.remove('light-theme');
+            document.body.classList.add('dark-theme');
+            themeSwitcher.innerHTML = cloudyIcon;
+        } else {
+            document.body.classList.remove('dark-theme');
+            document.body.classList.add('light-theme');
+            themeSwitcher.innerHTML = sunIcon;
+        }
+    };
+
+    // Step 1: Apply system theme immediately to prevent flashing.
+    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    applyTheme(systemTheme);
+
+    // Step 2: Load and apply user-saved theme, overriding the system theme if it exists.
+    chrome.storage.local.get('theme', (data) => {
+        // Only apply the stored theme if it's actually set.
+        // If not set, the system theme applied above will persist.
+        if (data.theme) {
+            applyTheme(data.theme);
+        }
+    });
+
+    // Theme switcher button event listener
+    themeSwitcher.addEventListener('click', () => {
+        const isDark = document.body.classList.contains('dark-theme');
+        const newTheme = isDark ? 'light' : 'dark';
+        chrome.storage.local.set({ theme: newTheme });
+        applyTheme(newTheme);
+    });
+    // --- END THEME LOGIC ---
+
     const detachWindowButton = document.getElementById('detachWindow');
     const mainView = document.getElementById('mainView');
 

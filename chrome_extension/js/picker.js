@@ -4,6 +4,29 @@ import { saveHandle, requestPermission } from './file_system_manager.js';
 // It now waits for a second user click before showing the picker.
 
 document.addEventListener('DOMContentLoaded', () => {
+    // --- THEME LOGIC ---
+    const applyPickerTheme = (theme) => {
+        if (theme === 'dark') {
+            document.body.classList.remove('light-theme');
+            document.body.classList.add('dark-theme');
+        } else {
+            document.body.classList.remove('dark-theme');
+            document.body.classList.add('light-theme');
+        }
+    };
+
+    // Step 1: Apply system theme immediately to prevent flashing.
+    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    applyPickerTheme(systemTheme);
+
+    // Step 2: Load and apply user-saved theme, overriding the system theme if it exists.
+    chrome.storage.local.get('theme', (data) => {
+        if (data.theme) {
+            applyPickerTheme(data.theme);
+        }
+    });
+    // --- END THEME LOGIC ---
+
     const urlParams = new URLSearchParams(window.location.search);
     const profileId = parseInt(urlParams.get('profileId'));
     
