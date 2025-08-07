@@ -180,7 +180,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'justcode_settings.json';
+            a.download = 'justcode_data.json';
             a.click();
             URL.revokeObjectURL(url);
         });
