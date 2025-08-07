@@ -21,18 +21,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    const updateThemeRadios = (theme) => {
-        const themeRadioLight = document.getElementById('themeLight');
-        const themeRadioDark = document.getElementById('themeDark');
-        const themeRadioSystem = document.getElementById('themeSystem');
-        if (!themeRadioLight) return;
-
-        if (theme === 'light') {
-            themeRadioLight.checked = true;
-        } else if (theme === 'dark') {
-            themeRadioDark.checked = true;
-        } else { // 'system' or undefined
-            themeRadioSystem.checked = true;
+    const updateThemeSelector = (theme) => {
+        const themeSelector = document.getElementById('themeSelector');
+        if (themeSelector) {
+            themeSelector.value = theme || 'system';
         }
     };
 
@@ -41,11 +33,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const currentSystemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
             applyTheme(currentSystemTheme);
             chrome.storage.local.remove('theme');
-            updateThemeRadios('system');
+            updateThemeSelector('system');
         } else {
             applyTheme(newThemeValue);
             chrome.storage.local.set({ theme: newThemeValue });
-            updateThemeRadios(newThemeValue);
+            updateThemeSelector(newThemeValue);
         }
     };
 
@@ -59,7 +51,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (savedTheme) {
             applyTheme(savedTheme);
         }
-        updateThemeRadios(savedTheme || 'system');
+        updateThemeSelector(savedTheme || 'system');
     });
 
     // Theme switcher button event listener (the original toggle behavior)
@@ -68,10 +60,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         handleThemeChange(isDark ? 'light' : 'dark');
     });
 
-    // Theme settings radio buttons event listener
-    document.querySelectorAll('input[name="themeOptions"]').forEach(radio => {
-        radio.addEventListener('change', (event) => handleThemeChange(event.target.value));
-    });
+    // Theme settings selector event listener
+    const themeSelector = document.getElementById('themeSelector');
+    if (themeSelector) {
+        themeSelector.addEventListener('change', (event) => handleThemeChange(event.target.value));
+    }
 
     // Listener for system theme changes, to update if 'system' is selected
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
