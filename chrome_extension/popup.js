@@ -116,7 +116,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 updateFolderName(message.profileId, message.folderName);
                 updateAndSaveMessage(message.profileId, `Folder '${message.folderName}' access granted.`, 'success');
                 break;
-            // Other cases for picker window communication can be added here
         }
         return true;
     });
@@ -126,14 +125,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const addProfileButton = document.getElementById('addProfile');
     const archiveListContainer = document.getElementById('archiveListContainer');
     
+    // --- UI Initialization ---
+    const reRender = () => {
+        loadData((profiles, activeProfileId, archivedProfiles) => {
+            renderUI(profiles, activeProfileId, archivedProfiles, profilesContainer, profileTabs, archiveListContainer);
+        });
+    };
     initUI(profilesContainer, profileTabs, addProfileButton, archiveListContainer);
 
-    profileTabs.addEventListener('wheel', (event) => {
-        if (event.deltaY !== 0) {
-            event.preventDefault();
-            profileTabs.scrollLeft += event.deltaY;
-        }
-    });
 
     // --- View Switching Logic ---
     const archiveButton = document.getElementById('archiveButton');
@@ -150,35 +149,87 @@ document.addEventListener('DOMContentLoaded', async () => {
     closeArchiveButton.addEventListener('click', () => {
         mainView.style.display = 'block';
         archiveView.style.display = 'none';
-        appSettingsView.style.display = 'none';
     });
     
-    if (appSettingsButton) {
-        appSettingsButton.addEventListener('click', () => {
-            mainView.style.display = 'none';
-            archiveView.style.display = 'none';
-            appSettingsView.style.display = 'block';
+    appSettingsButton.addEventListener('click', () => {
+        mainView.style.display = 'none';
+        archiveView.style.display = 'none';
+        appSettingsView.style.display = 'block';
+    });
+
+    closeAppSettingsButton.addEventListener('click', () => {
+        mainView.style.display = 'block';
+        appSettingsView.style.display = 'none';
+    });
+
+    // --- App Settings Import/Export Logic ---
+    const exportBtn = document.getElementById('exportSettingsButton');
+    const importBtn = document.getElementById('importSettingsButton');
+    const importFileInput = document.getElementById('importSettingsFile');
+
+    exportBtn.addEventListener('click', async () => {
+        chrome.storage.local.get(null, (allData) => {
+            const exportableData = {};
+            for (const key in allData) {
+                if (!key.startsWith('undo_stack_') && !key.startsWith('redo_stack_')) {
+                    exportableData[key] = allData[key];
+                }
+            }
+            const dataStr = JSON.stringify(exportableData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'justcode_settings.json';
+            a.click();
+            URL.revokeObjectURL(url);
         });
-    }
+    });
+    
+    importBtn.addEventListener('click', () => importFileInput.click());
 
-    if (closeAppSettingsButton) {
-        closeAppSettingsButton.addEventListener('click', () => {
-            mainView.style.display = 'block';
-            archiveView.style.display = 'none';
-            appSettingsView.style.display = 'none';
-        });
-    }
+    importFileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
 
-    // Shift-key listener to swap Archive/Delete buttons
-    const toggleDeleteButton = (showDelete) => {
-        document.querySelectorAll('.profile-card.active .archive-profile').forEach(btn => btn.style.display = showDelete ? 'none' : 'inline-block');
-        document.querySelectorAll('.profile-card.active .permanent-delete-direct').forEach(btn => btn.style.display = showDelete ? 'inline-block' : 'none');
-    };
-    document.addEventListener('keydown', (e) => { if (e.key === 'Shift') toggleDeleteButton(true); });
-    document.addEventListener('keyup', (e) => { if (e.key === 'Shift') toggleDeleteButton(false); });
-    window.addEventListener('blur', () => toggleDeleteButton(false));
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const importedData = JSON.parse(e.target.result);
+                if (importedData.profiles && importedData.activeProfileId) {
+                    if (confirm('This will overwrite all your current profiles and settings. Are you sure?')) {
+                        chrome.storage.local.set(importedData, () => {
+                            alert('Settings imported successfully!');
+                            reRender(); // Re-render the entire UI with the new data
+                        });
+                    }
+                } else {
+                    alert('Error: Invalid settings file. Missing "profiles" or "activeProfileId".');
+                }
+            } catch (error) {
+                alert(`Error parsing file: ${error.message}`);
+            } finally {
+                // Reset file input to allow importing the same file again
+                importFileInput.value = '';
+            }
+        };
+        reader.readAsText(file);
+    });
 
-    // Keyboard shortcuts for actions within the popup
+    // --- Key Listeners ---
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Shift') {
+            document.querySelectorAll('.profile-card.active .archive-profile').forEach(btn => btn.style.display = 'none');
+            document.querySelectorAll('.profile-card.active .permanent-delete-direct').forEach(btn => btn.style.display = 'inline-block');
+        }
+    });
+    document.addEventListener('keyup', (e) => {
+        if (e.key === 'Shift') {
+            document.querySelectorAll('.profile-card.active .archive-profile').forEach(btn => btn.style.display = 'inline-block');
+            document.querySelectorAll('.profile-card.active .permanent-delete-direct').forEach(btn => btn.style.display = 'none');
+        }
+    });
+
     document.addEventListener('keydown', (event) => {
         if (!event.altKey || event.metaKey || event.ctrlKey || event.shiftKey) return;
 
@@ -203,7 +254,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 handleUndoCodeClick(mockEvent);
                 actionTaken = true;
             }
-        } else if (event.code === 'KeyA' || event.code === 'KeyS') { // Profile switching
+        } else if (event.code === 'KeyA' || event.code === 'KeyS') {
             actionTaken = true;
             loadData((profiles, activeProfileId, archivedProfiles) => {
                 if (profiles.length <= 1) return;

@@ -49,13 +49,20 @@
                 <h5 class="mb-0">App Settings</h5>
                 <button id="closeAppSettings" type="button" class="btn-close" aria-label="Close"></button>
             </div>
-            <div class="input-group input-group-sm mb-3">
+            <div class="input-group input-group-sm mb-2">
                 <span class="input-group-text" style="width: 120px;">Theme</span>
                 <select class="form-select form-select-sm" id="themeSelector">
                     <option value="system">System</option>
                     <option value="light">Light</option>
                     <option value="dark">Dark</option>
                 </select>
+            </div>
+            <hr>
+            <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text" style="width: 120px;">Settings Data</span>
+                <button class="btn btn-outline-primary" id="exportSettingsButton" style="flex-grow: 1;">Export</button>
+                <button class="btn btn-outline-success" id="importSettingsButton" style="flex-grow: 1;">Import</button>
+                <input type="file" id="importSettingsFile" accept=".json" style="display: none;" />
             </div>
         </div>
     </div>
