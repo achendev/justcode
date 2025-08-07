@@ -25,6 +25,7 @@
                 <div class="d-flex gap-2">
                     <button id="detachWindow" class="btn btn-outline-secondary btn-sm" title="Detach as Window"><i class="bi bi-window-stack"></i></button>
                     <button id="theme-switcher" class="btn btn-outline-secondary btn-sm" title="Toggle Theme"><i class="bi bi-brightness-high-fill"></i></button>
+                    <button id="appSettingsButton" class="btn btn-outline-secondary btn-sm" title="App Settings"><i class="bi bi-gear"></i></button>
                     <button id="archiveButton" class="btn btn-outline-secondary btn-sm" title="Archived Profiles"><i class="bi bi-archive"></i></button>
                     <button id="addProfile" class="btn btn-outline-primary btn-sm">+</button>
                 </div>
@@ -40,6 +41,29 @@
                 <button id="closeArchive" type="button" class="btn-close" aria-label="Close"></button>
             </div>
             <div id="archiveListContainer"></div>
+        </div>
+
+        <!-- App Settings View Wrapper (hidden by default) -->
+        <div id="appSettingsView" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">App Settings</h5>
+                <button id="closeAppSettings" type="button" class="btn-close" aria-label="Close"></button>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Theme</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="themeOptions" id="themeLight" value="light">
+                    <label class="form-check-label" for="themeLight">Light</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="themeOptions" id="themeDark" value="dark">
+                    <label class="form-check-label" for="themeDark">Dark</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="themeOptions" id="themeSystem" value="system">
+                    <label class="form-check-label" for="themeSystem">System</label>
+                </div>
+            </div>
         </div>
     </div>
     <script type="module" src="popup.js"></script>

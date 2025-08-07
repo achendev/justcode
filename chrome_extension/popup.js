@@ -21,30 +21,72 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
+    const updateThemeRadios = (theme) => {
+        const themeRadioLight = document.getElementById('themeLight');
+        const themeRadioDark = document.getElementById('themeDark');
+        const themeRadioSystem = document.getElementById('themeSystem');
+        if (!themeRadioLight) return;
+
+        if (theme === 'light') {
+            themeRadioLight.checked = true;
+        } else if (theme === 'dark') {
+            themeRadioDark.checked = true;
+        } else { // 'system' or undefined
+            themeRadioSystem.checked = true;
+        }
+    };
+
+    const handleThemeChange = (newThemeValue) => {
+        if (newThemeValue === 'system') {
+            const currentSystemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            applyTheme(currentSystemTheme);
+            chrome.storage.local.remove('theme');
+            updateThemeRadios('system');
+        } else {
+            applyTheme(newThemeValue);
+            chrome.storage.local.set({ theme: newThemeValue });
+            updateThemeRadios(newThemeValue);
+        }
+    };
+
     // Step 1: Apply system theme immediately to prevent flashing.
     const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     applyTheme(systemTheme);
 
-    // Step 2: Load and apply user-saved theme, overriding the system theme if it exists.
+    // Step 2: Load and apply user-saved theme, and update UI controls.
     chrome.storage.local.get('theme', (data) => {
-        // Only apply the stored theme if it's actually set.
-        // If not set, the system theme applied above will persist.
-        if (data.theme) {
-            applyTheme(data.theme);
+        const savedTheme = data.theme;
+        if (savedTheme) {
+            applyTheme(savedTheme);
         }
+        updateThemeRadios(savedTheme || 'system');
     });
 
-    // Theme switcher button event listener
+    // Theme switcher button event listener (the original toggle behavior)
     themeSwitcher.addEventListener('click', () => {
         const isDark = document.body.classList.contains('dark-theme');
-        const newTheme = isDark ? 'light' : 'dark';
-        chrome.storage.local.set({ theme: newTheme });
-        applyTheme(newTheme);
+        handleThemeChange(isDark ? 'light' : 'dark');
+    });
+
+    // Theme settings radio buttons event listener
+    document.querySelectorAll('input[name="themeOptions"]').forEach(radio => {
+        radio.addEventListener('change', (event) => handleThemeChange(event.target.value));
+    });
+
+    // Listener for system theme changes, to update if 'system' is selected
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+        chrome.storage.local.get('theme', (data) => {
+            if (!data.theme) { // Only change if we are in system mode
+                applyTheme(e.matches ? "dark" : "light");
+            }
+        });
     });
     // --- END THEME LOGIC ---
 
     const detachWindowButton = document.getElementById('detachWindow');
     const mainView = document.getElementById('mainView');
+    const archiveView = document.getElementById('archiveView');
+    const appSettingsView = document.getElementById('appSettingsView');
 
     // --- View Mode Logic ---
     const urlParams = new URLSearchParams(window.location.search);
@@ -99,6 +141,40 @@ document.addEventListener('DOMContentLoaded', async () => {
             profileTabs.scrollLeft += event.deltaY;
         }
     });
+
+    // --- View Switching Logic ---
+    const archiveButton = document.getElementById('archiveButton');
+    const closeArchiveButton = document.getElementById('closeArchive');
+    const appSettingsButton = document.getElementById('appSettingsButton');
+    const closeAppSettingsButton = document.getElementById('closeAppSettings');
+
+    archiveButton.addEventListener('click', () => {
+        mainView.style.display = 'none';
+        archiveView.style.display = 'block';
+        appSettingsView.style.display = 'none';
+    });
+
+    closeArchiveButton.addEventListener('click', () => {
+        mainView.style.display = 'block';
+        archiveView.style.display = 'none';
+        appSettingsView.style.display = 'none';
+    });
+    
+    if (appSettingsButton) {
+        appSettingsButton.addEventListener('click', () => {
+            mainView.style.display = 'none';
+            archiveView.style.display = 'none';
+            appSettingsView.style.display = 'block';
+        });
+    }
+
+    if (closeAppSettingsButton) {
+        closeAppSettingsButton.addEventListener('click', () => {
+            mainView.style.display = 'block';
+            archiveView.style.display = 'none';
+            appSettingsView.style.display = 'none';
+        });
+    }
 
     // Shift-key listener to swap Archive/Delete buttons
     const toggleDeleteButton = (showDelete) => {
