@@ -49,8 +49,8 @@ body.dark-theme .nav-link {
     color: #f8f9fa;
 }
 body.dark-theme .nav-link.active {
-    background-color: #343a40;
-    color: #f8f9fa;
+    background-color: #f8f9fa;
+    color: #343a40;
 }
 body.dark-theme .form-label, body.dark-theme .form-check-label {
     color: #adb5bd;
