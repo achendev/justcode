@@ -20,11 +20,6 @@
     padding-top: 0.3rem;
     padding-bottom: 0.3rem;
 }
-
-/* Fix for Bootstrap input-group border override */
-/* This ensures the blue 'Select Folder' button shows its blue right border */
 .input-group > .select-project-folder.btn-outline-primary {
-    position: relative;
-    z-index: 2;
     border-color: gray;
 }

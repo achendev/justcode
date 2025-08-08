@@ -30,3 +30,17 @@
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+/* Minimal, focused fix for Profile Name row only */
+.profile-card .profile-header .input-group .form-control.profile-name-input {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+.profile-card.js-mode .profile-header .input-group .form-control.profile-name-input {
+    border-top-right-radius: 0.25rem;
+    border-bottom-right-radius: 0.25rem;
+}
+.profile-card.server-mode .profile-header .input-group .update-app-button.server-mode-item {
+    border-top-right-radius: 0.25rem;
+    border-bottom-right-radius: 0.25rem;
+}
