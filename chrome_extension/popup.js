@@ -162,10 +162,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         appSettingsView.style.display = 'none';
     });
 
-    // --- App Settings Import/Export Logic ---
+    // --- App Settings (incl. new checkbox) ---
     const exportBtn = document.getElementById('exportSettingsButton');
     const importBtn = document.getElementById('importSettingsButton');
     const importFileInput = document.getElementById('importSettingsFile');
+    const closeOnGetContextCheckbox = document.getElementById('closeOnGetContext');
+
+    // Initialize "Close on Get Context" checkbox
+    chrome.storage.local.get('closeOnGetContext', (data) => {
+        if (closeOnGetContextCheckbox) {
+            closeOnGetContextCheckbox.checked = !!data.closeOnGetContext;
+        }
+    });
+    // Add listener for "Close on Get Context" checkbox
+    if (closeOnGetContextCheckbox) {
+        closeOnGetContextCheckbox.addEventListener('change', (event) => {
+            chrome.storage.local.set({ closeOnGetContext: event.target.checked });
+        });
+    }
 
     exportBtn.addEventListener('click', async () => {
         chrome.storage.local.get(null, (allData) => {

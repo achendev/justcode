@@ -64,7 +64,10 @@ export async function getContextFromServer(profile, fromShortcut) {
             updateAndSaveMessage(profile.id, 'Context loaded successfully!', 'success');
         }
 
-        if (fromShortcut) window.close();
+        const settings = await chrome.storage.local.get({ closeOnGetContext: false });
+        if ((fromShortcut || settings.closeOnGetContext) && !isDetached) {
+            window.close();
+        }
 
     } catch (error) {
         updateAndSaveMessage(profile.id, `Error: ${error.message}`, 'error');

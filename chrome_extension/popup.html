@@ -49,6 +49,7 @@
                 <h5 class="mb-0">App Settings</h5>
                 <button id="closeAppSettings" type="button" class="btn-close" aria-label="Close"></button>
             </div>
+            <hr>
             <div class="input-group input-group-sm mb-2">
                 <span class="input-group-text" style="width: 120px;">Theme</span>
                 <select class="form-select form-select-sm" id="themeSelector">
@@ -63,6 +64,13 @@
                 <input type="file" id="importSettingsFile" accept=".json" style="display: none;" />
                 <button class="btn btn-outline-secondary" id="exportSettingsButton" style="flex-grow: 1;">Export</button>
                 <button class="btn btn-outline-secondary" id="importSettingsButton" style="flex-grow: 1;">Import</button>
+            </div>
+            <hr>
+            <div class="form-check mb-2 ps-4">
+                <input class="form-check-input" type="checkbox" id="closeOnGetContext">
+                <label class="form-check-label" for="closeOnGetContext">
+                    Close extension on 'Get Context'
+                </label>
             </div>
         </div>
     </div>
