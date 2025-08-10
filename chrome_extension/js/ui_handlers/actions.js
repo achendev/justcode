@@ -26,20 +26,22 @@ async function performAction(event, actionFunc, ...extraArgs) {
     try {
         const result = await new Promise((resolve, reject) => {
             loadData(async (profiles) => {
-                const profile = profiles.find(p => p.id === id);
-                if (!profile) {
-                    return reject(new Error("Profile not found."));
+                try {
+                    const profile = profiles.find(p => p.id === id);
+                    if (!profile) {
+                        return reject(new Error("Profile not found."));
+                    }
+                    const actionResult = await actionFunc(profile, ...extraArgs);
+                    resolve(actionResult);
+                } catch (err) {
+                    reject(err);
                 }
-                const actionResult = await actionFunc(profile, ...extraArgs);
-                resolve(actionResult);
             });
         });
 
-        // If the action returned a message, display it.
         if (result && result.text) {
             updateAndSaveMessage(id, result.text, result.type);
 
-            // Handle closing the popup window after a successful "Get Context" action
             if (actionFunc === getContext) {
                 const settings = await chrome.storage.local.get({ closeOnGetContext: false });
                 const isDetached = new URLSearchParams(window.location.search).get('view') === 'window';
@@ -57,10 +59,8 @@ async function performAction(event, actionFunc, ...extraArgs) {
         loadData(profiles => {
             const activeProfile = profiles.find(p => p.id === id);
             if (activeProfile) {
-                // Re-enable main buttons
                 getContextBtn && (getContextBtn.disabled = false);
                 deployCodeBtn && (deployCodeBtn.disabled = false);
-                // Refresh undo/redo buttons state
                 refreshUndoRedoCounts(activeProfile);
             }
         });
@@ -69,11 +69,11 @@ async function performAction(event, actionFunc, ...extraArgs) {
 
 
 export function handleGetContextClick(event) {
-    performAction(event, getContext);
+    performAction(event, getContext, false); // fromShortcut = false
 }
 
 export function handleDeployCodeClick(event) {
-    performAction(event, deployCode);
+    performAction(event, deployCode, false); // fromShortcut = false
 }
 
 export function handleUndoCodeClick(event) {
@@ -112,7 +112,7 @@ export function handleUpdateAppClick(event) {
         try {
             const headers = { 'Content-Type': 'text/plain' };
             if (activeProfile.isAuthEnabled && activeProfile.username) {
-                headers['Authorization'] = 'Basic ' + btoa(`${activeProfile.username}:${active.password}`);
+                headers['Authorization'] = 'Basic ' + btoa(`${activeProfile.username}:${activeProfile.password}`);
             }
 
             const response = await fetch(endpoint, { method: 'POST', headers: headers });

@@ -251,38 +251,49 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     document.addEventListener('keydown', (event) => {
-        // This listener is for shortcuts that ONLY work when the popup is open.
-        // The global 'get-context' (Alt+Left) and 'deploy-code' (Alt+Right) shortcuts
-        // are handled by the background script via manifest.json commands.
-        if (!event.altKey || event.metaKey || event.ctrlKey || event.shiftKey) return;
+        if (event.altKey && !event.metaKey && !event.ctrlKey && !event.shiftKey) {
+            let actionTaken = false;
+            const activeCard = document.querySelector('.profile-card.active');
+            if (!activeCard) return;
 
-        let actionTaken = false;
-        const activeCard = document.querySelector('.profile-card.active');
-        if (!activeCard) return;
-
-        if (event.code === 'KeyR') {
-            const btn = activeCard.querySelector('.undo-code');
-            if (btn && !btn.disabled) {
-                const mockEvent = { currentTarget: btn };
-                handleUndoCodeClick(mockEvent);
+            if (event.key === 'ArrowRight') {
+                const btn = activeCard.querySelector('.deploy-code');
+                if (btn && !btn.disabled) { 
+                    const mockEvent = { currentTarget: btn };
+                    handleDeployCodeClick(mockEvent); 
+                    actionTaken = true; 
+                }
+            } else if (event.key === 'ArrowLeft') {
+                const btn = activeCard.querySelector('.get-context');
+                 if (btn && !btn.disabled) {
+                    const mockEvent = { currentTarget: btn };
+                    handleGetContextClick(mockEvent);
+                    actionTaken = true;
+                }
+            } else if (event.code === 'KeyR') {
+                const btn = activeCard.querySelector('.undo-code');
+                if (btn && !btn.disabled) {
+                    const mockEvent = { currentTarget: btn };
+                    handleUndoCodeClick(mockEvent);
+                    actionTaken = true;
+                }
+            } else if (event.code === 'KeyA' || event.code === 'KeyS') {
                 actionTaken = true;
+                loadData((profiles, activeProfileId, archivedProfiles) => {
+                    if (profiles.length <= 1) return;
+                    const direction = (event.code === 'KeyA') ? -1 : 1;
+                    const currentIndex = profiles.findIndex(p => p.id === activeProfileId);
+                    const newIndex = (currentIndex + direction + profiles.length) % profiles.length;
+                    const newActiveProfileId = profiles[newIndex].id;
+                    saveData(profiles, newActiveProfileId, archivedProfiles);
+                    renderUI(profiles, newActiveProfileId, archivedProfiles, profilesContainer, profileTabs, archiveListContainer);
+                });
             }
-        } else if (event.code === 'KeyA' || event.code === 'KeyS') {
-            actionTaken = true;
-            loadData((profiles, activeProfileId, archivedProfiles) => {
-                if (profiles.length <= 1) return;
-                const direction = (event.code === 'KeyA') ? -1 : 1;
-                const currentIndex = profiles.findIndex(p => p.id === activeProfileId);
-                const newIndex = (currentIndex + direction + profiles.length) % profiles.length;
-                const newActiveProfileId = profiles[newIndex].id;
-                saveData(profiles, newActiveProfileId, archivedProfiles);
-                renderUI(profiles, newActiveProfileId, archivedProfiles, profilesContainer, profileTabs, archiveListContainer);
-            });
-        }
 
-        if (actionTaken) {
-            event.preventDefault();
-            event.stopPropagation();
+            if (actionTaken) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
         }
     });
 });

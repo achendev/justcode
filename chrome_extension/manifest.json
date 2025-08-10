@@ -47,7 +47,7 @@
                 "default": "Alt+Right",
                 "mac": "Alt+Right"
             },
-            "description": "Deploy code from the active profile"
+            "description": "Deploy code using the active profile"
         }
     },
     "content_scripts": [
