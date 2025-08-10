@@ -70,7 +70,7 @@ def deploy_code():
                     raise ValueError(f"Invalid command format: {line}") from e
 
             if not parts: continue
-            command, args = parts, parts[1:]
+            command, args = parts[0], parts[1:]
 
             if command == 'mkdir':
                 paths_to_create = [arg for arg in args if arg != '-p']
@@ -107,7 +107,7 @@ def deploy_code():
                         rollback_commands.insert(0, f"mkdir {shlex.quote('./' + relative_path)}")
             elif command == 'mv':
                 if len(args) != 2: raise ValueError("'mv' requires two arguments.")
-                src, dest = re.sub(r'^\./', '', args), re.sub(r'^\./', '', args)
+                src, dest = re.sub(r'^\./', '', args[0]), re.sub(r'^\./', '', args[1])
                 if not is_safe_path(project_path, src) or not is_safe_path(project_path, dest): raise PermissionError(f"Traversal: {src} or {dest}")
                 rollback_commands.insert(0, f"mv {shlex.quote('./' + dest)} {shlex.quote('./' + src)}")
             elif command == 'chmod':
