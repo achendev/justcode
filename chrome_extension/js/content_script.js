@@ -56,8 +56,7 @@ function ensureInfrastructure() {
     });
 }
 
-
-function showNotification(id, text, type, showSpinner) {
+function showNotification(id, text, type, showSpinner, fromShortcut) {
     ensureInfrastructure();
 
     const notificationId = `justcode-notification-${id}`;
@@ -75,11 +74,36 @@ function showNotification(id, text, type, showSpinner) {
 
         const textSpan = document.createElement('span');
         textSpan.className = 'justcode-notification-text';
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'justcode-notification-close-btn';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.title = 'Close';
 
         notification.appendChild(spinner);
         notification.appendChild(textSpan);
+        notification.appendChild(closeBtn);
         notificationContainer.appendChild(notification);
 
+        closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (activeNotificationTimers.has(id)) {
+                clearTimeout(activeNotificationTimers.get(id));
+                activeNotificationTimers.delete(id);
+            }
+            notification.classList.add('hide');
+        });
+
+        notification.addEventListener('click', () => {
+            if (!notification.classList.contains('persistent')) {
+                notification.classList.add('persistent');
+                if (activeNotificationTimers.has(id)) {
+                    clearTimeout(activeNotificationTimers.get(id));
+                    activeNotificationTimers.delete(id);
+                }
+            }
+        });
+        
         notification.addEventListener('animationend', (e) => {
             if (e.animationName === 'justcode-fade-out' && notification.parentNode) {
                 notification.remove();
@@ -87,48 +111,38 @@ function showNotification(id, text, type, showSpinner) {
         });
     }
 
-    // --- Start of Fix ---
-    // Ensure the notification isn't in a hiding state from a previous timer
     notification.classList.remove('hide');
-
-    // Manage state classes without affecting behavioral classes like .show
     notification.classList.remove('info', 'success', 'error');
     notification.classList.add(type);
     notification.classList.toggle('with-spinner', showSpinner);
+    
+    // A notification from a shortcut should only become persistent if the user interacts with it.
+    // It should not be persistent by default. This was the source of the bug.
+    notification.classList.toggle('persistent', notification.classList.contains('persistent'));
 
-    // Update the text content
+
     const textSpan = notification.querySelector('.justcode-notification-text');
     if (textSpan) {
         textSpan.textContent = text;
     }
     
-    // Ensure the notification is visible
     if (isNew) {
-        // Fade in a brand new notification
-        setTimeout(() => {
-            notification.classList.add('show');
-        }, 10);
+        setTimeout(() => notification.classList.add('show'), 10);
     } else {
-        // An existing notification should already have 'show', but we ensure it's there.
         notification.classList.add('show');
     }
-    // --- End of Fix ---
 
-    // Clear any previous fade-out timer for this notification
     if (activeNotificationTimers.has(id)) {
         clearTimeout(activeNotificationTimers.get(id));
         activeNotificationTimers.delete(id);
     }
     
-    // If it's a final message (no spinner), set a new timer to make it fade out
-    if (!showSpinner) {
+    if (!showSpinner && !notification.classList.contains('persistent')) {
         const timer = setTimeout(() => {
             const el = document.getElementById(notificationId);
-            if (el) {
-                el.classList.add('hide');
-            }
+            if (el) el.classList.add('hide');
             activeNotificationTimers.delete(id);
-        }, notificationTimeout * 1000); // Use the stored value
+        }, notificationTimeout * 1000);
         activeNotificationTimers.set(id, timer);
     }
 }
@@ -144,7 +158,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             request.notificationId, 
             request.text, 
             request.messageType, 
-            request.showSpinner
+            request.showSpinner,
+            request.fromShortcut || false
         );
         sendResponse({ status: "Notification command processed" });
     }

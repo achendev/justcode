@@ -96,7 +96,8 @@ async function executeCommand(command) {
             notificationId: notificationId,
             text: progressText,
             messageType: 'info',
-            showSpinner: true
+            showSpinner: true,
+            fromShortcut: true
         });
     } catch (err) {
         console.log("Could not send initial notification to content script, but the action will proceed.", err);
@@ -131,7 +132,8 @@ async function executeCommand(command) {
                     notificationId: notificationId,
                     text: messageTextToShow,
                     messageType: messageTypeToShow,
-                    showSpinner: false
+                    showSpinner: false,
+                    fromShortcut: true
                 });
             } catch (err) {
                 console.log("Could not send final notification to content script.", err);
@@ -149,7 +151,8 @@ async function executeCommand(command) {
                     notificationId: notificationId,
                     text: `Error: Active profile with ID ${activeProfileId} not found.`,
                     messageType: 'error',
-                    showSpinner: false
+                    showSpinner: false,
+                    fromShortcut: true
                 });
             } catch (err) {
                 console.log("Could not update notification with error message.", err);
