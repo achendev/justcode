@@ -73,5 +73,5 @@ export async function extractCodeToDeploy(profile, isDetached) {
         args: args
     });
 
-    return results?.result || null;
+    return results[0]?.result || null;
 }
