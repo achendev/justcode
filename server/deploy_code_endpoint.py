@@ -157,35 +157,47 @@ def deploy_code():
     try:
         output_log, error_log = execute_script(script_content, project_path, tolerate_errors)
         
-        message = ""
+        deployment_message = ""
         if error_log:
-            message = f"Deployed with {len(error_log)} ignored error(s)."
+            deployment_message = f"Deployment completed with {len(error_log)} ignored error(s)."
             if verbose_log:
-                 message += "\n\n" + "\n---\n".join(error_log) + "\n\n--- SUCCESSFUL ACTIONS LOG ---\n"
+                 deployment_message += "\n\n" + "\n---\n".join(error_log) + "\n\n--- SUCCESSFUL ACTIONS LOG ---\n"
         else:
-            message = "Successfully deployed code."
+            deployment_message = "Code deployed successfully."
 
         if verbose_log:
-            message += "\n--- LOG ---\n" + "\n".join(output_log)
+            deployment_message += "\n--- LOG ---\n" + "\n".join(output_log)
 
         # --- Pass 3: Execute Post-Deploy Script ---
         if run_script_on_deploy and post_deploy_script:
-            if verbose_log:
-                message += "\n\n--- POST-DEPLOY SCRIPT OUTPUT ---\n"
             try:
                 post_script_result = subprocess.run(
                     post_deploy_script, shell=True, cwd=project_path,
                     capture_output=True, text=True, check=False
                 )
+                
+                post_script_message = ""
+                if post_script_result.returncode != 0:
+                    post_script_message = f"\n\n--- POST-DEPLOY SCRIPT FAILED (Exit Code: {post_script_result.returncode}) ---\n"
+                    if post_script_result.stdout:
+                        post_script_message += f"STDOUT:\n{post_script_result.stdout}\n"
+                    if post_script_result.stderr:
+                        post_script_message += f"STDERR:\n{post_script_result.stderr}\n"
+                    
+                    final_message = deployment_message + post_script_message
+                    return Response(final_message, status=400, mimetype='text/plain')
+
+                # Script succeeded
                 if verbose_log:
-                    if post_script_result.stdout: message += f"Output:\n{post_script_result.stdout}\n"
-                    if post_script_result.stderr: message += f"Errors:\n{post_script_result.stderr}\n"
-                    if post_script_result.returncode != 0: message += f"Script exited with code {post_script_result.returncode}."
-                    else: message += "Script finished successfully."
+                    post_script_message = "\n\n--- POST-DEPLOY SCRIPT SUCCEEDED ---\n"
+                    if post_script_result.stdout: post_script_message += f"Output:\n{post_script_result.stdout}"
+                    if post_script_result.stderr: post_script_message += f"Errors (non-fatal):\n{post_script_result.stderr}"
+                    deployment_message += post_script_message
+
             except Exception as e:
-                if verbose_log: message += f"Failed to execute post-deploy script: {str(e)}"
+                 return Response(f"Failed to execute post-deploy script: {str(e)}", status=500, mimetype='text/plain')
         
-        return Response(message, mimetype='text/plain')
+        return Response(deployment_message, mimetype='text/plain')
 
     except Exception as e:
         try:
