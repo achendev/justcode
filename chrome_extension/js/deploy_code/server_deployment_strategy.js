@@ -22,8 +22,11 @@ export async function handleServerDeployment(profile, fromShortcut = false) {
     const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
     const tolerateErrors = profile.tolerateErrors !== false;
     
+    // Check the global setting for verbose logging
+    const settings = await chrome.storage.local.get({ showVerboseDeployLog: true });
+    
     // Build the base endpoint URL
-    let endpoint = `${serverUrl}/deploycode?path=${encodeURIComponent(path)}&tolerateErrors=${tolerateErrors}`;
+    let endpoint = `${serverUrl}/deploycode?path=${encodeURIComponent(path)}&tolerateErrors=${tolerateErrors}&verbose=${settings.showVerboseDeployLog}`;
     
     // Append post-deploy script parameters if the feature is enabled
     if (profile.runScriptOnDeploy && profile.postDeployScript) {

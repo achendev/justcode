@@ -15,6 +15,7 @@ def deploy_code():
     tolerate_errors = request.args.get('tolerateErrors', 'true').lower() == 'true'
     run_script_on_deploy = request.args.get('runScript', 'false').lower() == 'true'
     post_deploy_script = request.args.get('scriptToRun', '')
+    verbose_log = request.args.get('verbose', 'true').lower() == 'true'
 
     if not path or not path.strip():
         return Response("Error: 'path' parameter is missing.", status=400, mimetype='text/plain')
@@ -158,49 +159,39 @@ def deploy_code():
         
         message = ""
         if error_log:
-            message += "Deployed with some ignored errors:\n\n"
-            message += "\n---\n".join(error_log)
-            message += "\n\n--- SUCCESSFUL ACTIONS LOG ---\n"
+            message = f"Deployed with {len(error_log)} ignored error(s)."
+            if verbose_log:
+                 message += "\n\n" + "\n---\n".join(error_log) + "\n\n--- SUCCESSFUL ACTIONS LOG ---\n"
         else:
-            message = "Successfully deployed code.\n--- LOG ---\n"
+            message = "Successfully deployed code."
 
-        message += "\n".join(output_log)
+        if verbose_log:
+            message += "\n--- LOG ---\n" + "\n".join(output_log)
 
         # --- Pass 3: Execute Post-Deploy Script ---
         if run_script_on_deploy and post_deploy_script:
-            message += "\n\n--- POST-DEPLOY SCRIPT OUTPUT ---\n"
+            if verbose_log:
+                message += "\n\n--- POST-DEPLOY SCRIPT OUTPUT ---\n"
             try:
-                # Execute the script in the project's root directory
                 post_script_result = subprocess.run(
-                    post_deploy_script,
-                    shell=True,
-                    cwd=project_path,
-                    capture_output=True,
-                    text=True,
-                    check=False # We will handle non-zero exit codes manually
+                    post_deploy_script, shell=True, cwd=project_path,
+                    capture_output=True, text=True, check=False
                 )
-                if post_script_result.stdout:
-                    message += f"Output:\n{post_script_result.stdout}\n"
-                if post_script_result.stderr:
-                    message += f"Errors:\n{post_script_result.stderr}\n"
-                
-                if post_script_result.returncode != 0:
-                    message += f"Script exited with code {post_script_result.returncode}."
-                else:
-                    message += "Script finished successfully."
-
+                if verbose_log:
+                    if post_script_result.stdout: message += f"Output:\n{post_script_result.stdout}\n"
+                    if post_script_result.stderr: message += f"Errors:\n{post_script_result.stderr}\n"
+                    if post_script_result.returncode != 0: message += f"Script exited with code {post_script_result.returncode}."
+                    else: message += "Script finished successfully."
             except Exception as e:
-                message += f"Failed to execute post-deploy script: {str(e)}"
-
+                if verbose_log: message += f"Failed to execute post-deploy script: {str(e)}"
         
         return Response(message, mimetype='text/plain')
 
     except Exception as e:
-        # This block will now only be reached if tolerate_errors is false and an error occurs.
         try:
             if os.path.exists(undo_filepath): os.remove(undo_filepath)
             if os.path.exists(redo_filepath): os.remove(redo_filepath)
-        except OSError: pass # Best effort cleanup
+        except OSError: pass
         
         error_details = f"Error during deployment:\n{str(e)}\n{traceback.format_exc()}"
         error_details += "\n\nNOTE: The action failed to execute. The undo history has not been changed."
