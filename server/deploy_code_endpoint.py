@@ -190,8 +190,8 @@ def deploy_code():
                 # Script succeeded
                 if verbose_log:
                     post_script_message = "\n\n--- POST-DEPLOY SCRIPT SUCCEEDED ---\n"
-                    if post_script_result.stdout: post_script_message += f"Output:\n{post_script_result.stdout}"
-                    if post_script_result.stderr: post_script_message += f"Errors (non-fatal):\n{post_script_result.stderr}"
+                    if post_script_result.stdout: post_script_message += f"Stdout:\n{post_script_result.stdout}"
+                    if post_script_result.stderr: post_script_message += f"Stderr:\n{post_script_result.stderr}"
                     deployment_message += post_script_message
 
             except Exception as e:

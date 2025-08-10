@@ -87,21 +87,12 @@ function showNotification(id, text, type, showSpinner, fromShortcut) {
 
         closeBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (activeNotificationTimers.has(id)) {
-                clearTimeout(activeNotificationTimers.get(id));
+            const timerData = activeNotificationTimers.get(id);
+            if (timerData) {
+                clearTimeout(timerData.timerId);
                 activeNotificationTimers.delete(id);
             }
             notification.classList.add('hide');
-        });
-
-        notification.addEventListener('click', () => {
-            if (!notification.classList.contains('persistent')) {
-                notification.classList.add('persistent');
-                if (activeNotificationTimers.has(id)) {
-                    clearTimeout(activeNotificationTimers.get(id));
-                    activeNotificationTimers.delete(id);
-                }
-            }
         });
         
         notification.addEventListener('animationend', (e) => {
@@ -109,6 +100,48 @@ function showNotification(id, text, type, showSpinner, fromShortcut) {
                 notification.remove();
             }
         });
+        
+        // --- START: New Timer Interaction Logic ---
+        notification.addEventListener('click', () => {
+            if (notification.classList.contains('persistent')) return;
+            notification.classList.add('persistent');
+
+            const timerData = activeNotificationTimers.get(id);
+            if (timerData) {
+                clearTimeout(timerData.timerId);
+                activeNotificationTimers.delete(id);
+            }
+        });
+
+        notification.addEventListener('mouseenter', () => {
+            const timerData = activeNotificationTimers.get(id);
+            if (timerData && !notification.classList.contains('persistent')) {
+                clearTimeout(timerData.timerId);
+                const elapsedTime = Date.now() - timerData.startTime;
+                timerData.remainingTime -= elapsedTime;
+                timerData.timerId = null; // Mark as paused
+            }
+        });
+
+        notification.addEventListener('mouseleave', () => {
+            const timerData = activeNotificationTimers.get(id);
+            if (timerData && timerData.timerId === null && !notification.classList.contains('persistent')) {
+                if (timerData.remainingTime > 0) {
+                    timerData.startTime = Date.now();
+                    timerData.timerId = setTimeout(() => {
+                        const el = document.getElementById(notificationId);
+                        if (el) el.classList.add('hide');
+                        activeNotificationTimers.delete(id);
+                    }, timerData.remainingTime);
+                } else {
+                    // Time is up, hide it now
+                    const el = document.getElementById(notificationId);
+                    if (el) el.classList.add('hide');
+                    activeNotificationTimers.delete(id);
+                }
+            }
+        });
+        // --- END: New Timer Interaction Logic ---
     }
 
     notification.classList.remove('hide');
@@ -116,11 +149,6 @@ function showNotification(id, text, type, showSpinner, fromShortcut) {
     notification.classList.add(type);
     notification.classList.toggle('with-spinner', showSpinner);
     
-    // A notification from a shortcut should only become persistent if the user interacts with it.
-    // It should not be persistent by default. This was the source of the bug.
-    notification.classList.toggle('persistent', notification.classList.contains('persistent'));
-
-
     const textSpan = notification.querySelector('.justcode-notification-text');
     if (textSpan) {
         textSpan.textContent = text;
@@ -132,18 +160,28 @@ function showNotification(id, text, type, showSpinner, fromShortcut) {
         notification.classList.add('show');
     }
 
-    if (activeNotificationTimers.has(id)) {
-        clearTimeout(activeNotificationTimers.get(id));
+    // Clear any existing timer for this notification before setting a new one
+    const existingTimer = activeNotificationTimers.get(id);
+    if (existingTimer) {
+        clearTimeout(existingTimer.timerId);
         activeNotificationTimers.delete(id);
     }
     
+    // Only set a hide timer if the notification is not showing a spinner and not persistent
     if (!showSpinner && !notification.classList.contains('persistent')) {
-        const timer = setTimeout(() => {
+        const timeoutDuration = notificationTimeout * 1000;
+        const timerId = setTimeout(() => {
             const el = document.getElementById(notificationId);
             if (el) el.classList.add('hide');
             activeNotificationTimers.delete(id);
-        }, notificationTimeout * 1000);
-        activeNotificationTimers.set(id, timer);
+        }, timeoutDuration);
+
+        // Store comprehensive timer data
+        activeNotificationTimers.set(id, {
+            timerId: timerId,
+            startTime: Date.now(),
+            remainingTime: timeoutDuration
+        });
     }
 }
 

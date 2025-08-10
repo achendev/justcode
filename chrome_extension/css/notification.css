@@ -7,7 +7,7 @@
     width: -moz-max-content;
     width: -webkit-max-content;
     width: max-content;
-    max-width: 350px;
+    max-width: 500px; /* Increased from 350px */
 }
 
 .justcode-noti-top-left {
