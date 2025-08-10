@@ -31,7 +31,7 @@ export async function handleJsDeployment(profile, fromShortcut = false) {
     const undoScript = await generateUndoScript(handle, codeToDeploy);
 
     if (!fromShortcut) updateTemporaryMessage(profile.id, 'Deploying code locally...');
-    const errors = await executeFileSystemScript(handle, codeToDeploy, profile.tolerateErrors !== false);
+    const { errors, log } = await executeFileSystemScript(handle, codeToDeploy, profile.tolerateErrors !== false);
     
     // On success, update history
     const undoKey = `undo_stack_${profile.id}`;
@@ -45,12 +45,16 @@ export async function handleJsDeployment(profile, fromShortcut = false) {
     await chrome.storage.local.set({ [undoKey]: undoStack.slice(-20) }); // Limit stack size
     await chrome.storage.local.remove(redoKey);
     
-    console.log('JustCode Deploy Result: Local file system updated.');
+    console.log('JustCode Deploy Result: Local file system updated.', { log, errors });
     
+    let message = '';
     if (errors.length > 0) {
         const errorDetails = errors.join('\n---\n');
-        return `Deployed with ${errors.length} ignored error(s):\n${errorDetails}`;
+        message += `Deployed with ${errors.length} ignored error(s):\n${errorDetails}\n\n--- LOG ---\n`;
+    } else {
+        message = "Successfully deployed code.\n--- LOG ---\n";
     }
+    message += log.join('\n');
     
-    return 'Code deployed successfully!';
+    return message;
 }

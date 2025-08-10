@@ -5,12 +5,13 @@ import { hereDocValue } from '../default_instructions.js';
  * @param {FileSystemDirectoryHandle} rootHandle The root directory handle for the project.
  * @param {string} script The script to execute.
  * @param {boolean} tolerateErrors If true, continues execution on error.
- * @returns {Promise<string[]>} A list of error messages encountered.
+ * @returns {Promise<{log: string[], errors: string[]}>} A list of log messages and error messages encountered.
  */
 export async function executeFileSystemScript(rootHandle, script, tolerateErrors) {
     const lines = script.replace(/\r\n/g, '\n').split('\n');
     let i = 0;
     const errors = [];
+    const log = [];
 
     while (i < lines.length) {
         const line = lines[i].trim();
@@ -56,6 +57,7 @@ export async function executeFileSystemScript(rootHandle, script, tolerateErrors
                 const writable = await fileHandle.createWritable();
                 await writable.write(content);
                 await writable.close();
+                log.push(`Wrote file: ${filePath}`);
                 continue;
             }
 
@@ -86,6 +88,7 @@ export async function executeFileSystemScript(rootHandle, script, tolerateErrors
                         }
                         await parentDir.getDirectoryHandle(dirNameToCreate, { create: true });
                     }
+                    log.push(`Created directory: ${dirPath}`);
                 }
             } else if (command === 'rm') {
                 const fFlag = args.includes('-f');
@@ -102,9 +105,10 @@ export async function executeFileSystemScript(rootHandle, script, tolerateErrors
                     }
                     try {
                         await parentDir.removeEntry(fileName, { recursive: false });
+                        log.push(`Removed file: ${filePath}`);
                     } catch (e) {
                         if ((fFlag || tolerateErrors) && e.name === 'NotFoundError') {
-                            console.log(`File not found for 'rm', but ignoring: ${filePath}`);
+                            log.push(`Skipped removal (not found): ${filePath}`);
                         } else {
                             throw e; // Let the outer catch handle it.
                         }
@@ -122,9 +126,10 @@ export async function executeFileSystemScript(rootHandle, script, tolerateErrors
                     }
                     try {
                         await parentDir.removeEntry(dirName, { recursive: false });
+                        log.push(`Removed directory: ${dirPath}`);
                     } catch (e) {
                         if (tolerateErrors && (e.name === 'NotFoundError' || e.name === 'InvalidModificationError')) {
-                             console.log(`Ignoring safe error for rmdir on '${dirPath}': ${e.message}`);
+                             log.push(`Skipped rmdir for '${dirPath}', ignoring error: ${e.message}`);
                         } else {
                             throw e;
                         }
@@ -156,9 +161,10 @@ export async function executeFileSystemScript(rootHandle, script, tolerateErrors
                 await writable.close();
 
                 await sourceParentHandle.removeEntry(sourceName);
+                log.push(`Moved: ${sourcePath} to ${destPath}`);
 
             } else if (command === 'chmod' || command === 'touch') {
-                console.log(`Ignoring safe command: ${line}`);
+                log.push(`Ignoring safe command: ${line}`);
             } else {
                  throw new Error(`Unsupported command in deploy script: ${command}`);
             }
@@ -172,5 +178,5 @@ export async function executeFileSystemScript(rootHandle, script, tolerateErrors
             }
         }
     }
-    return errors;
+    return { log, errors };
 }

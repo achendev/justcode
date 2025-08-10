@@ -113,26 +113,28 @@ async function executeCommand(command) {
         if (activeProfile) {
             console.log(`Executing '${command}' for profile: ${activeProfile.name}`);
             
+            // Execute the action (e.g., deployCode) which now returns a detailed object.
             const result = await actionFunc(activeProfile, true); // fromShortcut = true
             
-            if (result && result.text) {
-                // --- Start of Fix ---
-                // Save the result message to storage so the popup can display it later.
-                activeProfile.lastMessage = { text: result.text, type: result.type };
-                saveData(profiles, activeProfileId, archivedProfiles);
-                // --- End of Fix ---
+            // The result now contains the detailed message we want to display.
+            const messageTextToShow = (result && result.text) ? result.text : 'Action completed with no message.';
+            const messageTypeToShow = (result && result.type) ? result.type : 'info';
+            
+            // Save the detailed message to storage so the popup can display it later.
+            activeProfile.lastMessage = { text: messageTextToShow, type: messageTypeToShow };
+            saveData(profiles, activeProfileId, archivedProfiles);
 
-                try {
-                    await chrome.tabs.sendMessage(tab.id, {
-                        type: 'showNotificationOnPage',
-                        notificationId: notificationId,
-                        text: result.text,
-                        messageType: result.type,
-                        showSpinner: false
-                    });
-                } catch (err) {
-                    console.log("Could not send final notification to content script.", err);
-                }
+            // Send the detailed message to the on-page notification.
+            try {
+                await chrome.tabs.sendMessage(tab.id, {
+                    type: 'showNotificationOnPage',
+                    notificationId: notificationId,
+                    text: messageTextToShow,
+                    messageType: messageTypeToShow,
+                    showSpinner: false
+                });
+            } catch (err) {
+                console.log("Could not send final notification to content script.", err);
             }
 
             if (command === 'get-context-shortcut') {
