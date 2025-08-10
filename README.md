@@ -32,16 +32,16 @@ The **Chrome Extension (`chrome_extension/`)** provides a unified user-friendly 
 ### Shortcuts
 
 *   **Global Shortcuts (Work even when the popup is closed):**
-    *   `Alt + ←`: Trigger "Get Context" for the active profile.
-    *   `Alt + →`: Trigger "Deploy Code" for the active profile.
-    *   `Alt + <` (Alt + Comma): Trigger "Undo" for the active profile.
-    *   `Alt + >` (Alt + Period): Trigger "Redo" for the active profile.
+    *   **Get Context**: `(ALT + ←) or (⌥←)`
+    *   **Deploy Code**: `(ALT + →) or (⌥→)`
+    *   **Undo**: `(ALT + <) or (⌥<)`
+    *   **Redo**: `(ALT + >) or (⌥>)`
 
 *   **Popup-Only Shortcuts (Work only when the popup is open):**
-    *   `Alt + A`: Switch to the profile tab on the left (loops around).
-    *   `Alt + S`: Switch to the profile tab on the right (loops around).
+    *   **Switch Profile Left**: `(ALT + A) or (⌥A)`
+    *   **Switch Profile Right**: `(ALT + S) or (⌥S)`
     
-> **Note on Shortcuts:** If a shortcut doesn't work, you may need to set or reset it. Go to `chrome://extensions/shortcuts` in your browser, find "JustCode", and assign your preferred shortcuts. The `Alt + ←` shortcut might conflict with the browser's "Back" navigation; you can easily remap it on the shortcuts page.
+> **Note on Shortcuts:** If a shortcut doesn't work, you may need to set or reset it. Go to `chrome://extensions/shortcuts` in your browser, find "JustCode", and assign your preferred shortcuts. The `ALT + ←` shortcut might conflict with the browser's "Back" navigation; you can easily remap it on the shortcuts page.
 
 ## ↩️ Automatic Undo/Redo History
 
@@ -173,15 +173,15 @@ This workflow turns the tedious task of manually curating a large project's cont
 
 1.  **Select Backend & Location:** Open the JustCode popup. For your profile, choose your desired backend (Browser or Server) and set the project location.
 2.  **Go to LLM:** Navigate to your preferred LLM chat interface (e.g., Google AI Studio, Grok.com, Perplexity.ai).
-3.  **Get Context:** Click the `Get Context` button or press `Alt+←`.
+3.  **Get Context:** Click the `Get Context` button or use its shortcut (`(ALT + ←) or (⌥←)`).
 4.  **Paste & Prompt:** The context is either copied to your clipboard or pasted directly into your LLM chat. Scroll to the **bottom** of the context block and add your task instructions (e.g., "Add a new endpoint called `/status`").
 5.  **Submit to LLM:** Send the combined context and your instructions to the model.
 6.  **Get Response:** The LLM will analyze your request and respond with a `bash` script.
-7.  **Deploy Code:** Click the `Deploy Code` button or press `Alt+→`. The extension will extract the script from the LLM's response or your clipboard and apply the changes to your local files.
-8.  **Verify & Iterate:** Check your files. If something is wrong, just click **Undo** (`Alt+<`)!
+7.  **Deploy Code:** Click the `Deploy Code` button or use its shortcut (`(ALT + →) or (⌥→)`). The extension will extract the script from the LLM's response or your clipboard and apply the changes to your local files.
+8.  **Verify & Iterate:** Check your files. If something is wrong, just click **Undo** (`(ALT + <) or (⌥<)`)!
 
 > **💡 Pro Tip: What if a deployment goes wrong?**   
-> If a deployment fails or makes unwanted changes, just click the **Undo** button for that profile. It will instantly restore your files. Clicked Undo by mistake? Click **Redo** (`Alt+>`)!
+> If a deployment fails or makes unwanted changes, just click the **Undo** button for that profile. It will instantly restore your files. Clicked Undo by mistake? Click **Redo** (`(ALT + >) or (⌥>)`)!
 
 ## ⚠️ Security Warning
 
