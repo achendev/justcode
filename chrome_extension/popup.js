@@ -168,22 +168,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         appSettingsView.style.display = 'none';
     });
 
-    // --- App Settings (incl. new checkbox) ---
+    // --- App Settings ---
     const exportBtn = document.getElementById('exportSettingsButton');
     const importBtn = document.getElementById('importSettingsButton');
     const importFileInput = document.getElementById('importSettingsFile');
     const closeOnGetContextCheckbox = document.getElementById('closeOnGetContext');
+    const shortcutDomainsTextarea = document.getElementById('shortcutDomainsTextarea');
+    const defaultShortcutDomains = 'aistudio.google.com,grok.com,x.com,perplexity.ai,gemini.google.com,chatgpt.com';
 
-    // Initialize "Close on Get Context" checkbox
-    chrome.storage.local.get('closeOnGetContext', (data) => {
+    // Initialize settings
+    chrome.storage.local.get(['closeOnGetContext', 'shortcutDomains'], (data) => {
         if (closeOnGetContextCheckbox) {
             closeOnGetContextCheckbox.checked = !!data.closeOnGetContext;
         }
+        if (shortcutDomainsTextarea) {
+            shortcutDomainsTextarea.value = data.shortcutDomains === undefined ? defaultShortcutDomains : data.shortcutDomains;
+        }
     });
-    // Add listener for "Close on Get Context" checkbox
+    
+    // Add listeners for settings changes
     if (closeOnGetContextCheckbox) {
         closeOnGetContextCheckbox.addEventListener('change', (event) => {
             chrome.storage.local.set({ closeOnGetContext: event.target.checked });
+        });
+    }
+
+    if (shortcutDomainsTextarea) {
+        shortcutDomainsTextarea.addEventListener('change', (event) => {
+            const domains = event.target.value.split(',').map(d => d.trim()).filter(Boolean).join(', ');
+            chrome.storage.local.set({ shortcutDomains: domains });
+            shortcutDomainsTextarea.value = domains; // Clean up the view
         });
     }
 
@@ -209,7 +223,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     importBtn.addEventListener('click', () => importFileInput.click());
 
     importFileInput.addEventListener('change', (event) => {
-        const file = event.target.files;
+        const file = event.target.files[0];
         if (!file) return;
 
         const reader = new FileReader();
