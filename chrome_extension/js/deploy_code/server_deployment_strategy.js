@@ -21,7 +21,14 @@ export async function handleServerDeployment(profile, fromShortcut = false) {
 
     const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
     const tolerateErrors = profile.tolerateErrors !== false;
-    const endpoint = `${serverUrl}/deploycode?path=${encodeURIComponent(path)}&tolerateErrors=${tolerateErrors}`;
+    
+    // Build the base endpoint URL
+    let endpoint = `${serverUrl}/deploycode?path=${encodeURIComponent(path)}&tolerateErrors=${tolerateErrors}`;
+    
+    // Append post-deploy script parameters if the feature is enabled
+    if (profile.runScriptOnDeploy && profile.postDeployScript) {
+        endpoint += `&runScript=true&scriptToRun=${encodeURIComponent(profile.postDeployScript)}`;
+    }
 
     const headers = { 'Content-Type': 'text/plain' };
     if (profile.isAuthEnabled && profile.username) {

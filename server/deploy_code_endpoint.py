@@ -4,6 +4,7 @@ import shlex
 import traceback
 import stat
 import time
+import subprocess
 from flask import request, Response
 from .tools.utils import is_safe_path, here_doc_value
 from .tools.script_executor import execute_script
@@ -12,6 +13,8 @@ from .tools.history_manager import get_history_dir, clear_stack, get_sorted_stac
 def deploy_code():
     path = request.args.get('path')
     tolerate_errors = request.args.get('tolerateErrors', 'true').lower() == 'true'
+    run_script_on_deploy = request.args.get('runScript', 'false').lower() == 'true'
+    post_deploy_script = request.args.get('scriptToRun', '')
 
     if not path or not path.strip():
         return Response("Error: 'path' parameter is missing.", status=400, mimetype='text/plain')
@@ -66,7 +69,7 @@ def deploy_code():
                     raise ValueError(f"Invalid command format: {line}") from e
 
             if not parts: continue
-            command, args = parts[0], parts[1:]
+            command, args = parts, parts[1:]
 
             if command == 'mkdir':
                 paths_to_create = [arg for arg in args if arg != '-p']
@@ -103,7 +106,7 @@ def deploy_code():
                         rollback_commands.insert(0, f"mkdir {shlex.quote('./' + relative_path)}")
             elif command == 'mv':
                 if len(args) != 2: raise ValueError("'mv' requires two arguments.")
-                src, dest = re.sub(r'^\./', '', args[0]), re.sub(r'^\./', '', args[1])
+                src, dest = re.sub(r'^\./', '', args), re.sub(r'^\./', '', args)
                 if not is_safe_path(project_path, src) or not is_safe_path(project_path, dest): raise PermissionError(f"Traversal: {src} or {dest}")
                 rollback_commands.insert(0, f"mv {shlex.quote('./' + dest)} {shlex.quote('./' + src)}")
             elif command == 'chmod':
@@ -162,6 +165,33 @@ def deploy_code():
             message = "Successfully deployed code.\n--- LOG ---\n"
 
         message += "\n".join(output_log)
+
+        # --- Pass 3: Execute Post-Deploy Script ---
+        if run_script_on_deploy and post_deploy_script:
+            message += "\n\n--- POST-DEPLOY SCRIPT OUTPUT ---\n"
+            try:
+                # Execute the script in the project's root directory
+                post_script_result = subprocess.run(
+                    post_deploy_script,
+                    shell=True,
+                    cwd=project_path,
+                    capture_output=True,
+                    text=True,
+                    check=False # We will handle non-zero exit codes manually
+                )
+                if post_script_result.stdout:
+                    message += f"Output:\n{post_script_result.stdout}\n"
+                if post_script_result.stderr:
+                    message += f"Errors:\n{post_script_result.stderr}\n"
+                
+                if post_script_result.returncode != 0:
+                    message += f"Script exited with code {post_script_result.returncode}."
+                else:
+                    message += "Script finished successfully."
+
+            except Exception as e:
+                message += f"Failed to execute post-deploy script: {str(e)}"
+
         
         return Response(message, mimetype='text/plain')
 

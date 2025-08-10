@@ -48,4 +48,10 @@ export function attachSettingsEventListeners(reRenderCallback) {
     document.querySelectorAll('.password').forEach(input => {
         input.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'password'));
     });
+    document.querySelectorAll('.run-script-on-deploy').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => settingsHandlers.handleRunScriptOnDeployToggle(e));
+    });
+    document.querySelectorAll('.post-deploy-script').forEach(textarea => {
+        textarea.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'postDeployScript'));
+    });
 }

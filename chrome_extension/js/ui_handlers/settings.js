@@ -19,7 +19,7 @@ export function handleCloseSettingsClick(event) {
 }
 
 export function handleServerUrlChange(event) {
-    const id = parseInt(event.target.id.split('-')[1]);
+    const id = parseInt(event.target.id.split('-'));
     loadData((profiles, activeProfileId, archivedProfiles) => {
         const profile = profiles.find(p => p.id === id);
         if (profile) {
@@ -47,6 +47,25 @@ export function handleCustomInstructionsToggle(event) {
         const profile = profiles.find(p => p.id === id);
         if (profile) {
             profile.isCriticalInstructionsEnabled = isChecked;
+            saveData(profiles, activeProfileId, archivedProfiles);
+        }
+    });
+}
+
+export function handleRunScriptOnDeployToggle(event) {
+    const id = parseInt(event.target.dataset.id);
+    const isChecked = event.target.checked;
+    
+    const profileCard = document.getElementById(`profile-${id}`);
+    const textarea = profileCard.querySelector('.post-deploy-script');
+    if (textarea) {
+        textarea.disabled = !isChecked;
+    }
+
+    loadData((profiles, activeProfileId, archivedProfiles) => {
+        const profile = profiles.find(p => p.id === id);
+        if (profile) {
+            profile.runScriptOnDeploy = isChecked;
             saveData(profiles, activeProfileId, archivedProfiles);
         }
     });

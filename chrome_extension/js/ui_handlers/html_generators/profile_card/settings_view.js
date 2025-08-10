@@ -26,6 +26,16 @@ export function getSettingsViewHTML(profile) {
                 <input type="password" class="form-control password" id="password-${profile.id}" data-id="${profile.id}" value="${profile.password}">
             </div>
             <hr>
+            <div class="form-check mb-2">
+                <input type="checkbox" class="form-check-input run-script-on-deploy" id="runScriptOnDeploy-${profile.id}" data-id="${profile.id}" ${profile.runScriptOnDeploy ? 'checked' : ''}>
+                <label class="form-check-label" for="runScriptOnDeploy-${profile.id}">Run script after deploying code</label>
+            </div>
+            <div class="mb-3">
+                <label for="postDeployScript-${profile.id}" class="form-label">Post-deploy script:</label>
+                <textarea class="form-control form-control-sm post-deploy-script" id="postDeployScript-${profile.id}" rows="4" data-id="${profile.id}" ${!profile.runScriptOnDeploy ? 'disabled' : ''}>${profile.postDeployScript}</textarea>
+                <small class="form-text text-muted">Runs in project root. Use absolute paths for commands if needed.</small>
+            </div>
+            <hr>
         </div>
         
         <!-- Common Settings -->

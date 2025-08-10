@@ -33,6 +33,8 @@ export function loadData(callback) {
                 isAuthEnabled: false,
                 username: '',
                 password: '',
+                runScriptOnDeploy: false,
+                postDeployScript: '',
             }];
             needsSave = true;
         }
@@ -77,6 +79,8 @@ export function loadData(callback) {
             if (profile.tolerateErrors === undefined) { profile.tolerateErrors = true; needsSave = true; }
             if (profile.contextAsFile === undefined) { profile.contextAsFile = false; needsSave = true; }
             if (profile.separateInstructionsAsFile === undefined) { profile.separateInstructionsAsFile = true; needsSave = true; }
+            if (profile.runScriptOnDeploy === undefined) { profile.runScriptOnDeploy = false; needsSave = true; }
+            if (profile.postDeployScript === undefined) { profile.postDeployScript = ''; needsSave = true; }
         });
 
         let activeProfileId = data.activeProfileId;
