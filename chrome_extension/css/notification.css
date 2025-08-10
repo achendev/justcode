@@ -1,0 +1,85 @@
+.justcode-notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 2147483647;
+    pointer-events: none; /* Allows clicks to pass through the container */
+}
+
+/* Define CSS variables for themes to match theme.css */
+:root {
+    --jc-noti-success-text: #198754;
+    --jc-noti-success-bg: rgba(25, 135, 84, 0.2);
+    --jc-noti-error-text: #dc3545;
+    --jc-noti-error-bg: rgba(220, 53, 69, 0.2);
+    --jc-noti-info-text: #212529;
+    --jc-noti-info-bg: rgba(233, 236, 239, 0.95);
+    --jc-noti-border: rgba(0, 0, 0, 0.1);
+    --jc-noti-shadow: rgba(0, 0, 0, 0.15);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --jc-noti-success-text: #20c997;
+        --jc-noti-success-bg: rgba(32, 201, 151, 0.2);
+        --jc-noti-error-text: #ff6b6b;
+        --jc-noti-error-bg: rgba(255, 107, 107, 0.2);
+        --jc-noti-info-text: #adb5bd;
+        --jc-noti-info-bg: rgba(73, 80, 87, 0.95);
+        --jc-noti-border: rgba(255, 255, 255, 0.1);
+        --jc-noti-shadow: rgba(0, 0, 0, 0.3);
+    }
+}
+
+.justcode-notification-message {
+    padding: 12px 20px;
+    border-radius: 6px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 14px;
+    opacity: 0;
+    transform: translateX(20px);
+    transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out;
+    margin-bottom: 10px;
+    box-shadow: 0 4px 12px var(--jc-noti-shadow);
+    pointer-events: auto; /* Re-enable clicks on the notification itself */
+    border: 1px solid var(--jc-noti-border);
+    /* Add a subtle blur for readability on complex backgrounds */
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
+
+.justcode-notification-message.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* Use a keyframe animation for a more reliable fade-out */
+@keyframes justcode-fade-out {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+}
+
+.justcode-notification-message.hide {
+    animation: justcode-fade-out 0.4s ease-in-out forwards;
+}
+
+.justcode-notification-message.success {
+    color: var(--jc-noti-success-text);
+    background-color: var(--jc-noti-success-bg);
+}
+
+.justcode-notification-message.error {
+    color: var(--jc-noti-error-text);
+    background-color: var(--jc-noti-error-bg);
+}
+
+.justcode-notification-message.info {
+    color: var(--jc-noti-info-text);
+    background-color: var(--jc-noti-info-bg);
+}

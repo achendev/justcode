@@ -8,6 +8,10 @@
         "48": "icons/icon48.png",
         "128": "icons/icon128.png"
     },
+    "background": {
+        "service_worker": "js/background.js",
+        "type": "module"
+    },
     "permissions": [
         "storage",
         "clipboardWrite",
@@ -27,13 +31,31 @@
         "_execute_action": {
             "suggested_key": {
                 "default": "Alt+Up",
-                "mac": "Alt+Up",
-                "windows": "Alt+Up",
-                "linux": "Alt+Up"
+                "mac": "Alt+Up"
             },
             "description": "Open JustCode Popup"
+        },
+        "get-context-shortcut": {
+            "suggested_key": {
+                "default": "Alt+Left",
+                "mac": "Alt+Left"
+            },
+            "description": "Get context from the active profile"
         }
     },
+    "content_scripts": [
+        {
+            "matches": ["<all_urls>"],
+            "js": ["js/content_script.js"],
+            "run_at": "document_idle"
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": ["css/notification.css"],
+            "matches": ["<all_urls>"]
+        }
+    ],
     "content_security_policy": {
         "extension_pages": "script-src 'self'; object-src 'self'"
     },

@@ -1,4 +1,3 @@
-import { updateTemporaryMessage } from './ui_handlers/message.js';
 import { getContextFromJS, getExclusionSuggestionFromJS } from './get_context/js_strategy.js';
 import { getContextFromServer, getExclusionSuggestionFromServer } from './get_context/server_strategy.js';
 
@@ -6,16 +5,16 @@ import { getContextFromServer, getExclusionSuggestionFromServer } from './get_co
 /**
  * Main entry point to get context.
  * It acts as a facade, dispatching the call to the appropriate strategy (JS or Server)
- * based on the user's active profile settings.
+ * based on the user's active profile settings. It now returns a result object.
  * @param {object} profile The active user profile.
  * @param {boolean} [fromShortcut=false] - True if called from a keyboard shortcut.
+ * @returns {Promise<{text: string, type: 'success'|'error'|'info'}>} A result object.
  */
 export async function getContext(profile, fromShortcut = false) {
-    updateTemporaryMessage(profile.id, 'Getting context...');
     if (profile.useServerBackend) {
-        await getContextFromServer(profile, fromShortcut);
+        return await getContextFromServer(profile, fromShortcut);
     } else {
-        await getContextFromJS(profile, fromShortcut);
+        return await getContextFromJS(profile, fromShortcut);
     }
 }
 
@@ -23,12 +22,12 @@ export async function getContext(profile, fromShortcut = false) {
  * Main entry point to get an exclusion suggestion.
  * It acts as a facade, dispatching the call to the appropriate strategy (JS or Server).
  * @param {object} profile The active user profile.
+ * @returns {Promise<{text: string, type: 'success'|'error'|'info'}>} A result object.
  */
 export async function getExclusionSuggestion(profile) {
-    updateTemporaryMessage(profile.id, 'Getting exclusion suggestion...');
     if (profile.useServerBackend) {
-        await getExclusionSuggestionFromServer(profile);
+        return await getExclusionSuggestionFromServer(profile);
     } else {
-        await getExclusionSuggestionFromJS(profile);
+        return await getExclusionSuggestionFromJS(profile);
     }
 }

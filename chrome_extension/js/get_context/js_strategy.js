@@ -1,4 +1,3 @@
-import { updateAndSaveMessage, updateTemporaryMessage } from '../ui_handlers/message.js';
 import { getHandle, verifyPermission } from '../file_system_manager.js';
 import { scanDirectory } from '../context_builder/file_scanner.js';
 import { buildTree, buildTreeWithCounts } from '../context_builder/tree_builder.js';
@@ -6,17 +5,32 @@ import { pasteIntoLLM, uploadContextAsFile } from '../context_builder/llm_interf
 import { formatContextPrompt, buildFileContentString, getInstructionsBlock } from '../context_builder/prompt_formatter.js';
 import { formatExclusionPrompt } from '../exclusion_prompt.js';
 
-export async function getContextFromJS(profile, fromShortcut) {
-    const isDetached = new URLSearchParams(window.location.search).get('view') === 'window';
+async function writeToClipboard(text) {
+    // If navigator.clipboard is available, we're in a document context (popup).
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        return navigator.clipboard.writeText(text);
+    }
     
+    // Otherwise, we're in the service worker and must inject a script.
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (tab) {
+        await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: (textToCopy) => navigator.clipboard.writeText(textToCopy),
+            args: [text],
+        });
+    } else {
+        throw new Error("No active tab found to write to clipboard.");
+    }
+}
+
+export async function getContextFromJS(profile, fromShortcut) {
     const handle = await getHandle(profile.id);
     if (!handle) {
-        updateAndSaveMessage(profile.id, 'Error: Please select a project folder first.', 'error');
-        return;
+        return { text: 'Error: Please select a project folder first.', type: 'error' };
     }
     if (!(await verifyPermission(handle))) {
-        updateAndSaveMessage(profile.id, 'Error: Permission to folder lost. Please select it again.', 'error');
-        return;
+        return { text: 'Error: Permission to folder lost. Please select it again.', type: 'error' };
     }
 
     try {
@@ -24,30 +38,26 @@ export async function getContextFromJS(profile, fromShortcut) {
         const includePatterns = (profile.includePatterns || '').split(',').map(p => p.trim()).filter(Boolean);
         const contextSizeLimit = profile.contextSizeLimit || 3000000;
 
-        updateTemporaryMessage(profile.id, 'Scanning project...');
         const allFileStats = await scanDirectory(handle, { excludePatterns, includePatterns });
         if (allFileStats.length === 0) {
-            updateAndSaveMessage(profile.id, `No files found matching patterns.`, 'error');
-            return;
+            return { text: `No files found matching patterns.`, type: 'error' };
         }
 
         const totalChars = allFileStats.reduce((acc, f) => acc + f.chars, 0);
 
         if (totalChars > contextSizeLimit) {
-            updateAndSaveMessage(profile.id, `Context size (~${totalChars.toLocaleString()}) exceeds limit (${contextSizeLimit.toLocaleString()}).`, 'error');
-            await getExclusionSuggestionFromJS(profile); // Use JS version of suggestion
-            return;
+            await getExclusionSuggestionFromJS(profile, fromShortcut);
+            return { text: `Context size (~${totalChars.toLocaleString()}) exceeds limit (${contextSizeLimit.toLocaleString()}). Suggestion loaded.`, type: 'error' };
         }
 
-        updateTemporaryMessage(profile.id, 'Building context string...');
         const filePaths = allFileStats.map(s => s.path);
         const treeString = buildTree(filePaths);
         const contentString = await buildFileContentString(handle, filePaths);
         
-        if (profile.getContextTarget === 'clipboard' || isDetached) {
+        if (profile.getContextTarget === 'clipboard') {
             const finalPrompt = formatContextPrompt(treeString, contentString, profile);
-            await navigator.clipboard.writeText(finalPrompt);
-            updateAndSaveMessage(profile.id, 'Context copied to clipboard!', 'success');
+            await writeToClipboard(finalPrompt);
+            return { text: 'Context copied to clipboard!', type: 'success' };
         } else if (profile.contextAsFile) {
             if (profile.separateInstructionsAsFile) {
                 const { instructionsBlock, codeBlockDelimiter } = getInstructionsBlock(profile);
@@ -57,36 +67,28 @@ export async function getContextFromJS(profile, fromShortcut) {
 
                 await uploadContextAsFile(fileContentForUpload);
                 await pasteIntoLLM(promptForPasting, { isInstruction: true });
-                updateAndSaveMessage(profile.id, 'Context uploaded as file, instructions pasted!', 'success');
+                return { text: 'Context uploaded as file, instructions pasted!', type: 'success' };
             } else {
                 const finalPrompt = formatContextPrompt(treeString, contentString, profile);
                 await uploadContextAsFile(finalPrompt);
-                updateAndSaveMessage(profile.id, 'Context uploaded as file!', 'success');
+                return { text: 'Context uploaded as file!', type: 'success' };
             }
         } else {
             const finalPrompt = formatContextPrompt(treeString, contentString, profile);
             await pasteIntoLLM(finalPrompt);
-            updateAndSaveMessage(profile.id, 'Context loaded successfully!', 'success');
-        }
-
-        const settings = await chrome.storage.local.get({ closeOnGetContext: false });
-        if ((fromShortcut || settings.closeOnGetContext) && !isDetached) {
-            window.close();
+            return { text: 'Context loaded successfully!', type: 'success' };
         }
 
     } catch (error) {
-        updateAndSaveMessage(profile.id, `Error: ${error.message}`, 'error');
         console.error('JustCode Error:', error);
+        return { text: `Error: ${error.message}`, type: 'error' };
     }
 }
 
-export async function getExclusionSuggestionFromJS(profile) {
-    updateTemporaryMessage(profile.id, 'Analyzing project and generating suggestion...');
-    
+export async function getExclusionSuggestionFromJS(profile, fromShortcut = false) {
     const handle = await getHandle(profile.id);
     if (!handle || !(await verifyPermission(handle))) {
-        updateAndSaveMessage(profile.id, 'Error: Folder not selected or permission lost.', 'error');
-        return;
+        return { text: 'Error: Folder not selected or permission lost.', type: 'error' };
     }
     
     const excludePatterns = (profile.excludePatterns || '').split(',').map(p => p.trim()).filter(Boolean);
@@ -98,10 +100,10 @@ export async function getExclusionSuggestionFromJS(profile) {
     const prompt = formatExclusionPrompt({ treeString, totalChars, profile });
     
     if (profile.getContextTarget === 'clipboard') {
-        await navigator.clipboard.writeText(prompt);
-        updateAndSaveMessage(profile.id, 'Exclusion suggestion prompt copied!', 'success');
+        await writeToClipboard(prompt);
+        return { text: 'Exclusion suggestion prompt copied!', type: 'success' };
     } else {
         await pasteIntoLLM(prompt);
-        updateAndSaveMessage(profile.id, 'Exclusion suggestion prompt loaded!', 'success');
+        return { text: 'Exclusion suggestion prompt loaded!', type: 'success' };
     }
 }

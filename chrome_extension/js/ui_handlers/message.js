@@ -1,6 +1,9 @@
 import { loadData, saveData } from '../storage.js';
 
 function updateMessageInDOM(profileId, text, type) {
+    // If document is not defined, we're likely in a background script. Do nothing.
+    if (typeof document === 'undefined') return;
+
     const profileCard = document.getElementById(`profile-${profileId}`);
     if (profileCard) {
         const container = profileCard.querySelector('.status-container');

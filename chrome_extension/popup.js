@@ -1,6 +1,6 @@
 import { initUI, renderUI, updateFolderName } from './js/ui.js';
 import { loadData, saveData } from './js/storage.js';
-import { handleGetContextClick, handleUndoCodeClick } from './js/ui_handlers/actions.js';
+import { handleGetContextClick, handleDeployCodeClick, handleUndoCodeClick } from './js/ui_handlers/actions.js';
 import { updateAndSaveMessage } from './js/ui_handlers/message.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -245,22 +245,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     document.addEventListener('keydown', (event) => {
+        // This listener is for shortcuts that ONLY work when the popup is open.
+        // The global 'get-context' shortcut (Alt+Left) is handled by the background script.
         if (!event.altKey || event.metaKey || event.ctrlKey || event.shiftKey) return;
 
         let actionTaken = false;
         const activeCard = document.querySelector('.profile-card.active');
         if (!activeCard) return;
 
-        if (event.key === 'ArrowLeft') {
-            const btn = activeCard.querySelector('.get-context');
-            if (btn) {
-                const mockEvent = { currentTarget: btn };
-                handleGetContextClick(mockEvent, true);
-                actionTaken = true;
-            }
-        } else if (event.key === 'ArrowRight') {
+        if (event.key === 'ArrowRight') {
             const btn = activeCard.querySelector('.deploy-code');
-            if (btn) { btn.click(); actionTaken = true; }
+            if (btn) { 
+                const mockEvent = { currentTarget: btn };
+                handleDeployCodeClick(mockEvent); 
+                actionTaken = true; 
+            }
         } else if (event.code === 'KeyR') {
             const btn = activeCard.querySelector('.undo-code');
             if (btn && !btn.disabled) {

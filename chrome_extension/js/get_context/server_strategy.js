@@ -1,20 +1,37 @@
-import { updateAndSaveMessage, updateTemporaryMessage } from '../ui_handlers/message.js';
+import { updateTemporaryMessage } from '../ui_handlers/message.js';
 import { pasteIntoLLM, uploadContextAsFile } from '../context_builder/llm_interface.js';
 import { getInstructionsBlock } from '../context_builder/prompt_formatter.js';
 import { formatExclusionPrompt } from '../exclusion_prompt.js';
 
+async function writeToClipboard(text) {
+    // If navigator.clipboard is available, we're in a document context (popup).
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        return navigator.clipboard.writeText(text);
+    }
+    
+    // Otherwise, we're in the service worker and must inject a script.
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (tab) {
+        await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: (textToCopy) => navigator.clipboard.writeText(textToCopy),
+            args: [text],
+        });
+    } else {
+        throw new Error("No active tab found to write to clipboard.");
+    }
+}
+
 export async function getContextFromServer(profile, fromShortcut) {
-    const isDetached = new URLSearchParams(window.location.search).get('view') === 'window';
     const path = profile.projectPath;
+    if (!path) {
+        return { text: 'Error: Please enter a project path.', type: 'error' };
+    }
+
     const excludePatterns = profile.excludePatterns || '';
     const includePatterns = profile.includePatterns || '';
     const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
     const contextSizeLimit = profile.contextSizeLimit || 3000000;
-    
-    if (!path) {
-        updateAndSaveMessage(profile.id, 'Error: Please enter a project path.', 'error');
-        return;
-    }
     
     let endpoint = `${serverUrl}/getcontext?path=${encodeURIComponent(path)}&exclude=${encodeURIComponent(excludePatterns)}&limit=${contextSizeLimit}`;
     if (includePatterns) {
@@ -31,9 +48,8 @@ export async function getContextFromServer(profile, fromShortcut) {
 
         if (response.status === 413) {
             const responseText = await response.text();
-            updateAndSaveMessage(profile.id, responseText, 'error');
-            await getExclusionSuggestionFromServer(profile);
-            return;
+            await getExclusionSuggestionFromServer(profile, fromShortcut);
+            return { text: responseText, type: 'error' };
         }
 
         const responseText = await response.text();
@@ -46,44 +62,37 @@ export async function getContextFromServer(profile, fromShortcut) {
         
         const finalPrompt = `${fileContextBlock}\n\n\n${instructionsBlock}\n\n\n \n`;
 
-        if (profile.getContextTarget === 'clipboard' || isDetached) {
-            await navigator.clipboard.writeText(finalPrompt);
-            updateAndSaveMessage(profile.id, 'Context copied to clipboard!', 'success');
+        if (profile.getContextTarget === 'clipboard') {
+            await writeToClipboard(finalPrompt);
+            return { text: 'Context copied to clipboard!', type: 'success' };
         } else if (profile.contextAsFile) {
             if (profile.separateInstructionsAsFile) {
                 const promptForPasting = `The project context is in the attached file \`context.txt\`. Please use it to fulfill the task described below.\n\n${instructionsBlock}\n\n\n \n`;
                 await uploadContextAsFile(fileContextBlock);
                 await pasteIntoLLM(promptForPasting, { isInstruction: true });
-                updateAndSaveMessage(profile.id, 'Context uploaded as file, instructions pasted!', 'success');
+                return { text: 'Context uploaded as file, instructions pasted!', type: 'success' };
             } else {
                 await uploadContextAsFile(finalPrompt);
-                updateAndSaveMessage(profile.id, 'Context uploaded as file!', 'success');
+                return { text: 'Context uploaded as file!', type: 'success' };
             }
         } else {
             await pasteIntoLLM(finalPrompt);
-            updateAndSaveMessage(profile.id, 'Context loaded successfully!', 'success');
-        }
-
-        const settings = await chrome.storage.local.get({ closeOnGetContext: false });
-        if ((fromShortcut || settings.closeOnGetContext) && !isDetached) {
-            window.close();
+            return { text: 'Context loaded successfully!', type: 'success' };
         }
 
     } catch (error) {
-        updateAndSaveMessage(profile.id, `Error: ${error.message}`, 'error');
         console.error('JustCode Error:', error);
+        return { text: `Error: ${error.message}`, type: 'error' };
     }
 }
 
-export async function getExclusionSuggestionFromServer(profile) {
+export async function getExclusionSuggestionFromServer(profile, fromShortcut = false) {
     const path = profile.projectPath;
-    const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
-    
     if (!path) {
-        updateAndSaveMessage(profile.id, 'Error: Please enter a project path.', 'error');
-        return;
+        return { text: 'Error: Please enter a project path.', type: 'error' };
     }
     
+    const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
     const excludePatterns = profile.excludePatterns || '';
     const includePatterns = profile.includePatterns || '';
     let endpoint = `${serverUrl}/getcontext?path=${encodeURIComponent(path)}&exclude=${encodeURIComponent(excludePatterns)}&suggest_exclusions=true`;
@@ -111,14 +120,14 @@ export async function getExclusionSuggestionFromServer(profile) {
         });
         
         if (profile.getContextTarget === 'clipboard') {
-            await navigator.clipboard.writeText(prompt);
-            updateAndSaveMessage(profile.id, 'Exclusion suggestion prompt copied!', 'success');
+            await writeToClipboard(prompt);
+            return { text: 'Exclusion suggestion prompt copied!', type: 'success' };
         } else {
             await pasteIntoLLM(prompt);
-            updateAndSaveMessage(profile.id, 'Exclusion suggestion prompt loaded!', 'success');
+            return { text: 'Exclusion suggestion prompt loaded!', type: 'success' };
         }
     } catch (error) {
-        updateAndSaveMessage(profile.id, `Error: ${error.message}`, 'error');
         console.error('JustCode Error:', error);
+        return { text: `Error: ${error.message}`, type: 'error' };
     }
 }

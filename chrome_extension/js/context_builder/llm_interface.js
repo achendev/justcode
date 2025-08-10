@@ -1,4 +1,8 @@
 import { pasteAsFile } from './paste_handlers/file_uploader.js';
+import { pasteChatGPT, pasteAsFileChatGPT } from './paste_handlers/chatgpt.js';
+import { pasteGemini } from './paste_handlers/gemini.js';
+import { pastePerplexity } from './paste_handlers/perplexity.js';
+import { pasteFallback } from './paste_handlers/fallback.js';
 
 /**
  * Pastes text into the most likely input field in the active tab.
@@ -19,16 +23,12 @@ export async function pasteIntoLLM(text, options = {}) {
     let pasteFunc;
     
     if (hostname.includes('chatgpt.com')) {
-        const { pasteChatGPT } = await import('./paste_handlers/chatgpt.js');
         pasteFunc = pasteChatGPT;
     } else if (hostname.includes('gemini.google.com')) {
-        const { pasteGemini } = await import('./paste_handlers/gemini.js');
         pasteFunc = pasteGemini;
     } else if (hostname.includes('perplexity.ai')) {
-        const { pastePerplexity } = await import('./paste_handlers/perplexity.js');
         pasteFunc = pastePerplexity;
     } else {
-        const { pasteFallback } = await import('./paste_handlers/fallback.js');
         pasteFunc = pasteFallback;
     }
     
@@ -57,7 +57,6 @@ export async function uploadContextAsFile(text) {
     let uploadFunc;
 
     if (hostname.includes('chatgpt.com')) {
-        const { pasteAsFileChatGPT } = await import('./paste_handlers/chatgpt.js');
         uploadFunc = pasteAsFileChatGPT;
     } else {
         // Fallback to the generic uploader for other sites.
