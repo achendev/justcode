@@ -200,7 +200,8 @@
     position: absolute;
     bottom: 0;
     left: 0;
-    height: 3px;
+    height: 1px;
+    opacity: 30%;
     width: 0; /* Start with 0 width */
     background-color: var(--jc-noti-progress-bar-bg);
     animation: justcode-progress-anim linear forwards;

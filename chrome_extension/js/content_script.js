@@ -1,10 +1,12 @@
 let notificationContainer = null;
 const activeNotificationTimers = new Map();
 let notificationTimeout = 4; // Set a default
+let showProgressBar = true; // New setting, default to true
 
-// Load initial timeout value from storage
-chrome.storage.local.get({ notificationTimeout: 4 }, (data) => {
+// Load initial settings from storage
+chrome.storage.local.get({ notificationTimeout: 4, showNotificationProgressBar: true }, (data) => {
     notificationTimeout = data.notificationTimeout;
+    showProgressBar = data.showNotificationProgressBar;
 });
 
 const ALL_POSITION_CLASSES = [
@@ -185,7 +187,7 @@ function showNotification(id, text, type, showSpinner, fromShortcut) {
     if (!showSpinner && !notification.classList.contains('persistent')) {
         const timeoutDuration = notificationTimeout * 1000;
         
-        if (progressBar) {
+        if (showProgressBar && progressBar) {
             progressBar.style.display = 'block';
             // We trigger a reflow to ensure the animation restarts correctly
             void progressBar.offsetWidth; 
@@ -235,5 +237,8 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
     }
     if (changes.notificationTimeout) {
         notificationTimeout = changes.notificationTimeout.newValue;
+    }
+    if (changes.showNotificationProgressBar) {
+        showProgressBar = changes.showNotificationProgressBar.newValue;
     }
 });

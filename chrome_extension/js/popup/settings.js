@@ -10,6 +10,7 @@ export function initializeAppSettings(reRender) {
     const deployCodeShortcutCheckbox = document.getElementById('isDeployCodeShortcutEnabled');
     const undoShortcutCheckbox = document.getElementById('isUndoShortcutEnabled');
     const redoShortcutCheckbox = document.getElementById('isRedoShortcutEnabled');
+    const showProgressBarCheckbox = document.getElementById('showNotificationProgressBar');
 
     const shortcutDomainsTextarea = document.getElementById('shortcutDomainsTextarea');
     const notificationPositionSelector = document.getElementById('notificationPositionSelector');
@@ -26,7 +27,8 @@ export function initializeAppSettings(reRender) {
         'isGetContextShortcutEnabled',
         'isDeployCodeShortcutEnabled',
         'isUndoShortcutEnabled',
-        'isRedoShortcutEnabled'
+        'isRedoShortcutEnabled',
+        'showNotificationProgressBar'
     ], (data) => {
         closeOnGetContextCheckbox.checked = data.closeOnGetContext === true;
         verboseDeployLogCheckbox.checked = data.showVerboseDeployLog !== false; // Default to true
@@ -38,6 +40,7 @@ export function initializeAppSettings(reRender) {
         deployCodeShortcutCheckbox.checked = data.isDeployCodeShortcutEnabled !== false;
         undoShortcutCheckbox.checked = data.isUndoShortcutEnabled !== false;
         redoShortcutCheckbox.checked = data.isRedoShortcutEnabled !== false;
+        showProgressBarCheckbox.checked = data.showNotificationProgressBar !== false;
     });
     
     // Add listeners for settings changes
@@ -60,6 +63,7 @@ export function initializeAppSettings(reRender) {
     createShortcutChangeListener('isDeployCodeShortcutEnabled', 'isDeployCodeShortcutEnabled');
     createShortcutChangeListener('isUndoShortcutEnabled', 'isUndoShortcutEnabled');
     createShortcutChangeListener('isRedoShortcutEnabled', 'isRedoShortcutEnabled');
+    createShortcutChangeListener('showNotificationProgressBar', 'showNotificationProgressBar');
 
     notificationPositionSelector.addEventListener('change', (event) => {
         chrome.storage.local.set({ notificationPosition: event.target.value });
