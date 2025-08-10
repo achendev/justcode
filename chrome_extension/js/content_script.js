@@ -61,6 +61,7 @@ function showNotification(id, text, type, showSpinner, fromShortcut) {
 
     const notificationId = `justcode-notification-${id}`;
     let notification = document.getElementById(notificationId);
+    let progressBar;
     let isNew = false;
 
     if (!notification) {
@@ -79,10 +80,14 @@ function showNotification(id, text, type, showSpinner, fromShortcut) {
         closeBtn.className = 'justcode-notification-close-btn';
         closeBtn.innerHTML = '&times;';
         closeBtn.title = 'Close';
+        
+        progressBar = document.createElement('div');
+        progressBar.className = 'justcode-notification-progress-bar';
 
         notification.appendChild(spinner);
         notification.appendChild(textSpan);
         notification.appendChild(closeBtn);
+        notification.appendChild(progressBar); // Add progress bar
         notificationContainer.appendChild(notification);
 
         closeBtn.addEventListener('click', (e) => {
@@ -101,7 +106,6 @@ function showNotification(id, text, type, showSpinner, fromShortcut) {
             }
         });
         
-        // --- START: New Timer Interaction Logic ---
         notification.addEventListener('click', () => {
             if (notification.classList.contains('persistent')) return;
             notification.classList.add('persistent');
@@ -109,6 +113,8 @@ function showNotification(id, text, type, showSpinner, fromShortcut) {
             const timerData = activeNotificationTimers.get(id);
             if (timerData) {
                 clearTimeout(timerData.timerId);
+                progressBar = notification.querySelector('.justcode-notification-progress-bar');
+                if(progressBar) progressBar.style.animationPlayState = 'paused';
                 activeNotificationTimers.delete(id);
             }
         });
@@ -116,6 +122,9 @@ function showNotification(id, text, type, showSpinner, fromShortcut) {
         notification.addEventListener('mouseenter', () => {
             const timerData = activeNotificationTimers.get(id);
             if (timerData && !notification.classList.contains('persistent')) {
+                progressBar = notification.querySelector('.justcode-notification-progress-bar');
+                if(progressBar) progressBar.style.animationPlayState = 'paused';
+
                 clearTimeout(timerData.timerId);
                 const elapsedTime = Date.now() - timerData.startTime;
                 timerData.remainingTime -= elapsedTime;
@@ -126,6 +135,9 @@ function showNotification(id, text, type, showSpinner, fromShortcut) {
         notification.addEventListener('mouseleave', () => {
             const timerData = activeNotificationTimers.get(id);
             if (timerData && timerData.timerId === null && !notification.classList.contains('persistent')) {
+                progressBar = notification.querySelector('.justcode-notification-progress-bar');
+                if(progressBar) progressBar.style.animationPlayState = 'running';
+
                 if (timerData.remainingTime > 0) {
                     timerData.startTime = Date.now();
                     timerData.timerId = setTimeout(() => {
@@ -134,16 +146,15 @@ function showNotification(id, text, type, showSpinner, fromShortcut) {
                         activeNotificationTimers.delete(id);
                     }, timerData.remainingTime);
                 } else {
-                    // Time is up, hide it now
                     const el = document.getElementById(notificationId);
                     if (el) el.classList.add('hide');
                     activeNotificationTimers.delete(id);
                 }
             }
         });
-        // --- END: New Timer Interaction Logic ---
     }
 
+    progressBar = notification.querySelector('.justcode-notification-progress-bar');
     notification.classList.remove('hide');
     notification.classList.remove('info', 'success', 'error');
     notification.classList.add(type);
@@ -160,23 +171,34 @@ function showNotification(id, text, type, showSpinner, fromShortcut) {
         notification.classList.add('show');
     }
 
-    // Clear any existing timer for this notification before setting a new one
     const existingTimer = activeNotificationTimers.get(id);
     if (existingTimer) {
         clearTimeout(existingTimer.timerId);
         activeNotificationTimers.delete(id);
     }
     
-    // Only set a hide timer if the notification is not showing a spinner and not persistent
+    if (progressBar) {
+        progressBar.style.animation = 'none'; // Reset animation
+        progressBar.style.display = 'none'; // Hide by default
+    }
+
     if (!showSpinner && !notification.classList.contains('persistent')) {
         const timeoutDuration = notificationTimeout * 1000;
+        
+        if (progressBar) {
+            progressBar.style.display = 'block';
+            // We trigger a reflow to ensure the animation restarts correctly
+            void progressBar.offsetWidth; 
+            progressBar.style.animation = `justcode-progress-anim ${timeoutDuration}ms linear forwards`;
+            progressBar.style.animationPlayState = 'running';
+        }
+
         const timerId = setTimeout(() => {
             const el = document.getElementById(notificationId);
             if (el) el.classList.add('hide');
             activeNotificationTimers.delete(id);
         }, timeoutDuration);
 
-        // Store comprehensive timer data
         activeNotificationTimers.set(id, {
             timerId: timerId,
             startTime: Date.now(),
