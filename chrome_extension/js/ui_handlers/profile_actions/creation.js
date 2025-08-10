@@ -28,6 +28,8 @@ export function handleAddProfile(reRenderCallback) {
             isAuthEnabled: false,
             username: '',
             password: '',
+            runScriptOnDeploy: false,
+            postDeployScript: 'set -x\necho Deploy completed',
         };
         profiles.push(newProfile);
         const newActiveProfileId = newProfile.id;

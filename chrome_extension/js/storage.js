@@ -4,6 +4,7 @@ export function loadData(callback) {
     chrome.storage.local.get(['profiles', 'activeProfileId', 'archivedProfiles'], (data) => {
         const defaultExcludePatterns = '.git/,venv/,.env,log/,*logs/,tmp/,node_modules/';
         const defaultServerUrl = 'http://127.0.0.1:5010';
+        const defaultPostDeployScript = 'set -x\necho Deploy completed';
         let profiles = data.profiles;
         let needsSave = false;
 
@@ -34,7 +35,7 @@ export function loadData(callback) {
                 username: '',
                 password: '',
                 runScriptOnDeploy: false,
-                postDeployScript: '',
+                postDeployScript: defaultPostDeployScript,
             }];
             needsSave = true;
         }
@@ -80,7 +81,7 @@ export function loadData(callback) {
             if (profile.contextAsFile === undefined) { profile.contextAsFile = false; needsSave = true; }
             if (profile.separateInstructionsAsFile === undefined) { profile.separateInstructionsAsFile = true; needsSave = true; }
             if (profile.runScriptOnDeploy === undefined) { profile.runScriptOnDeploy = false; needsSave = true; }
-            if (profile.postDeployScript === undefined) { profile.postDeployScript = ''; needsSave = true; }
+            if (profile.postDeployScript === undefined) { profile.postDeployScript = defaultPostDeployScript; needsSave = true; }
         });
 
         let activeProfileId = data.activeProfileId;
