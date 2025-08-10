@@ -1,9 +1,58 @@
 .justcode-notification-container {
     position: fixed;
+    z-index: 2147483647;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    width: -moz-max-content;
+    width: -webkit-max-content;
+    width: max-content;
+    max-width: 350px;
+}
+
+.justcode-noti-top-left {
+    top: 20px;
+    left: 20px;
+    align-items: flex-start;
+}
+.justcode-noti-top-center {
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    align-items: center;
+}
+.justcode-noti-top-right {
     top: 20px;
     right: 20px;
-    z-index: 2147483647;
-    pointer-events: none; /* Allows clicks to pass through the container */
+    align-items: flex-end;
+}
+.justcode-noti-right-center {
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    align-items: flex-end;
+}
+.justcode-noti-bottom-right {
+    bottom: 20px;
+    right: 20px;
+    align-items: flex-end;
+}
+.justcode-noti-bottom-center {
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    align-items: center;
+}
+.justcode-noti-bottom-left {
+    bottom: 20px;
+    left: 20px;
+    align-items: flex-start;
+}
+.justcode-noti-left-center {
+    top: 50%;
+    left: 20px;
+    transform: translateY(-50%);
+    align-items: flex-start;
 }
 
 /* Define CSS variables for themes to match theme.css */
@@ -20,12 +69,12 @@
 
 @media (prefers-color-scheme: dark) {
     :root {
-        --jc-noti-success-text: #20c997;
-        --jc-noti-success-bg: rgba(32, 201, 151, 0.2);
+        --jc-noti-success-text: #1FC997;
+        --jc-noti-success-bg: #374A4A;
         --jc-noti-error-text: #ff6b6b;
-        --jc-noti-error-bg: rgba(255, 107, 107, 0.2);
+        --jc-noti-error-bg: #572d32;
         --jc-noti-info-text: #adb5bd;
-        --jc-noti-info-bg: rgba(73, 80, 87, 0.95);
+        --jc-noti-info-bg: #495057;
         --jc-noti-border: rgba(255, 255, 255, 0.1);
         --jc-noti-shadow: rgba(0, 0, 0, 0.3);
     }
@@ -40,25 +89,44 @@
     transition: opacity 0.4s ease-in-out;
     margin-bottom: 10px;
     box-shadow: 0 4px 12px var(--jc-noti-shadow);
-    pointer-events: auto; /* Re-enable clicks on the notification itself */
+    pointer-events: auto;
     border: 1px solid var(--jc-noti-border);
-    /* Add a subtle blur for readability on complex backgrounds */
-    backdrop-filter: blur(5px);
-    -webkit-backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.justcode-notification-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: justcode-spinner-anim 0.75s linear infinite;
+    flex-shrink: 0;
+    display: none; /* Hidden by default */
+}
+
+.justcode-notification-message.with-spinner .justcode-notification-spinner {
+    display: inline-block;
+}
+
+@keyframes justcode-spinner-anim {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.justcode-notification-text {
+    flex-grow: 1;
 }
 
 .justcode-notification-message.show {
     opacity: 1;
 }
 
-/* Use a keyframe animation for a more reliable fade-out */
 @keyframes justcode-fade-out {
-    from {
-        opacity: 1;
-    }
-    to {
-        opacity: 0;
-    }
+    from { opacity: 1; }
+    to { opacity: 0; }
 }
 
 .justcode-notification-message.hide {

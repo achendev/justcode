@@ -1,13 +1,37 @@
 let notificationContainer = null;
+const activeNotificationTimers = new Map();
+
+const ALL_POSITION_CLASSES = [
+    'justcode-noti-top-left', 'justcode-noti-top-center', 'justcode-noti-top-right',
+    'justcode-noti-bottom-left', 'justcode-noti-bottom-center', 'justcode-noti-bottom-right',
+    'justcode-noti-left-center', 'justcode-noti-right-center'
+];
+
+function applyNotificationPosition(position) {
+    if (!notificationContainer) return;
+    
+    // Remove all old position classes
+    notificationContainer.classList.remove(...ALL_POSITION_CLASSES);
+
+    // Add the new one. Default to top-right if position is invalid.
+    const positionClass = `justcode-noti-${position || 'top-right'}`;
+    if (ALL_POSITION_CLASSES.includes(positionClass)) {
+        notificationContainer.classList.add(positionClass);
+    } else {
+        notificationContainer.classList.add('justcode-noti-top-right');
+    }
+}
 
 function ensureInfrastructure() {
-    // Check if elements already exist to prevent duplication on re-injection
     if (document.getElementById('justcode-notification-container')) {
         notificationContainer = document.getElementById('justcode-notification-container');
+        // It already exists, just make sure the position is up-to-date
+        chrome.storage.local.get('notificationPosition', (data) => {
+            applyNotificationPosition(data.notificationPosition);
+        });
         return;
     }
 
-    // Add the CSS file to the page's head
     const styleLink = document.createElement('link');
     styleLink.id = 'justcode-notification-styles';
     styleLink.rel = 'stylesheet';
@@ -15,53 +39,115 @@ function ensureInfrastructure() {
     styleLink.href = chrome.runtime.getURL('css/notification.css');
     document.head.appendChild(styleLink);
     
-    // Add the container div to the page's body
     notificationContainer = document.createElement('div');
     notificationContainer.id = 'justcode-notification-container';
     notificationContainer.className = 'justcode-notification-container';
-    document.body.appendChild(notificationContainer);
-}
-
-function showNotification(text, type) {
-    // Make sure the container and CSS are on the page
-    ensureInfrastructure();
-
-    const notification = document.createElement('div');
-    notification.className = `justcode-notification-message ${type}`;
-    notification.textContent = text;
     
-    notificationContainer.appendChild(notification);
-
-    // Fade in
-    setTimeout(() => {
-        notification.classList.add('show');
-    }, 10); // A small delay ensures the transition is applied
-
-    // Start fade out after 3 seconds
-    setTimeout(() => {
-        notification.classList.add('hide');
-    }, 3000);
-
-    // Remove the element from the DOM after the fade-out animation completes
-    notification.addEventListener('animationend', (e) => {
-        if (e.animationName === 'justcode-fade-out') {
-            notification.remove();
-        }
+    // Get and apply position from storage before appending to body
+    chrome.storage.local.get('notificationPosition', (data) => {
+        applyNotificationPosition(data.notificationPosition);
+        document.body.appendChild(notificationContainer);
     });
 }
 
-// Listen for messages from the background script
+
+function showNotification(id, text, type, showSpinner) {
+    ensureInfrastructure();
+
+    const notificationId = `justcode-notification-${id}`;
+    let notification = document.getElementById(notificationId);
+    let isNew = false;
+
+    if (!notification) {
+        isNew = true;
+        notification = document.createElement('div');
+        notification.id = notificationId;
+        notification.className = 'justcode-notification-message';
+
+        const spinner = document.createElement('div');
+        spinner.className = 'justcode-notification-spinner';
+
+        const textSpan = document.createElement('span');
+        textSpan.className = 'justcode-notification-text';
+
+        notification.appendChild(spinner);
+        notification.appendChild(textSpan);
+        notificationContainer.appendChild(notification);
+
+        notification.addEventListener('animationend', (e) => {
+            if (e.animationName === 'justcode-fade-out' && notification.parentNode) {
+                notification.remove();
+            }
+        });
+    }
+
+    // --- Start of Fix ---
+    // Ensure the notification isn't in a hiding state from a previous timer
+    notification.classList.remove('hide');
+
+    // Manage state classes without affecting behavioral classes like .show
+    notification.classList.remove('info', 'success', 'error');
+    notification.classList.add(type);
+    notification.classList.toggle('with-spinner', showSpinner);
+
+    // Update the text content
+    const textSpan = notification.querySelector('.justcode-notification-text');
+    if (textSpan) {
+        textSpan.textContent = text;
+    }
+    
+    // Ensure the notification is visible
+    if (isNew) {
+        // Fade in a brand new notification
+        setTimeout(() => {
+            notification.classList.add('show');
+        }, 10);
+    } else {
+        // An existing notification should already have 'show', but we ensure it's there.
+        notification.classList.add('show');
+    }
+    // --- End of Fix ---
+
+    // Clear any previous fade-out timer for this notification
+    if (activeNotificationTimers.has(id)) {
+        clearTimeout(activeNotificationTimers.get(id));
+        activeNotificationTimers.delete(id);
+    }
+    
+    // If it's a final message (no spinner), set a new timer to make it fade out
+    if (!showSpinner) {
+        const timer = setTimeout(() => {
+            const el = document.getElementById(notificationId);
+            if (el) {
+                el.classList.add('hide');
+            }
+            activeNotificationTimers.delete(id);
+        }, 4000); // Give users 4 seconds to read the final message
+        activeNotificationTimers.set(id, timer);
+    }
+}
+
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    // We only want to listen to messages from our extension's service worker, not other content scripts
     if (sender.tab) {
         return;
     }
 
     if (request.type === 'showNotificationOnPage') {
-        showNotification(request.text, request.messageType);
-        sendResponse({ status: "Notification shown" });
+        showNotification(
+            request.notificationId, 
+            request.text, 
+            request.messageType, 
+            request.showSpinner
+        );
+        sendResponse({ status: "Notification command processed" });
     }
     
-    // Return true to indicate you wish to send a response asynchronously
     return true; 
+});
+
+chrome.storage.onChanged.addListener((changes, namespace) => {
+    if (namespace === 'local' && changes.notificationPosition) {
+        applyNotificationPosition(changes.notificationPosition.newValue);
+    }
 });

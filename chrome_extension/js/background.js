@@ -6,7 +6,6 @@ const defaultShortcutDomains = 'aistudio.google.com,grok.com,x.com,perplexity.ai
 
 // This is the main logic function that gets called by the listener.
 async function executeCommand(command) {
-    // --- Domain Check ---
     const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     if (!tab || !tab.url) {
         console.log("JustCode: Shortcut ignored. No active tab with a URL found.");
@@ -20,17 +19,31 @@ async function executeCommand(command) {
 
         if (!allowedDomains.includes(currentHostname)) {
             console.log(`JustCode: Shortcut ignored on '${currentHostname}'. Domain not in the allowed list.`);
-            return; // IMPORTANT: Stop execution if domain doesn't match
+            return;
         }
     } catch (e) {
-        // This might happen if the URL is not valid, e.g., "chrome://...".
         console.log(`JustCode: Shortcut ignored. Could not validate URL: ${tab.url}. Error: ${e.message}`);
         return;
     }
-    // --- End Domain Check ---
 
     const actionFunc = command === "get-context-shortcut" ? getContext : (command === "deploy-code-shortcut" ? deployCode : null);
     if (!actionFunc) return;
+
+    const notificationId = `justcode-action-${Date.now()}`;
+    const progressText = command.includes('get-context') ? 'Getting context...' : 'Deploying code...';
+
+    // Show "in-progress" notification
+    try {
+        await chrome.tabs.sendMessage(tab.id, {
+            type: 'showNotificationOnPage',
+            notificationId: notificationId,
+            text: progressText,
+            messageType: 'info',
+            showSpinner: true
+        });
+    } catch (err) {
+        console.log("Could not send initial notification to content script. It might not be injected.", err);
+    }
 
     loadData(async (profiles, activeProfileId, archivedProfiles) => {
         if (!activeProfileId || !profiles || profiles.length === 0) {
@@ -57,20 +70,30 @@ async function executeCommand(command) {
             
             if (result && result.text) {
                 try {
-                    const [currentTarget] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-                    if (currentTarget) {
-                        chrome.tabs.sendMessage(currentTarget.id, {
-                            type: 'showNotificationOnPage',
-                            text: result.text,
-                            messageType: result.type
-                        });
-                    }
+                    await chrome.tabs.sendMessage(tab.id, {
+                        type: 'showNotificationOnPage',
+                        notificationId: notificationId,
+                        text: result.text,
+                        messageType: result.type,
+                        showSpinner: false
+                    });
                 } catch (err) {
-                    console.log("Could not send message to content script. It might not be injected or the page may be protected.", err);
+                    console.log("Could not send final notification to content script.", err);
                 }
             }
         } else {
              console.error(`JustCode: Active profile with ID ${activeProfileId} not found.`);
+             try {
+                await chrome.tabs.sendMessage(tab.id, {
+                    type: 'showNotificationOnPage',
+                    notificationId: notificationId,
+                    text: `Error: Active profile with ID ${activeProfileId} not found.`,
+                    messageType: 'error',
+                    showSpinner: false
+                });
+            } catch (err) {
+                console.log("Could not update notification with error message.", err);
+            }
         }
     });
 }

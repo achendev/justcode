@@ -174,15 +174,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     const importFileInput = document.getElementById('importSettingsFile');
     const closeOnGetContextCheckbox = document.getElementById('closeOnGetContext');
     const shortcutDomainsTextarea = document.getElementById('shortcutDomainsTextarea');
+    const notificationPositionSelector = document.getElementById('notificationPositionSelector');
     const defaultShortcutDomains = 'aistudio.google.com,grok.com,x.com,perplexity.ai,gemini.google.com,chatgpt.com';
 
     // Initialize settings
-    chrome.storage.local.get(['closeOnGetContext', 'shortcutDomains'], (data) => {
+    chrome.storage.local.get(['closeOnGetContext', 'shortcutDomains', 'notificationPosition'], (data) => {
         if (closeOnGetContextCheckbox) {
             closeOnGetContextCheckbox.checked = !!data.closeOnGetContext;
         }
         if (shortcutDomainsTextarea) {
             shortcutDomainsTextarea.value = data.shortcutDomains === undefined ? defaultShortcutDomains : data.shortcutDomains;
+        }
+        if (notificationPositionSelector) {
+            notificationPositionSelector.value = data.notificationPosition || 'top-right';
         }
     });
     
@@ -190,6 +194,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (closeOnGetContextCheckbox) {
         closeOnGetContextCheckbox.addEventListener('change', (event) => {
             chrome.storage.local.set({ closeOnGetContext: event.target.checked });
+        });
+    }
+
+    if (notificationPositionSelector) {
+        notificationPositionSelector.addEventListener('change', (event) => {
+            chrome.storage.local.set({ notificationPosition: event.target.value });
         });
     }
 
