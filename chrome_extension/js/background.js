@@ -116,6 +116,12 @@ async function executeCommand(command) {
             const result = await actionFunc(activeProfile, true); // fromShortcut = true
             
             if (result && result.text) {
+                // --- Start of Fix ---
+                // Save the result message to storage so the popup can display it.
+                activeProfile.lastMessage = { text: result.text, type: result.type };
+                saveData(profiles, activeProfileId, archivedProfiles);
+                // --- End of Fix ---
+
                 try {
                     await chrome.tabs.sendMessage(tab.id, {
                         type: 'showNotificationOnPage',
