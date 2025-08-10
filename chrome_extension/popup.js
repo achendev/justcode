@@ -173,68 +173,76 @@ document.addEventListener('DOMContentLoaded', async () => {
     const importBtn = document.getElementById('importSettingsButton');
     const importFileInput = document.getElementById('importSettingsFile');
     const closeOnGetContextCheckbox = document.getElementById('closeOnGetContext');
-    const shortcutsEnabledCheckbox = document.getElementById('areShortcutsEnabled');
+    
+    // Shortcut Checkboxes
+    const getContextShortcutCheckbox = document.getElementById('isGetContextShortcutEnabled');
+    const deployCodeShortcutCheckbox = document.getElementById('isDeployCodeShortcutEnabled');
+    const undoShortcutCheckbox = document.getElementById('isUndoShortcutEnabled');
+    const redoShortcutCheckbox = document.getElementById('isRedoShortcutEnabled');
+
     const shortcutDomainsTextarea = document.getElementById('shortcutDomainsTextarea');
     const notificationPositionSelector = document.getElementById('notificationPositionSelector');
     const notificationTimeoutInput = document.getElementById('notificationTimeoutInput');
     const defaultShortcutDomains = 'aistudio.google.com,grok.com,x.com,perplexity.ai,gemini.google.com,chatgpt.com';
 
-    // Initialize settings
-    chrome.storage.local.get(['closeOnGetContext', 'shortcutDomains', 'notificationPosition', 'notificationTimeout', 'areShortcutsEnabled'], (data) => {
-        if (closeOnGetContextCheckbox) {
-            closeOnGetContextCheckbox.checked = !!data.closeOnGetContext;
-        }
-        if (shortcutsEnabledCheckbox) {
-            shortcutsEnabledCheckbox.checked = data.areShortcutsEnabled !== false; // default to true
-        }
-        if (shortcutDomainsTextarea) {
-            shortcutDomainsTextarea.value = data.shortcutDomains === undefined ? defaultShortcutDomains : data.shortcutDomains;
-        }
-        if (notificationPositionSelector) {
-            notificationPositionSelector.value = data.notificationPosition || 'bottom-left';
-        }
-        if (notificationTimeoutInput) {
-            notificationTimeoutInput.value = data.notificationTimeout === undefined ? 4 : data.notificationTimeout;
-        }
+    // Initialize settings from storage
+    chrome.storage.local.get([
+        'closeOnGetContext', 
+        'shortcutDomains', 
+        'notificationPosition', 
+        'notificationTimeout', 
+        'isGetContextShortcutEnabled',
+        'isDeployCodeShortcutEnabled',
+        'isUndoShortcutEnabled',
+        'isRedoShortcutEnabled'
+    ], (data) => {
+        closeOnGetContextCheckbox.checked = !!data.closeOnGetContext;
+        shortcutDomainsTextarea.value = data.shortcutDomains === undefined ? defaultShortcutDomains : data.shortcutDomains;
+        notificationPositionSelector.value = data.notificationPosition || 'bottom-left';
+        notificationTimeoutInput.value = data.notificationTimeout === undefined ? 4 : data.notificationTimeout;
+        
+        // Set shortcut checkboxes, defaulting to true/false as specified
+        getContextShortcutCheckbox.checked = data.isGetContextShortcutEnabled !== false;
+        deployCodeShortcutCheckbox.checked = data.isDeployCodeShortcutEnabled !== false;
+        undoShortcutCheckbox.checked = !!data.isUndoShortcutEnabled;
+        redoShortcutCheckbox.checked = !!data.isRedoShortcutEnabled;
     });
     
     // Add listeners for settings changes
-    if (closeOnGetContextCheckbox) {
-        closeOnGetContextCheckbox.addEventListener('change', (event) => {
-            chrome.storage.local.set({ closeOnGetContext: event.target.checked });
-        });
-    }
+    closeOnGetContextCheckbox.addEventListener('change', (event) => {
+        chrome.storage.local.set({ closeOnGetContext: event.target.checked });
+    });
 
-    if (shortcutsEnabledCheckbox) {
-        shortcutsEnabledCheckbox.addEventListener('change', (event) => {
-            chrome.storage.local.set({ areShortcutsEnabled: event.target.checked });
+    const createShortcutChangeListener = (id, key) => {
+        const checkbox = document.getElementById(id);
+        checkbox.addEventListener('change', (event) => {
+            chrome.storage.local.set({ [key]: event.target.checked });
         });
-    }
+    };
 
-    if (notificationPositionSelector) {
-        notificationPositionSelector.addEventListener('change', (event) => {
-            chrome.storage.local.set({ notificationPosition: event.target.value });
-        });
-    }
+    createShortcutChangeListener('isGetContextShortcutEnabled', 'isGetContextShortcutEnabled');
+    createShortcutChangeListener('isDeployCodeShortcutEnabled', 'isDeployCodeShortcutEnabled');
+    createShortcutChangeListener('isUndoShortcutEnabled', 'isUndoShortcutEnabled');
+    createShortcutChangeListener('isRedoShortcutEnabled', 'isRedoShortcutEnabled');
 
-    if (notificationTimeoutInput) {
-        notificationTimeoutInput.addEventListener('change', (event) => {
-            let timeout = parseInt(event.target.value, 10);
-            if (isNaN(timeout) || timeout < 1) {
-                timeout = 4; // default to 4 if invalid
-            }
-            event.target.value = timeout;
-            chrome.storage.local.set({ notificationTimeout: timeout });
-        });
-    }
+    notificationPositionSelector.addEventListener('change', (event) => {
+        chrome.storage.local.set({ notificationPosition: event.target.value });
+    });
 
-    if (shortcutDomainsTextarea) {
-        shortcutDomainsTextarea.addEventListener('change', (event) => {
-            const domains = event.target.value.split(',').map(d => d.trim()).filter(Boolean).join(', ');
-            chrome.storage.local.set({ shortcutDomains: domains });
-            shortcutDomainsTextarea.value = domains; // Clean up the view
-        });
-    }
+    notificationTimeoutInput.addEventListener('change', (event) => {
+        let timeout = parseInt(event.target.value, 10);
+        if (isNaN(timeout) || timeout < 1) {
+            timeout = 4; // default to 4 if invalid
+        }
+        event.target.value = timeout;
+        chrome.storage.local.set({ notificationTimeout: timeout });
+    });
+
+    shortcutDomainsTextarea.addEventListener('change', (event) => {
+        const domains = event.target.value.split(',').map(d => d.trim()).filter(Boolean).join(', ');
+        chrome.storage.local.set({ shortcutDomains: domains });
+        shortcutDomainsTextarea.value = domains; // Clean up the view
+    });
 
     exportBtn.addEventListener('click', async () => {
         chrome.storage.local.get(null, (allData) => {

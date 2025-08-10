@@ -23,10 +23,24 @@ async function ensureContentScript(tabId) {
 
 // This is the main logic function that gets called by the listener.
 async function executeCommand(command) {
-    // Check if global shortcuts are enabled first by reading directly from storage.
-    const globalSettings = await chrome.storage.local.get({ areShortcutsEnabled: true });
-    if (!globalSettings.areShortcutsEnabled) {
-        console.log("JustCode: Shortcuts are disabled in settings. Command ignored.");
+    // Check if the specific shortcut is enabled.
+    const shortcutSettings = await chrome.storage.local.get({
+        isGetContextShortcutEnabled: true,
+        isDeployCodeShortcutEnabled: true,
+        isUndoShortcutEnabled: false,
+        isRedoShortcutEnabled: false,
+    });
+
+    const commandToSettingMap = {
+        'get-context-shortcut': 'isGetContextShortcutEnabled',
+        'deploy-code-shortcut': 'isDeployCodeShortcutEnabled',
+        'undo-code-shortcut': 'isUndoShortcutEnabled',
+        'redo-code-shortcut': 'isRedoShortcutEnabled',
+    };
+
+    const settingKey = commandToSettingMap[command];
+    if (!settingKey || !shortcutSettings[settingKey]) {
+        console.log(`JustCode: Shortcut for '${command}' is disabled in settings. Command ignored.`);
         return;
     }
 
@@ -50,7 +64,6 @@ async function executeCommand(command) {
         return;
     }
 
-    // *** KEY FIX: Ensure content script is ready before proceeding ***
     await ensureContentScript(tab.id);
     
     let actionFunc, progressText;
@@ -77,7 +90,6 @@ async function executeCommand(command) {
 
     const notificationId = `justcode-action-${Date.now()}`;
 
-    // Show "in-progress" notification
     try {
         await chrome.tabs.sendMessage(tab.id, {
             type: 'showNotificationOnPage',
@@ -87,7 +99,7 @@ async function executeCommand(command) {
             showSpinner: true
         });
     } catch (err) {
-        console.log("Could not send initial notification to content script. It might not be injected yet, but the action will proceed.", err);
+        console.log("Could not send initial notification to content script, but the action will proceed.", err);
     }
 
     loadData(async (profiles, activeProfileId, archivedProfiles) => {
@@ -101,10 +113,8 @@ async function executeCommand(command) {
         if (activeProfile) {
             console.log(`Executing '${command}' for profile: ${activeProfile.name}`);
             
-            // The action function now returns the final message directly.
-            const result = await actionFunc(activeProfile, true); 
+            const result = await actionFunc(activeProfile, true); // fromShortcut = true
             
-            // The result is immediately available to be shown in the notification.
             if (result && result.text) {
                 try {
                     await chrome.tabs.sendMessage(tab.id, {
@@ -119,7 +129,6 @@ async function executeCommand(command) {
                 }
             }
 
-            // Special case for closing the popup if it's open.
             if (command === 'get-context-shortcut') {
                 chrome.runtime.sendMessage({ type: "closePopupOnShortcut" }).catch(() => {});
             }
@@ -141,7 +150,6 @@ async function executeCommand(command) {
     });
 }
 
-// Listen for the command defined in manifest.json
 chrome.commands.onCommand.addListener(async (command) => {
     console.log(`Command received: ${command}`);
     await executeCommand(command);
