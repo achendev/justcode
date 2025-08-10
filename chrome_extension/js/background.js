@@ -12,12 +12,21 @@ const defaultShortcutDomains = 'aistudio.google.com,grok.com,x.com,perplexity.ai
  */
 async function ensureContentScript(tabId) {
     try {
+        // We inject all necessary notification scripts here.
+        // This is safe to run multiple times; Chrome won't re-inject if they're already present.
         await chrome.scripting.executeScript({
             target: { tabId: tabId },
-            files: ['js/content_script.js'],
+            files: [
+                "js/content_script/notification_dom.js",
+                "js/content_script/notification_timer.js",
+                "js/content_script/notification_manager.js",
+                "js/content_script.js"
+            ],
         });
     } catch (err) {
-        console.log(`JustCode: Could not inject content script into tab ${tabId}: ${err.message}. This can happen on special pages.`);
+        // This can happen on special browser pages (e.g., chrome://) where content scripts are not allowed.
+        // We can safely ignore this error as shortcuts wouldn't be intended for those pages anyway.
+        console.log(`JustCode: Could not inject content script into tab ${tabId}: ${err.message}.`);
     }
 }
 
@@ -64,6 +73,7 @@ async function executeCommand(command) {
         return;
     }
 
+    // --- FIX: Ensure content scripts are running before we try to message them ---
     await ensureContentScript(tab.id);
     
     let actionFunc, progressText;
@@ -114,18 +124,14 @@ async function executeCommand(command) {
         if (activeProfile) {
             console.log(`Executing '${command}' for profile: ${activeProfile.name}`);
             
-            // Execute the action (e.g., deployCode) which now returns a detailed object.
             const result = await actionFunc(activeProfile, true); // fromShortcut = true
             
-            // The result now contains the detailed message we want to display.
             const messageTextToShow = (result && result.text) ? result.text : 'Action completed with no message.';
             const messageTypeToShow = (result && result.type) ? result.type : 'info';
             
-            // Save the detailed message to storage so the popup can display it later.
             activeProfile.lastMessage = { text: messageTextToShow, type: messageTypeToShow };
             saveData(profiles, activeProfileId, archivedProfiles);
 
-            // Send the detailed message to the on-page notification.
             try {
                 await chrome.tabs.sendMessage(tab.id, {
                     type: 'showNotificationOnPage',
