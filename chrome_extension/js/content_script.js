@@ -1,5 +1,11 @@
 let notificationContainer = null;
 const activeNotificationTimers = new Map();
+let notificationTimeout = 4; // Set a default
+
+// Load initial timeout value from storage
+chrome.storage.local.get({ notificationTimeout: 4 }, (data) => {
+    notificationTimeout = data.notificationTimeout;
+});
 
 const ALL_POSITION_CLASSES = [
     'justcode-noti-top-left', 'justcode-noti-top-center', 'justcode-noti-top-right',
@@ -122,7 +128,7 @@ function showNotification(id, text, type, showSpinner) {
                 el.classList.add('hide');
             }
             activeNotificationTimers.delete(id);
-        }, 4000); // Give users 4 seconds to read the final message
+        }, notificationTimeout * 1000); // Use the stored value
         activeNotificationTimers.set(id, timer);
     }
 }
@@ -147,7 +153,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 chrome.storage.onChanged.addListener((changes, namespace) => {
-    if (namespace === 'local' && changes.notificationPosition) {
+    if (namespace !== 'local') return;
+
+    if (changes.notificationPosition) {
         applyNotificationPosition(changes.notificationPosition.newValue);
+    }
+    if (changes.notificationTimeout) {
+        notificationTimeout = changes.notificationTimeout.newValue;
     }
 });

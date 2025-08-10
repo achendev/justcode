@@ -175,10 +175,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const closeOnGetContextCheckbox = document.getElementById('closeOnGetContext');
     const shortcutDomainsTextarea = document.getElementById('shortcutDomainsTextarea');
     const notificationPositionSelector = document.getElementById('notificationPositionSelector');
+    const notificationTimeoutInput = document.getElementById('notificationTimeoutInput');
     const defaultShortcutDomains = 'aistudio.google.com,grok.com,x.com,perplexity.ai,gemini.google.com,chatgpt.com';
 
     // Initialize settings
-    chrome.storage.local.get(['closeOnGetContext', 'shortcutDomains', 'notificationPosition'], (data) => {
+    chrome.storage.local.get(['closeOnGetContext', 'shortcutDomains', 'notificationPosition', 'notificationTimeout'], (data) => {
         if (closeOnGetContextCheckbox) {
             closeOnGetContextCheckbox.checked = !!data.closeOnGetContext;
         }
@@ -187,6 +188,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         if (notificationPositionSelector) {
             notificationPositionSelector.value = data.notificationPosition || 'top-right';
+        }
+        if (notificationTimeoutInput) {
+            notificationTimeoutInput.value = data.notificationTimeout === undefined ? 4 : data.notificationTimeout;
         }
     });
     
@@ -200,6 +204,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (notificationPositionSelector) {
         notificationPositionSelector.addEventListener('change', (event) => {
             chrome.storage.local.set({ notificationPosition: event.target.value });
+        });
+    }
+
+    if (notificationTimeoutInput) {
+        notificationTimeoutInput.addEventListener('change', (event) => {
+            let timeout = parseInt(event.target.value, 10);
+            if (isNaN(timeout) || timeout < 1) {
+                timeout = 4; // default to 4 if invalid
+            }
+            event.target.value = timeout;
+            chrome.storage.local.set({ notificationTimeout: timeout });
         });
     }
 
