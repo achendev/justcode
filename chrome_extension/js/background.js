@@ -1,6 +1,7 @@
 import { loadData, saveData } from './storage.js';
 import { getContext } from './get_context.js';
 import { deployCode } from './deploy_code.js';
+import { undoCode, redoCode } from './undo_redo.js';
 
 const defaultShortcutDomains = 'aistudio.google.com,grok.com,x.com,perplexity.ai,gemini.google.com,chatgpt.com';
 
@@ -22,6 +23,13 @@ async function ensureContentScript(tabId) {
 
 // This is the main logic function that gets called by the listener.
 async function executeCommand(command) {
+    // Check if global shortcuts are enabled first by reading directly from storage.
+    const globalSettings = await chrome.storage.local.get({ areShortcutsEnabled: true });
+    if (!globalSettings.areShortcutsEnabled) {
+        console.log("JustCode: Shortcuts are disabled in settings. Command ignored.");
+        return;
+    }
+
     const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     if (!tab || !tab.url) {
         console.log("JustCode: Shortcut ignored. No active tab with a URL found.");
@@ -44,12 +52,30 @@ async function executeCommand(command) {
 
     // *** KEY FIX: Ensure content script is ready before proceeding ***
     await ensureContentScript(tab.id);
-
-    const actionFunc = command === "get-context-shortcut" ? getContext : (command === "deploy-code-shortcut" ? deployCode : null);
-    if (!actionFunc) return;
+    
+    let actionFunc, progressText;
+    switch(command) {
+        case "get-context-shortcut":
+            actionFunc = getContext;
+            progressText = 'Getting context...';
+            break;
+        case "deploy-code-shortcut":
+            actionFunc = deployCode;
+            progressText = 'Deploying code...';
+            break;
+        case "undo-code-shortcut":
+            actionFunc = undoCode;
+            progressText = 'Undoing last action...';
+            break;
+        case "redo-code-shortcut":
+            actionFunc = redoCode;
+            progressText = 'Redoing last undo...';
+            break;
+        default:
+            return;
+    }
 
     const notificationId = `justcode-action-${Date.now()}`;
-    const progressText = command.includes('get-context') ? 'Getting context...' : 'Deploying code...';
 
     // Show "in-progress" notification
     try {
@@ -75,18 +101,10 @@ async function executeCommand(command) {
         if (activeProfile) {
             console.log(`Executing '${command}' for profile: ${activeProfile.name}`);
             
-            const result = await actionFunc(activeProfile, true); // fromShortcut = true
+            // The action function now returns the final message directly.
+            const result = await actionFunc(activeProfile, true); 
             
-            const profileToUpdate = profiles.find(p => p.id === activeProfileId);
-            if (profileToUpdate && result && result.text) {
-                profileToUpdate.lastMessage = { text: result.text, type: result.type };
-                saveData(profiles, activeProfileId, archivedProfiles);
-            }
-
-            if (command === 'get-context-shortcut') {
-                chrome.runtime.sendMessage({ type: "closePopupOnShortcut" }).catch(() => {});
-            }
-            
+            // The result is immediately available to be shown in the notification.
             if (result && result.text) {
                 try {
                     await chrome.tabs.sendMessage(tab.id, {
@@ -100,6 +118,12 @@ async function executeCommand(command) {
                     console.log("Could not send final notification to content script.", err);
                 }
             }
+
+            // Special case for closing the popup if it's open.
+            if (command === 'get-context-shortcut') {
+                chrome.runtime.sendMessage({ type: "closePopupOnShortcut" }).catch(() => {});
+            }
+
         } else {
              console.error(`JustCode: Active profile with ID ${activeProfileId} not found.`);
              try {

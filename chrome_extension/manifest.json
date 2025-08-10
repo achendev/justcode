@@ -28,13 +28,6 @@
         }
     },
     "commands": {
-        "_execute_action": {
-            "suggested_key": {
-                "default": "Alt+Up",
-                "mac": "Alt+Up"
-            },
-            "description": "Open JustCode Popup"
-        },
         "get-context-shortcut": {
             "suggested_key": {
                 "default": "Alt+Left",
@@ -48,6 +41,20 @@
                 "mac": "Alt+Right"
             },
             "description": "Deploy code using the active profile"
+        },
+        "undo-code-shortcut": {
+            "suggested_key": {
+                "default": "Alt+R",
+                "mac": "Alt+R"
+            },
+            "description": "Undo the last deploy"
+        },
+        "redo-code-shortcut": {
+            "suggested_key": {
+                "default": "Alt+Y",
+                "mac": "Alt+Y"
+            },
+            "description": "Redo the last undo"
         }
     },
     "content_scripts": [

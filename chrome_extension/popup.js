@@ -173,21 +173,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     const importBtn = document.getElementById('importSettingsButton');
     const importFileInput = document.getElementById('importSettingsFile');
     const closeOnGetContextCheckbox = document.getElementById('closeOnGetContext');
+    const shortcutsEnabledCheckbox = document.getElementById('areShortcutsEnabled');
     const shortcutDomainsTextarea = document.getElementById('shortcutDomainsTextarea');
     const notificationPositionSelector = document.getElementById('notificationPositionSelector');
     const notificationTimeoutInput = document.getElementById('notificationTimeoutInput');
     const defaultShortcutDomains = 'aistudio.google.com,grok.com,x.com,perplexity.ai,gemini.google.com,chatgpt.com';
 
     // Initialize settings
-    chrome.storage.local.get(['closeOnGetContext', 'shortcutDomains', 'notificationPosition', 'notificationTimeout'], (data) => {
+    chrome.storage.local.get(['closeOnGetContext', 'shortcutDomains', 'notificationPosition', 'notificationTimeout', 'areShortcutsEnabled'], (data) => {
         if (closeOnGetContextCheckbox) {
             closeOnGetContextCheckbox.checked = !!data.closeOnGetContext;
+        }
+        if (shortcutsEnabledCheckbox) {
+            shortcutsEnabledCheckbox.checked = data.areShortcutsEnabled !== false; // default to true
         }
         if (shortcutDomainsTextarea) {
             shortcutDomainsTextarea.value = data.shortcutDomains === undefined ? defaultShortcutDomains : data.shortcutDomains;
         }
         if (notificationPositionSelector) {
-            notificationPositionSelector.value = data.notificationPosition || 'top-right';
+            notificationPositionSelector.value = data.notificationPosition || 'bottom-left';
         }
         if (notificationTimeoutInput) {
             notificationTimeoutInput.value = data.notificationTimeout === undefined ? 4 : data.notificationTimeout;
@@ -198,6 +202,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (closeOnGetContextCheckbox) {
         closeOnGetContextCheckbox.addEventListener('change', (event) => {
             chrome.storage.local.set({ closeOnGetContext: event.target.checked });
+        });
+    }
+
+    if (shortcutsEnabledCheckbox) {
+        shortcutsEnabledCheckbox.addEventListener('change', (event) => {
+            chrome.storage.local.set({ areShortcutsEnabled: event.target.checked });
         });
     }
 

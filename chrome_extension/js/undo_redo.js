@@ -28,67 +28,80 @@ async function moveBetweenStacks(profileId, fromStackType, toStackType) {
 }
 
 // --- JS Mode ---
-async function undoCodeJs(profile) {
+async function undoCodeJs(profile, fromShortcut) {
     const handle = await getHandle(profile.id);
     if (!handle || !(await verifyPermission(handle))) {
-        updateAndSaveMessage(profile.id, 'Error: Project folder access is required for Undo.', 'error');
-        return;
+        const msg = { text: 'Error: Project folder access is required for Undo.', type: 'error' };
+        if (!fromShortcut) updateAndSaveMessage(profile.id, msg.text, msg.type);
+        return msg;
     }
 
     try {
-        updateTemporaryMessage(profile.id, 'Undoing last action...');
+        if (!fromShortcut) updateTemporaryMessage(profile.id, 'Undoing last action...');
         
         const actionToUndo = await moveBetweenStacks(profile.id, 'undo', 'redo');
         if (!actionToUndo) {
-            updateAndSaveMessage(profile.id, 'No actions to undo.', 'info');
-            return;
+            const msg = { text: 'No actions to undo.', type: 'info' };
+            if (!fromShortcut) updateAndSaveMessage(profile.id, msg.text, msg.type);
+            return msg;
         }
 
         await executeFileSystemScript(handle, actionToUndo.undoScript, profile.tolerateErrors !== false);
-        updateAndSaveMessage(profile.id, 'Undo successful!', 'success');
+        const msg = { text: 'Undo successful!', type: 'success' };
+        if (!fromShortcut) updateAndSaveMessage(profile.id, msg.text, msg.type);
+        return msg;
 
     } catch (error) {
-        updateAndSaveMessage(profile.id, `Error during undo: ${error.message}`, 'error');
         console.error('JustCode Undo Error:', error);
         await moveBetweenStacks(profile.id, 'redo', 'undo'); // Attempt to move back
+        const msg = { text: `Error during undo: ${error.message}`, type: 'error' };
+        if (!fromShortcut) updateAndSaveMessage(profile.id, msg.text, msg.type);
+        return msg;
     }
 }
 
-async function redoCodeJs(profile) {
+async function redoCodeJs(profile, fromShortcut) {
     const handle = await getHandle(profile.id);
     if (!handle || !(await verifyPermission(handle))) {
-        updateAndSaveMessage(profile.id, 'Error: Project folder access is required for Redo.', 'error');
-        return;
+        const msg = { text: 'Error: Project folder access is required for Redo.', type: 'error' };
+        if (!fromShortcut) updateAndSaveMessage(profile.id, msg.text, msg.type);
+        return msg;
     }
 
     try {
-        updateTemporaryMessage(profile.id, 'Redoing last undo...');
+        if (!fromShortcut) updateTemporaryMessage(profile.id, 'Redoing last undo...');
         
         const actionToRedo = await moveBetweenStacks(profile.id, 'redo', 'undo');
         if (!actionToRedo) {
-            updateAndSaveMessage(profile.id, 'No actions to redo.', 'info');
-            return;
+            const msg = { text: 'No actions to redo.', type: 'info' };
+            if (!fromShortcut) updateAndSaveMessage(profile.id, msg.text, msg.type);
+            return msg;
         }
         
         await executeFileSystemScript(handle, actionToRedo.redoScript, profile.tolerateErrors !== false);
-        updateAndSaveMessage(profile.id, 'Redo successful!', 'success');
+        const msg = { text: 'Redo successful!', type: 'success' };
+        if (!fromShortcut) updateAndSaveMessage(profile.id, msg.text, msg.type);
+        return msg;
 
     } catch (error) {
-        updateAndSaveMessage(profile.id, `Error during redo: ${error.message}`, 'error');
         console.error('JustCode Redo Error:', error);
         await moveBetweenStacks(profile.id, 'undo', 'redo'); // Attempt to move back
+        const msg = { text: `Error during redo: ${error.message}`, type: 'error' };
+        if (!fromShortcut) updateAndSaveMessage(profile.id, msg.text, msg.type);
+        return msg;
     }
 }
 
 // --- Server Mode ---
-async function undoCodeServer(profile) {
+async function undoCodeServer(profile, fromShortcut) {
     if (!profile.projectPath) {
-        updateAndSaveMessage(profile.id, 'Error: Project path is required for Undo.', 'error');
-        return;
+        const msg = { text: 'Error: Project path is required for Undo.', type: 'error' };
+        if (!fromShortcut) updateAndSaveMessage(profile.id, msg.text, msg.type);
+        return msg;
     }
 
     try {
-        updateTemporaryMessage(profile.id, 'Undoing last action...');
+        if (!fromShortcut) updateTemporaryMessage(profile.id, 'Undoing last action...');
         const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
         const tolerateErrors = profile.tolerateErrors !== false;
         const endpoint = `${serverUrl}/undo?path=${encodeURIComponent(profile.projectPath)}&tolerateErrors=${tolerateErrors}`;
@@ -102,22 +115,27 @@ async function undoCodeServer(profile) {
         const resultText = await response.text();
         if (!response.ok) throw new Error(`Undo failed: ${resultText}`);
 
-        updateAndSaveMessage(profile.id, 'Undo successful!', 'success');
+        const msg = { text: 'Undo successful!', type: 'success' };
+        if (!fromShortcut) updateAndSaveMessage(profile.id, msg.text, msg.type);
+        return msg;
 
     } catch (error) {
-        updateAndSaveMessage(profile.id, `Error: ${error.message.replace('Error: Undo failed: ', '')}`, 'error');
         console.error('JustCode Error:', error);
+        const msg = { text: `Error: ${error.message.replace('Error: Undo failed: ', '')}`, type: 'error' };
+        if (!fromShortcut) updateAndSaveMessage(profile.id, msg.text, msg.type);
+        return msg;
     }
 }
 
-async function redoCodeServer(profile) {
+async function redoCodeServer(profile, fromShortcut) {
     if (!profile.projectPath) {
-        updateAndSaveMessage(profile.id, 'Error: Project path is required for Redo.', 'error');
-        return;
+        const msg = { text: 'Error: Project path is required for Redo.', type: 'error' };
+        if (!fromShortcut) updateAndSaveMessage(profile.id, msg.text, msg.type);
+        return msg;
     }
 
     try {
-        updateTemporaryMessage(profile.id, 'Redoing last undo...');
+        if (!fromShortcut) updateTemporaryMessage(profile.id, 'Redoing last undo...');
         const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
         const tolerateErrors = profile.tolerateErrors !== false;
         const endpoint = `${serverUrl}/redo?path=${encodeURIComponent(profile.projectPath)}&tolerateErrors=${tolerateErrors}`;
@@ -131,32 +149,48 @@ async function redoCodeServer(profile) {
         const resultText = await response.text();
         if (!response.ok) throw new Error(`Redo failed: ${resultText}`);
 
-        updateAndSaveMessage(profile.id, 'Redo successful!', 'success');
+        const msg = { text: 'Redo successful!', type: 'success' };
+        if (!fromShortcut) updateAndSaveMessage(profile.id, msg.text, msg.type);
+        return msg;
 
     } catch (error) {
-        updateAndSaveMessage(profile.id, `Error: ${error.message.replace('Error: Redo failed: ', '')}`, 'error');
         console.error('JustCode Error:', error);
+        const msg = { text: `Error: ${error.message.replace('Error: Redo failed: ', '')}`, type: 'error' };
+        if (!fromShortcut) updateAndSaveMessage(profile.id, msg.text, msg.type);
+        return msg;
     }
 }
 
 // --- Main Exported Functions ---
 
-export async function undoCode(profile) {
-    updateTemporaryMessage(profile.id, '');
+export async function undoCode(profile, fromShortcut = false) {
+    let result;
+    if (!fromShortcut) updateTemporaryMessage(profile.id, '');
+
     if (profile.useServerBackend) {
-        await undoCodeServer(profile);
+        result = await undoCodeServer(profile, fromShortcut);
     } else {
-        await undoCodeJs(profile);
+        result = await undoCodeJs(profile, fromShortcut);
     }
-    refreshUndoRedoCounts(profile);
+    
+    if (typeof document !== 'undefined') { // Only refresh UI if in a document context
+        refreshUndoRedoCounts(profile);
+    }
+    return result;
 }
 
-export async function redoCode(profile) {
-    updateTemporaryMessage(profile.id, '');
+export async function redoCode(profile, fromShortcut = false) {
+    let result;
+    if (!fromShortcut) updateTemporaryMessage(profile.id, '');
+
     if (profile.useServerBackend) {
-        await redoCodeServer(profile);
+        result = await redoCodeServer(profile, fromShortcut);
     } else {
-        await redoCodeJs(profile);
+        result = await redoCodeJs(profile, fromShortcut);
     }
-    refreshUndoRedoCounts(profile);
+    
+    if (typeof document !== 'undefined') { // Only refresh UI if in a document context
+        refreshUndoRedoCounts(profile);
+    }
+    return result;
 }

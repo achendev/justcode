@@ -19,12 +19,12 @@ function applyNotificationPosition(position) {
     // Remove all old position classes
     notificationContainer.classList.remove(...ALL_POSITION_CLASSES);
 
-    // Add the new one. Default to top-right if position is invalid.
-    const positionClass = `justcode-noti-${position || 'top-right'}`;
+    // Add the new one. Default to bottom-left if position is invalid.
+    const positionClass = `justcode-noti-${position || 'bottom-left'}`;
     if (ALL_POSITION_CLASSES.includes(positionClass)) {
         notificationContainer.classList.add(positionClass);
     } else {
-        notificationContainer.classList.add('justcode-noti-top-right');
+        notificationContainer.classList.add('justcode-noti-bottom-left');
     }
 }
 
@@ -32,7 +32,7 @@ function ensureInfrastructure() {
     if (document.getElementById('justcode-notification-container')) {
         notificationContainer = document.getElementById('justcode-notification-container');
         // It already exists, just make sure the position is up-to-date
-        chrome.storage.local.get('notificationPosition', (data) => {
+        chrome.storage.local.get({ notificationPosition: 'bottom-left' }, (data) => {
             applyNotificationPosition(data.notificationPosition);
         });
         return;
@@ -50,7 +50,7 @@ function ensureInfrastructure() {
     notificationContainer.className = 'justcode-notification-container';
     
     // Get and apply position from storage before appending to body
-    chrome.storage.local.get('notificationPosition', (data) => {
+    chrome.storage.local.get({ notificationPosition: 'bottom-left' }, (data) => {
         applyNotificationPosition(data.notificationPosition);
         document.body.appendChild(notificationContainer);
     });
