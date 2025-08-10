@@ -5,6 +5,27 @@ import { loadData, saveData } from '../storage.js';
 import { updateAndSaveMessage, updateTemporaryMessage } from './message.js';
 import { refreshUndoRedoCounts } from '../ui.js';
 
+// --- Start of New Code ---
+const GET_CONTEXT_HINT_KEY = 'getContextButtonUsageCount';
+const DEPLOY_CODE_HINT_KEY = 'deployCodeButtonUsageCount';
+const GET_CONTEXT_HINT_MESSAGE = "Pro Tip: Use the (ALT + ←) or (⌥←) shortcut next time!";
+const DEPLOY_CODE_HINT_MESSAGE = "Pro Tip: Use the (ALT + →) or (⌥→) shortcut next time!";
+const MAX_HINT_COUNT = 10;
+
+async function getUsageCount(key) {
+    const data = await chrome.storage.local.get({ [key]: 0 });
+    return data[key];
+}
+
+async function incrementUsageCount(key) {
+    const count = await getUsageCount(key);
+    if (count < MAX_HINT_COUNT) {
+        await chrome.storage.local.set({ [key]: count + 1 });
+    }
+}
+// --- End of New Code ---
+
+
 async function performAction(event, actionFunc, ...extraArgs) {
     const button = event.currentTarget;
     const originalButtonHTML = button.innerHTML;
@@ -40,12 +61,33 @@ async function performAction(event, actionFunc, ...extraArgs) {
         });
 
         if (result && result.text) {
-            updateAndSaveMessage(id, result.text, result.type);
+            let messageText = result.text;
+            const fromShortcut = extraArgs[0] === true;
+
+            // --- Start of Modified Code ---
+            if (!fromShortcut && result.type === 'success') {
+                if (actionFunc === getContext) {
+                    const usageCount = await getUsageCount(GET_CONTEXT_HINT_KEY);
+                    if (usageCount < MAX_HINT_COUNT) {
+                        messageText += `\n${GET_CONTEXT_HINT_MESSAGE}`;
+                        await incrementUsageCount(GET_CONTEXT_HINT_KEY);
+                    }
+                } else if (actionFunc === deployCode) {
+                    const usageCount = await getUsageCount(DEPLOY_CODE_HINT_KEY);
+                    if (usageCount < MAX_HINT_COUNT) {
+                        messageText += `\n${DEPLOY_CODE_HINT_MESSAGE}`;
+                        await incrementUsageCount(DEPLOY_CODE_HINT_KEY);
+                    }
+                }
+            }
+             // --- End of Modified Code ---
+            
+            updateAndSaveMessage(id, messageText, result.type);
 
             if (actionFunc === getContext) {
                 const settings = await chrome.storage.local.get({ closeOnGetContext: false });
                 const isDetached = new URLSearchParams(window.location.search).get('view') === 'window';
-                if (settings.closeOnGetContext && !isDetached) {
+                if (settings.closeOnGetContext && !isDetached && !fromShortcut) {
                     window.close();
                 }
             }

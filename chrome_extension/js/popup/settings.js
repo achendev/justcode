@@ -26,7 +26,7 @@ export function initializeAppSettings(reRender) {
         'isUndoShortcutEnabled',
         'isRedoShortcutEnabled'
     ], (data) => {
-        closeOnGetContextCheckbox.checked = !!data.closeOnGetContext;
+        closeOnGetContextCheckbox.checked = data.closeOnGetContext === true;
         shortcutDomainsTextarea.value = data.shortcutDomains === undefined ? defaultShortcutDomains : data.shortcutDomains;
         notificationPositionSelector.value = data.notificationPosition || 'bottom-left';
         notificationTimeoutInput.value = data.notificationTimeout === undefined ? 4 : data.notificationTimeout;
@@ -78,8 +78,8 @@ export function initializeAppSettings(reRender) {
         chrome.storage.local.get(null, (allData) => {
             const exportableData = {};
             for (const key in allData) {
-                // Exclude undo/redo stacks from the export
-                if (!key.startsWith('undo_stack_') && !key.startsWith('redo_stack_')) {
+                // Exclude undo/redo stacks and usage counts from the export
+                if (!key.startsWith('undo_stack_') && !key.startsWith('redo_stack_') && !key.endsWith('ButtonUsageCount')) {
                     exportableData[key] = allData[key];
                 }
             }
