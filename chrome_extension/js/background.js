@@ -27,8 +27,8 @@ async function executeCommand(command) {
     const shortcutSettings = await chrome.storage.local.get({
         isGetContextShortcutEnabled: true,
         isDeployCodeShortcutEnabled: true,
-        isUndoShortcutEnabled: false,
-        isRedoShortcutEnabled: false,
+        isUndoShortcutEnabled: true,
+        isRedoShortcutEnabled: true,
     });
 
     const commandToSettingMap = {

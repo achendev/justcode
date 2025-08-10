@@ -44,17 +44,17 @@
         },
         "undo-code-shortcut": {
             "suggested_key": {
-                "default": "Alt+R",
-                "mac": "Alt+R"
+                "default": "Alt+Comma",
+                "mac": "Alt+Comma"
             },
-            "description": "Undo the last deploy"
+            "description": "Undo the last deploy (Alt + <)"
         },
         "redo-code-shortcut": {
             "suggested_key": {
-                "default": "Alt+Y",
-                "mac": "Alt+Y"
+                "default": "Alt+Period",
+                "mac": "Alt+Period"
             },
-            "description": "Redo the last undo"
+            "description": "Redo the last undo (Alt + >)"
         }
     },
     "content_scripts": [

@@ -33,8 +33,8 @@ export function initializeAppSettings(reRender) {
         
         getContextShortcutCheckbox.checked = data.isGetContextShortcutEnabled !== false;
         deployCodeShortcutCheckbox.checked = data.isDeployCodeShortcutEnabled !== false;
-        undoShortcutCheckbox.checked = !!data.isUndoShortcutEnabled;
-        redoShortcutCheckbox.checked = !!data.isRedoShortcutEnabled;
+        undoShortcutCheckbox.checked = data.isUndoShortcutEnabled !== false;
+        redoShortcutCheckbox.checked = data.isRedoShortcutEnabled !== false;
     });
     
     // Add listeners for settings changes

@@ -57,15 +57,15 @@ export function initializeListeners(reRender) {
                 case 'ArrowLeft':
                     actionTaken = clickButton('.get-context', handleGetContextClick);
                     break;
+                case ',': // Corresponds to Alt + <
+                    actionTaken = clickButton('.undo-code', handleUndoCodeClick);
+                    break;
+                case '.': // Corresponds to Alt + >
+                    actionTaken = clickButton('.redo-code', handleRedoCodeClick);
+                    break;
             }
             
             switch (event.code) {
-                 case 'KeyR':
-                    actionTaken = clickButton('.undo-code', handleUndoCodeClick);
-                    break;
-                case 'KeyY':
-                    actionTaken = clickButton('.redo-code', handleRedoCodeClick);
-                    break;
                 case 'KeyA':
                     switchProfileTab(-1, reRender);
                     actionTaken = true;

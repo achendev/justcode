@@ -53,8 +53,8 @@ export function getMainViewHTML(profile) {
                 </div>
             </div>
             <div class="btn-group btn-group-sm" role="group">
-                <button class="btn btn-outline-secondary undo-code" data-id="${profile.id}" title="Undo the last deploy (Alt+R)" disabled><i class="bi bi-arrow-90deg-left"></i></button>
-                <button class="btn btn-outline-secondary redo-code" data-id="${profile.id}" title="Redo the last undo" disabled><i class="bi bi-arrow-90deg-right"></i></button>
+                <button class="btn btn-outline-secondary undo-code" data-id="${profile.id}" title="Undo the last deploy (Alt + <)" disabled><i class="bi bi-arrow-90deg-left"></i></button>
+                <button class="btn btn-outline-secondary redo-code" data-id="${profile.id}" title="Redo the last undo (Alt + >)" disabled><i class="bi bi-arrow-90deg-right"></i></button>
             </div>
         </div>
         
