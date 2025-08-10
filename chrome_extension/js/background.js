@@ -4,6 +4,22 @@ import { deployCode } from './deploy_code.js';
 
 const defaultShortcutDomains = 'aistudio.google.com,grok.com,x.com,perplexity.ai,gemini.google.com,chatgpt.com';
 
+/**
+ * Ensures the content script is injected and ready in the target tab.
+ * This is crucial to make sure notifications work even after an extension reload.
+ * @param {number} tabId The ID of the tab to inject the script into.
+ */
+async function ensureContentScript(tabId) {
+    try {
+        await chrome.scripting.executeScript({
+            target: { tabId: tabId },
+            files: ['js/content_script.js'],
+        });
+    } catch (err) {
+        console.log(`JustCode: Could not inject content script into tab ${tabId}: ${err.message}. This can happen on special pages.`);
+    }
+}
+
 // This is the main logic function that gets called by the listener.
 async function executeCommand(command) {
     const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
@@ -26,6 +42,9 @@ async function executeCommand(command) {
         return;
     }
 
+    // *** KEY FIX: Ensure content script is ready before proceeding ***
+    await ensureContentScript(tab.id);
+
     const actionFunc = command === "get-context-shortcut" ? getContext : (command === "deploy-code-shortcut" ? deployCode : null);
     if (!actionFunc) return;
 
@@ -42,7 +61,7 @@ async function executeCommand(command) {
             showSpinner: true
         });
     } catch (err) {
-        console.log("Could not send initial notification to content script. It might not be injected.", err);
+        console.log("Could not send initial notification to content script. It might not be injected yet, but the action will proceed.", err);
     }
 
     loadData(async (profiles, activeProfileId, archivedProfiles) => {
