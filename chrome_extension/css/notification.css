@@ -118,6 +118,7 @@
 
 .justcode-notification-text {
     flex-grow: 1;
+    white-space: pre-wrap; /* This is the fix */
 }
 
 .justcode-notification-message.show {

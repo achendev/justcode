@@ -117,7 +117,7 @@ async function executeCommand(command) {
             
             if (result && result.text) {
                 // --- Start of Fix ---
-                // Save the result message to storage so the popup can display it.
+                // Save the result message to storage so the popup can display it later.
                 activeProfile.lastMessage = { text: result.text, type: result.type };
                 saveData(profiles, activeProfileId, archivedProfiles);
                 // --- End of Fix ---
