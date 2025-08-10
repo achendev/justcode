@@ -26,6 +26,9 @@ chrome.commands.onCommand.addListener(async (command) => {
                     profileToUpdate.lastMessage = { text: result.text, type: result.type };
                     saveData(profiles, activeProfileId, archivedProfiles);
                 }
+
+                // Close the popup if it's open. This will fail harmlessly if it's not.
+                chrome.runtime.sendMessage({ type: "closePopupOnShortcut" }).catch(() => {});
                 
                 // If there's a result message, send it to the content script of the active tab
                 if (result && result.text) {

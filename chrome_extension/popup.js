@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Listen for messages from the folder picker window (for JS mode)
+    // Listen for messages from other extension scripts
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (sender.tab) return; // Ignore messages from content scripts
 
@@ -115,6 +115,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             case "folderSelected":
                 updateFolderName(message.profileId, message.folderName);
                 updateAndSaveMessage(message.profileId, `Folder '${message.folderName}' access granted.`, 'success');
+                break;
+            case "closePopupOnShortcut":
+                const isDetachedWindow = new URLSearchParams(window.location.search).get('view') === 'window';
+                if (!isDetachedWindow) {
+                    window.close();
+                }
                 break;
         }
         return true;

@@ -37,8 +37,7 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     font-size: 14px;
     opacity: 0;
-    transform: translateX(20px);
-    transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out;
+    transition: opacity 0.4s ease-in-out;
     margin-bottom: 10px;
     box-shadow: 0 4px 12px var(--jc-noti-shadow);
     pointer-events: auto; /* Re-enable clicks on the notification itself */
@@ -50,18 +49,15 @@
 
 .justcode-notification-message.show {
     opacity: 1;
-    transform: translateX(0);
 }
 
 /* Use a keyframe animation for a more reliable fade-out */
 @keyframes justcode-fade-out {
     from {
         opacity: 1;
-        transform: translateX(0);
     }
     to {
         opacity: 0;
-        transform: translateX(20px);
     }
 }
 

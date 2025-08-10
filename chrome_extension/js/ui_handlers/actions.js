@@ -9,7 +9,6 @@ async function performAction(event, actionFunc, ...extraArgs) {
     const button = event.currentTarget;
     const originalButtonHTML = button.innerHTML;
     const id = parseInt(button.dataset.id);
-    const isFromShortcut = extraArgs.includes(true);
 
     const profileCard = document.querySelector(`.profile-card.active#profile-${id}`);
     if (!profileCard) return;
@@ -31,7 +30,6 @@ async function performAction(event, actionFunc, ...extraArgs) {
                 if (!profile) {
                     return reject(new Error("Profile not found."));
                 }
-                // Pass all extra args, including the fromShortcut boolean if present
                 const actionResult = await actionFunc(profile, ...extraArgs);
                 resolve(actionResult);
             });
@@ -45,7 +43,7 @@ async function performAction(event, actionFunc, ...extraArgs) {
             if (actionFunc === getContext) {
                 const settings = await chrome.storage.local.get({ closeOnGetContext: false });
                 const isDetached = new URLSearchParams(window.location.search).get('view') === 'window';
-                if ((isFromShortcut || settings.closeOnGetContext) && !isDetached) {
+                if (settings.closeOnGetContext && !isDetached) {
                     window.close();
                 }
             }
@@ -70,8 +68,8 @@ async function performAction(event, actionFunc, ...extraArgs) {
 }
 
 
-export function handleGetContextClick(event, fromShortcut = false) {
-    performAction(event, getContext, fromShortcut);
+export function handleGetContextClick(event) {
+    performAction(event, getContext);
 }
 
 export function handleDeployCodeClick(event) {
