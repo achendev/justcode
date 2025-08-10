@@ -1,3 +1,10 @@
+import { extractAIStudioAnswer } from './answer_extractors/aistudio.js';
+import { extractGeminiAnswer } from './answer_extractors/gemini.js';
+import { extractChatGPTAnswer } from './answer_extractors/chatgpt.js';
+import { extractGrokAnswer } from './answer_extractors/grok.js';
+import { extractGrokAnswerX } from './answer_extractors/x_grok.js';
+import { extractFallbackAnswer } from './answer_extractors/fallback.js';
+
 /**
  * Extracts the deployment script from either the clipboard or the active LLM page.
  * This function acts as a dispatcher, choosing the correct extraction strategy
@@ -7,8 +14,25 @@
  * @returns {Promise<string|null>} The deployment script text, or null if not found.
  */
 export async function extractCodeToDeploy(profile, isDetached) {
-    if (profile.deployCodeSource === 'clipboard' || isDetached) {
-        return await navigator.clipboard.readText();
+    const fromShortcut = typeof document === 'undefined';
+    
+    if (profile.deployCodeSource === 'clipboard' || (isDetached && !fromShortcut)) {
+        if (fromShortcut) {
+            // We are in the background script and need to read the clipboard from the active tab.
+            const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+            if (!tab) {
+                console.error("JustCode: No active tab found to read clipboard from.");
+                return null;
+            }
+            const results = await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: () => navigator.clipboard.readText(),
+            });
+            return results[0]?.result || null;
+        } else {
+            // We are in the popup, which has direct clipboard access.
+            return await navigator.clipboard.readText();
+        }
     }
     
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -23,32 +47,23 @@ export async function extractCodeToDeploy(profile, isDetached) {
     let args = [profile.deployFromFullAnswer]; // Default arguments
 
     if (hostname.includes('aistudio.google.com')) {
-        const { extractAIStudioAnswer } = await import('./answer_extractors/aistudio.js');
         extractFunc = extractAIStudioAnswer;
     } else if (hostname.includes('gemini.google.com')) {
-        const { extractGeminiAnswer } = await import('./answer_extractors/gemini.js');
         extractFunc = extractGeminiAnswer;
         if (profile.deployFromFullAnswer) {
             args.push(profile.codeBlockDelimiter || '```');
         }
     } else if (hostname.includes('chatgpt.com')) {
-        const { extractChatGPTAnswer } = await import('./answer_extractors/chatgpt.js');
         extractFunc = extractChatGPTAnswer;
     } else if (hostname.includes('grok.com')) {
-        const { extractGrokAnswer } = await import('./answer_extractors/grok.js');
         extractFunc = extractGrokAnswer;
         if (profile.deployFromFullAnswer) {
             args.push(profile.codeBlockDelimiter || '```');
         }
     } else if (hostname.includes('x.com') && profile.deployFromFullAnswer) {
-        // Only use the special x.com extractor if we are in "full answer" mode.
-        const { extractGrokAnswerX } = await import('./answer_extractors/x_grok.js');
         extractFunc = extractGrokAnswerX;
-        // Pass the delimiter as an additional argument for markdown reconstruction.
         args.push(profile.codeBlockDelimiter || '```');
     } else {
-        // For all other sites, OR for x.com in "code block" mode, use the reliable fallback.
-        const { extractFallbackAnswer } = await import('./answer_extractors/fallback.js');
         extractFunc = extractFallbackAnswer;
     }
 
@@ -58,5 +73,5 @@ export async function extractCodeToDeploy(profile, isDetached) {
         args: args
     });
 
-    return results[0]?.result || null;
+    return results?.result || null;
 }

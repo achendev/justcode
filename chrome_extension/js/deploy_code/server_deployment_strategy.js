@@ -4,10 +4,11 @@ import { extractCodeToDeploy } from './llm_code_extractor.js';
 /**
  * Handles the deployment process for the server backend.
  * @param {object} profile - The active user profile.
+ * @param {boolean} [fromShortcut=false] - Whether the call originates from a shortcut.
  * @returns {Promise<string>} A status message upon completion.
  */
-export async function handleServerDeployment(profile) {
-    const isDetached = new URLSearchParams(window.location.search).get('view') === 'window';
+export async function handleServerDeployment(profile, fromShortcut = false) {
+    const isDetached = fromShortcut ? false : new URLSearchParams(window.location.search).get('view') === 'window';
     const path = profile.projectPath;
     if (!path) {
         throw new Error('Please enter a project path.');

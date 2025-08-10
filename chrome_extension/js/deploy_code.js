@@ -8,23 +8,34 @@ import { handleServerDeployment } from './deploy_code/server_deployment_strategy
  * (JS or Server backend) based on the active profile.
  * This is the main public entry point for the deployment feature.
  * @param {object} profile The active user profile.
+ * @param {boolean} [fromShortcut=false] - True if called from a keyboard shortcut.
+ * @returns {Promise<{text: string, type: 'success'|'error'|'info'}>} A result object.
  */
-export async function deployCode(profile) {
-    updateTemporaryMessage(profile.id, '');
-    let successMessage = 'Code deployed successfully!'; // Default
+export async function deployCode(profile, fromShortcut = false) {
+    if (!fromShortcut) {
+        updateTemporaryMessage(profile.id, '');
+    }
+    
+    let result = { text: 'Code deployed successfully!', type: 'success' }; // Default
 
     try {
         if (profile.useServerBackend) {
-            successMessage = await handleServerDeployment(profile);
+            const serverMessage = await handleServerDeployment(profile, fromShortcut);
+            result = { text: serverMessage, type: 'success' };
         } else {
-            successMessage = await handleJsDeployment(profile);
+            const jsMessage = await handleJsDeployment(profile, fromShortcut);
+            result = { text: jsMessage, type: 'success' };
         }
-        updateAndSaveMessage(profile.id, successMessage, 'success');
     } catch (error) {
-        updateAndSaveMessage(profile.id, `Error: ${error.message}`, 'error');
-        console.error('JustCode Error:', error);
+        console.error('JustCode Deploy Error:', error);
+        result = { text: `Error: ${error.message}`, type: 'error' };
     } finally {
-        // Always refresh undo/redo counts at the end, regardless of success or failure.
-        refreshUndoRedoCounts(profile);
+        if (!fromShortcut) {
+            updateAndSaveMessage(profile.id, result.text, result.type);
+            // Always refresh undo/redo counts at the end, regardless of success or failure.
+            refreshUndoRedoCounts(profile);
+        }
     }
+    
+    return result;
 }

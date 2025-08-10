@@ -209,7 +209,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     importBtn.addEventListener('click', () => importFileInput.click());
 
     importFileInput.addEventListener('change', (event) => {
-        const file = event.target.files[0];
+        const file = event.target.files;
         if (!file) return;
 
         const reader = new FileReader();
@@ -252,21 +252,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.addEventListener('keydown', (event) => {
         // This listener is for shortcuts that ONLY work when the popup is open.
-        // The global 'get-context' shortcut (Alt+Left) is handled by the background script.
+        // The global 'get-context' (Alt+Left) and 'deploy-code' (Alt+Right) shortcuts
+        // are handled by the background script via manifest.json commands.
         if (!event.altKey || event.metaKey || event.ctrlKey || event.shiftKey) return;
 
         let actionTaken = false;
         const activeCard = document.querySelector('.profile-card.active');
         if (!activeCard) return;
 
-        if (event.key === 'ArrowRight') {
-            const btn = activeCard.querySelector('.deploy-code');
-            if (btn) { 
-                const mockEvent = { currentTarget: btn };
-                handleDeployCodeClick(mockEvent); 
-                actionTaken = true; 
-            }
-        } else if (event.code === 'KeyR') {
+        if (event.code === 'KeyR') {
             const btn = activeCard.querySelector('.undo-code');
             if (btn && !btn.disabled) {
                 const mockEvent = { currentTarget: btn };

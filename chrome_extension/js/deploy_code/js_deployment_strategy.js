@@ -8,10 +8,13 @@ import { executeFileSystemScript } from './script_executor.js';
 /**
  * Handles the deployment process for the JS (File System Access API) backend.
  * @param {object} profile - The active user profile.
+ * @param {boolean} [fromShortcut=false] - Whether the call originates from a shortcut.
  * @returns {Promise<string>} A status message upon completion.
  */
-export async function handleJsDeployment(profile) {
-    const isDetached = new URLSearchParams(window.location.search).get('view') === 'window';
+export async function handleJsDeployment(profile, fromShortcut = false) {
+    // When called from a shortcut, the popup is not open, so it's not detached in the traditional sense.
+    // The key thing is that we don't have a window context.
+    const isDetached = fromShortcut ? false : new URLSearchParams(window.location.search).get('view') === 'window';
 
     const handle = await getHandle(profile.id);
     if (!handle) {
@@ -27,10 +30,10 @@ export async function handleJsDeployment(profile) {
         throw new Error('No valid deploy script found on page or in clipboard.');
     }
     
-    updateTemporaryMessage(profile.id, 'Generating undo script...');
+    if (!fromShortcut) updateTemporaryMessage(profile.id, 'Generating undo script...');
     const undoScript = await generateUndoScript(handle, codeToDeploy);
 
-    updateTemporaryMessage(profile.id, 'Deploying code locally...');
+    if (!fromShortcut) updateTemporaryMessage(profile.id, 'Deploying code locally...');
     const errors = await executeFileSystemScript(handle, codeToDeploy, profile.tolerateErrors !== false);
     
     // On success, update history
