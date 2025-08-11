@@ -3,17 +3,35 @@ import { getContext } from './get_context.js';
 import { deployCode } from './deploy_code.js';
 import { undoCode, redoCode } from './undo_redo.js';
 
-const defaultShortcutDomains = 'aistudio.google.com,grok.com,x.com,perplexity.ai,gemini.google.com,chatgpt.com';
+// --- NEW: Default settings are now managed in the background script ---
+const AppSettings = {
+    shortcutDomains: 'aistudio.google.com,grok.com,x.com,perplexity.ai,gemini.google.com,chatgpt.com',
+    notificationPosition: 'bottom-left',
+    notificationTimeout: 4,
+    showNotificationProgressBar: true,
+    isGetContextShortcutEnabled: true,
+    isDeployCodeShortcutEnabled: true,
+    isUndoShortcutEnabled: true,
+    isRedoShortcutEnabled: true
+};
+
+// --- NEW: Function to load settings and ensure defaults are set ---
+async function loadAndEnsureSettings() {
+    return new Promise(resolve => {
+        chrome.storage.local.get(Object.keys(AppSettings), (storedSettings) => {
+            const finalSettings = { ...AppSettings, ...storedSettings };
+            // If any setting was missing, we can write it back to be safe, though not strictly necessary with this model.
+            resolve(finalSettings);
+        });
+    });
+}
 
 /**
  * Ensures the content script is injected and ready in the target tab.
- * This is crucial to make sure notifications work even after an extension reload.
  * @param {number} tabId The ID of the tab to inject the script into.
  */
 async function ensureContentScript(tabId) {
     try {
-        // We inject all necessary notification scripts here.
-        // This is safe to run multiple times; Chrome won't re-inject if they're already present.
         await chrome.scripting.executeScript({
             target: { tabId: tabId },
             files: [
@@ -24,56 +42,18 @@ async function ensureContentScript(tabId) {
             ],
         });
     } catch (err) {
-        // This can happen on special browser pages (e.g., chrome://) where content scripts are not allowed.
-        // We can safely ignore this error as shortcuts wouldn't be intended for those pages anyway.
         console.log(`JustCode: Could not inject content script into tab ${tabId}: ${err.message}.`);
     }
 }
 
 // This is the main logic function that gets called by the listener.
 async function executeCommand(command) {
-    // Check if the specific shortcut is enabled.
-    const shortcutSettings = await chrome.storage.local.get({
-        isGetContextShortcutEnabled: true,
-        isDeployCodeShortcutEnabled: true,
-        isUndoShortcutEnabled: true,
-        isRedoShortcutEnabled: true,
-    });
-
-    const commandToSettingMap = {
-        'get-context-shortcut': 'isGetContextShortcutEnabled',
-        'deploy-code-shortcut': 'isDeployCodeShortcutEnabled',
-        'undo-code-shortcut': 'isUndoShortcutEnabled',
-        'redo-code-shortcut': 'isRedoShortcutEnabled',
-    };
-
-    const settingKey = commandToSettingMap[command];
-    if (!settingKey || !shortcutSettings[settingKey]) {
-        console.log(`JustCode: Shortcut for '${command}' is disabled in settings. Command ignored.`);
-        return;
-    }
-
     const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     if (!tab || !tab.url) {
         console.log("JustCode: Shortcut ignored. No active tab with a URL found.");
         return;
     }
 
-    try {
-        const settings = await chrome.storage.local.get({ shortcutDomains: defaultShortcutDomains });
-        const allowedDomains = settings.shortcutDomains.split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
-        const currentHostname = new URL(tab.url).hostname;
-
-        if (!allowedDomains.includes(currentHostname)) {
-            console.log(`JustCode: Shortcut ignored on '${currentHostname}'. Domain not in the allowed list.`);
-            return;
-        }
-    } catch (e) {
-        console.log(`JustCode: Shortcut ignored. Could not validate URL: ${tab.url}. Error: ${e.message}`);
-        return;
-    }
-
-    // --- FIX: Ensure content scripts are running before we try to message them ---
     await ensureContentScript(tab.id);
     
     let actionFunc, progressText;
@@ -167,7 +147,18 @@ async function executeCommand(command) {
     });
 }
 
-chrome.commands.onCommand.addListener(async (command) => {
-    console.log(`Command received: ${command}`);
-    await executeCommand(command);
+// Listen for messages from content scripts
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === 'execute-command' && message.command) {
+        executeCommand(message.command);
+        sendResponse({status: "Command received by background script"});
+        return true;
+    }
+    // --- NEW: Handle settings request from content script ---
+    if (message.type === 'get-settings') {
+        loadAndEnsureSettings().then(settings => {
+            sendResponse({status: 'success', settings: settings});
+        });
+        return true; // Indicates async response
+    }
 });

@@ -28,33 +28,11 @@
         }
     },
     "commands": {
-        "get-context-shortcut": {
+        "_execute_action": {
             "suggested_key": {
-                "default": "Alt+Left",
-                "mac": "Alt+Left"
-            },
-            "description": "Get context from the active profile"
-        },
-        "deploy-code-shortcut": {
-            "suggested_key": {
-                "default": "Alt+Right",
-                "mac": "Alt+Right"
-            },
-            "description": "Deploy code using the active profile"
-        },
-        "undo-code-shortcut": {
-            "suggested_key": {
-                "default": "Alt+Comma",
-                "mac": "Alt+Comma"
-            },
-            "description": "Undo the last deploy (Alt + <)"
-        },
-        "redo-code-shortcut": {
-            "suggested_key": {
-                "default": "Alt+Period",
-                "mac": "Alt+Period"
-            },
-            "description": "Redo the last undo (Alt + >)"
+                "default": "Alt+Up",
+                "mac": "Alt+Up"
+            }
         }
     },
     "content_scripts": [
