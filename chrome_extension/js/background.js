@@ -3,7 +3,7 @@ import { getContext } from './get_context.js';
 import { deployCode } from './deploy_code.js';
 import { undoCode, redoCode } from './undo_redo.js';
 
-// --- NEW: Default settings are now managed in the background script ---
+// --- Default settings are now managed here as a single source of truth ---
 const AppSettings = {
     shortcutDomains: 'aistudio.google.com,grok.com,x.com,perplexity.ai,gemini.google.com,chatgpt.com',
     notificationPosition: 'bottom-left',
@@ -15,12 +15,11 @@ const AppSettings = {
     isRedoShortcutEnabled: true
 };
 
-// --- NEW: Function to load settings and ensure defaults are set ---
+// --- Function to load settings and ensure defaults are set ---
 async function loadAndEnsureSettings() {
     return new Promise(resolve => {
         chrome.storage.local.get(Object.keys(AppSettings), (storedSettings) => {
             const finalSettings = { ...AppSettings, ...storedSettings };
-            // If any setting was missing, we can write it back to be safe, though not strictly necessary with this model.
             resolve(finalSettings);
         });
     });
@@ -32,6 +31,15 @@ async function loadAndEnsureSettings() {
  */
 async function ensureContentScript(tabId) {
     try {
+        const results = await chrome.scripting.executeScript({
+            target: { tabId: tabId },
+            func: () => window.justCodeContentLoaded,
+        });
+        
+        if (results && results[0] && results[0].result) {
+            return; // Already injected
+        }
+
         await chrome.scripting.executeScript({
             target: { tabId: tabId },
             files: [
@@ -42,107 +50,45 @@ async function ensureContentScript(tabId) {
             ],
         });
     } catch (err) {
-        console.log(`JustCode: Could not inject content script into tab ${tabId}: ${err.message}.`);
+        // This is expected on special pages like chrome://extensions where scripts can't be injected.
     }
 }
 
-// This is the main logic function that gets called by the listener.
-async function executeCommand(command) {
+async function executeCommand(command, hostname) {
     const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-    if (!tab || !tab.url) {
-        console.log("JustCode: Shortcut ignored. No active tab with a URL found.");
-        return;
-    }
+    if (!tab || !tab.id) return;
 
     await ensureContentScript(tab.id);
     
     let actionFunc, progressText;
     switch(command) {
-        case "get-context-shortcut":
-            actionFunc = getContext;
-            progressText = 'Getting context...';
-            break;
-        case "deploy-code-shortcut":
-            actionFunc = deployCode;
-            progressText = 'Deploying code...';
-            break;
-        case "undo-code-shortcut":
-            actionFunc = undoCode;
-            progressText = 'Undoing last action...';
-            break;
-        case "redo-code-shortcut":
-            actionFunc = redoCode;
-            progressText = 'Redoing last undo...';
-            break;
-        default:
-            return;
+        case "get-context-shortcut": actionFunc = getContext; progressText = 'Getting context...'; break;
+        case "deploy-code-shortcut": actionFunc = deployCode; progressText = 'Deploying code...'; break;
+        case "undo-code-shortcut": actionFunc = undoCode; progressText = 'Undoing last action...'; break;
+        case "redo-code-shortcut": actionFunc = redoCode; progressText = 'Redoing last undo...'; break;
+        default: return;
     }
 
     const notificationId = `justcode-action-${Date.now()}`;
-
-    try {
-        await chrome.tabs.sendMessage(tab.id, {
-            type: 'showNotificationOnPage',
-            notificationId: notificationId,
-            text: progressText,
-            messageType: 'info',
-            showSpinner: true,
-            fromShortcut: true
-        });
-    } catch (err) {
-        console.log("Could not send initial notification to content script, but the action will proceed.", err);
-    }
+    
+    chrome.tabs.sendMessage(tab.id, { type: 'showNotificationOnPage', notificationId, text: progressText, messageType: 'info', showSpinner: true, fromShortcut: true })
+        .catch(err => console.log("Could not send initial notification.", err.message));
 
     loadData(async (profiles, activeProfileId, archivedProfiles) => {
-        if (!activeProfileId || !profiles || profiles.length === 0) {
-            console.error(`JustCode: No active profile found for command '${command}'.`);
-            return;
-        }
-        
         const activeProfile = profiles.find(p => p.id === activeProfileId);
-        
         if (activeProfile) {
-            console.log(`Executing '${command}' for profile: ${activeProfile.name}`);
-            
-            const result = await actionFunc(activeProfile, true); // fromShortcut = true
-            
-            const messageTextToShow = (result && result.text) ? result.text : 'Action completed with no message.';
-            const messageTypeToShow = (result && result.type) ? result.type : 'info';
+            const result = await actionFunc(activeProfile, true, hostname); // Pass hostname
+            const messageTextToShow = result?.text || 'Action completed.';
+            const messageTypeToShow = result?.type || 'info';
             
             activeProfile.lastMessage = { text: messageTextToShow, type: messageTypeToShow };
             saveData(profiles, activeProfileId, archivedProfiles);
 
-            try {
-                await chrome.tabs.sendMessage(tab.id, {
-                    type: 'showNotificationOnPage',
-                    notificationId: notificationId,
-                    text: messageTextToShow,
-                    messageType: messageTypeToShow,
-                    showSpinner: false,
-                    fromShortcut: true
-                });
-            } catch (err) {
-                console.log("Could not send final notification to content script.", err);
-            }
-
-            if (command === 'get-context-shortcut') {
-                chrome.runtime.sendMessage({ type: "closePopupOnShortcut" }).catch(() => {});
-            }
-
+            chrome.tabs.sendMessage(tab.id, { type: 'showNotificationOnPage', notificationId, text: messageTextToShow, messageType: messageTypeToShow, showSpinner: false, fromShortcut: true })
+                .catch(err => console.log("Could not send final notification.", err.message));
         } else {
-             console.error(`JustCode: Active profile with ID ${activeProfileId} not found.`);
-             try {
-                await chrome.tabs.sendMessage(tab.id, {
-                    type: 'showNotificationOnPage',
-                    notificationId: notificationId,
-                    text: `Error: Active profile with ID ${activeProfileId} not found.`,
-                    messageType: 'error',
-                    showSpinner: false,
-                    fromShortcut: true
-                });
-            } catch (err) {
-                console.log("Could not update notification with error message.", err);
-            }
+            chrome.tabs.sendMessage(tab.id, { type: 'showNotificationOnPage', notificationId, text: 'Error: Active profile not found.', messageType: 'error', showSpinner: false, fromShortcut: true })
+                .catch(err => console.log("Could not send error notification.", err.message));
         }
     });
 }
@@ -150,15 +96,28 @@ async function executeCommand(command) {
 // Listen for messages from content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'execute-command' && message.command) {
-        executeCommand(message.command);
-        sendResponse({status: "Command received by background script"});
+        executeCommand(message.command, message.hostname); // Receive hostname
+        sendResponse({status: "Command received"});
         return true;
     }
-    // --- NEW: Handle settings request from content script ---
-    if (message.type === 'get-settings') {
+    // Content script is announcing it's ready. Respond with settings.
+    if (message.type === 'justcode-content-script-ready') {
         loadAndEnsureSettings().then(settings => {
             sendResponse({status: 'success', settings: settings});
         });
         return true; // Indicates async response
+    }
+});
+
+// On first install or update, inject into all existing tabs.
+// The content script will then call the 'justcode-content-script-ready' message to get its settings.
+chrome.runtime.onInstalled.addListener(async (details) => {
+    if (details.reason === 'install' || details.reason === 'update') {
+        const tabs = await chrome.tabs.query({url: ["http://*/*", "https://*/*"]});
+        for (const tab of tabs) {
+            if (tab.id) {
+                await ensureContentScript(tab.id);
+            }
+        }
     }
 });

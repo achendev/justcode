@@ -6,12 +6,10 @@ import { formatContextPrompt, buildFileContentString, getInstructionsBlock } fro
 import { formatExclusionPrompt } from '../exclusion_prompt.js';
 
 async function writeToClipboard(text) {
-    // If navigator.clipboard is available, we're in a document context (popup).
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
         return navigator.clipboard.writeText(text);
     }
     
-    // Otherwise, we're in the service worker and must inject a script.
     const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     if (tab) {
         await chrome.scripting.executeScript({
@@ -24,7 +22,7 @@ async function writeToClipboard(text) {
     }
 }
 
-export async function getContextFromJS(profile, fromShortcut) {
+export async function getContextFromJS(profile, fromShortcut, hostname) {
     const handle = await getHandle(profile.id);
     if (!handle) {
         return { text: 'Error: Please select a project folder first.', type: 'error' };
@@ -46,7 +44,7 @@ export async function getContextFromJS(profile, fromShortcut) {
         const totalChars = allFileStats.reduce((acc, f) => acc + f.chars, 0);
 
         if (totalChars > contextSizeLimit) {
-            await getExclusionSuggestionFromJS(profile, fromShortcut);
+            await getExclusionSuggestionFromJS(profile, fromShortcut, hostname);
             return { text: `Context size (~${totalChars.toLocaleString()}) exceeds limit (${contextSizeLimit.toLocaleString()}). Suggestion loaded.`, type: 'error' };
         }
 
@@ -65,17 +63,17 @@ export async function getContextFromJS(profile, fromShortcut) {
                 const fileContentForUpload = `This is current state of project files:\n${codeBlockDelimiter}bash\n${fileContextPayload}${codeBlockDelimiter}`;
                 const promptForPasting = `The project context is in the attached file \`context.txt\`. Please use it to fulfill the task described below.\n\n${instructionsBlock}\n\n\n \n`;
 
-                await uploadContextAsFile(fileContentForUpload);
-                await pasteIntoLLM(promptForPasting, { isInstruction: true });
+                await uploadContextAsFile(fileContentForUpload, hostname);
+                await pasteIntoLLM(promptForPasting, { isInstruction: true }, hostname);
                 return { text: 'Context uploaded as file, instructions pasted!', type: 'success' };
             } else {
                 const finalPrompt = formatContextPrompt(treeString, contentString, profile);
-                await uploadContextAsFile(finalPrompt);
+                await uploadContextAsFile(finalPrompt, hostname);
                 return { text: 'Context uploaded as file!', type: 'success' };
             }
         } else {
             const finalPrompt = formatContextPrompt(treeString, contentString, profile);
-            await pasteIntoLLM(finalPrompt);
+            await pasteIntoLLM(finalPrompt, {}, hostname);
             return { text: 'Context loaded successfully!', type: 'success' };
         }
 
@@ -85,7 +83,7 @@ export async function getContextFromJS(profile, fromShortcut) {
     }
 }
 
-export async function getExclusionSuggestionFromJS(profile, fromShortcut = false) {
+export async function getExclusionSuggestionFromJS(profile, fromShortcut = false, hostname = null) {
     const handle = await getHandle(profile.id);
     if (!handle || !(await verifyPermission(handle))) {
         return { text: 'Error: Folder not selected or permission lost.', type: 'error' };
@@ -103,7 +101,7 @@ export async function getExclusionSuggestionFromJS(profile, fromShortcut = false
         await writeToClipboard(prompt);
         return { text: 'Exclusion suggestion prompt copied!', type: 'success' };
     } else {
-        await pasteIntoLLM(prompt);
+        await pasteIntoLLM(prompt, {}, hostname);
         return { text: 'Exclusion suggestion prompt loaded!', type: 'success' };
     }
 }

@@ -1,24 +1,20 @@
-// Part of the JustCode notification system.
-// This is the main entry point for the content scripts.
-// Its only jobs are to initialize global state and set up
-// the listeners for chrome.runtime and chrome.storage.
-
 (function() {
     'use strict';
+    
+    if (window.justCodeContentLoaded) {
+        return;
+    }
+    window.justCodeContentLoaded = true;
 
-    // This will hold the settings received from the background script.
     let settings = null;
 
-    // --- NEW: Function to attach the shortcut listener ---
     function attachShortcutListener() {
-        // Prevent attaching the listener multiple times
         if (document.body.dataset.justcodeListenerAttached === 'true') {
             return;
         }
         document.body.dataset.justcodeListenerAttached = 'true';
 
         document.addEventListener('keydown', (event) => {
-            // Don't run if settings haven't been loaded yet, or if modifiers are wrong.
             if (!settings || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
                 return;
             }
@@ -30,31 +26,36 @@
 
             let command = null;
             switch (event.key) {
-                case 'ArrowLeft':
-                    if (settings.isGetContextShortcutEnabled) command = 'get-context-shortcut';
-                    break;
-                case 'ArrowRight':
-                    if (settings.isDeployCodeShortcutEnabled) command = 'deploy-code-shortcut';
-                    break;
-                case ',': // Alt + <
-                    if (settings.isUndoShortcutEnabled) command = 'undo-code-shortcut';
-                    break;
-                case '.': // Alt + >
-                    if (settings.isRedoShortcutEnabled) command = 'redo-code-shortcut';
-                    break;
+                case 'ArrowLeft': if (settings.isGetContextShortcutEnabled) command = 'get-context-shortcut'; break;
+                case 'ArrowRight': if (settings.isDeployCodeShortcutEnabled) command = 'deploy-code-shortcut'; break;
+                case ',': if (settings.isUndoShortcutEnabled) command = 'undo-code-shortcut'; break;
+                case '.': if (settings.isRedoShortcutEnabled) command = 'redo-code-shortcut'; break;
             }
 
             if (command) {
                 event.preventDefault();
                 event.stopPropagation();
-                chrome.runtime.sendMessage({ type: 'execute-command', command: command });
+                chrome.runtime.sendMessage({ type: 'execute-command', command: command, hostname: window.location.hostname }); // Send hostname
             }
-        }, true); // Use capture phase to catch event early
+        }, true);
     }
 
-    // Listener for messages from the background/popup script
+    function applySettings(newSettings) {
+        if (!newSettings) return;
+        
+        const isFirstLoad = settings === null;
+        settings = newSettings;
+
+        if (window.justCodeDOM) {
+            window.justCodeDOM.applyNotificationPosition(settings.notificationPosition);
+        }
+        if (isFirstLoad) {
+            attachShortcutListener();
+        }
+    }
+
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-        if (sender.tab) return; // Ignore messages from other content scripts
+        if (sender.tab) return true;
 
         if (request.type === 'showNotificationOnPage') {
             if (window.justCodeManager && settings) {
@@ -68,11 +69,9 @@
             }
             sendResponse({ status: "Notification command processed" });
         }
-        
-        return true; // Keep message channel open for async response
+        return true;
     });
 
-    // Listener for changes in settings from storage
     chrome.storage.onChanged.addListener((changes, namespace) => {
         if (namespace !== 'local' || !settings) return;
 
@@ -85,34 +84,44 @@
                 }
             }
         }
-        
         if (positionChanged && window.justCodeDOM) {
              window.justCodeDOM.applyNotificationPosition(settings.notificationPosition);
         }
     });
-    
-    // --- Main Initialization Logic ---
-    function initialize() {
-        // Request settings from the background script.
-        chrome.runtime.sendMessage({ type: 'get-settings' }, (response) => {
-            if (chrome.runtime.lastError) {
-                console.error("JustCode: Could not get settings from background script.", chrome.runtime.lastError.message);
-                // Retry after a short delay in case the background script wasn't ready.
-                setTimeout(initialize, 500);
-                return;
-            }
 
-            if (response && response.status === 'success') {
-                settings = response.settings;
-                // Once settings are loaded, apply the position and attach the keyboard listener.
-                if (window.justCodeDOM) {
-                    window.justCodeDOM.applyNotificationPosition(settings.notificationPosition);
+    // --- NEW INITIALIZATION LOGIC WITH RETRIES ---
+    function initialize() {
+        let attempts = 0;
+        const maxAttempts = 5;
+        const initialDelay = 100;
+
+        const requestSettings = () => {
+            if (settings) return; // Stop if another process (like storage.onChanged) provided settings.
+
+            attempts++;
+
+            chrome.runtime.sendMessage({ type: 'justcode-content-script-ready' }, (response) => {
+                if (chrome.runtime.lastError) {
+                    // This error means the service worker is not listening yet.
+                    if (attempts < maxAttempts) {
+                        const delay = initialDelay * Math.pow(2, attempts - 1);
+                        setTimeout(requestSettings, delay);
+                    }
+                    return;
                 }
-                attachShortcutListener();
-            } else {
-                 console.error("JustCode: Received invalid response from background script when fetching settings.");
-            }
-        });
+
+                if (response && response.status === 'success') {
+                    applySettings(response.settings);
+                } else {
+                    if (attempts < maxAttempts) {
+                        const delay = initialDelay * Math.pow(2, attempts - 1);
+                        setTimeout(requestSettings, delay);
+                    }
+                }
+            });
+        };
+        
+        requestSettings();
     }
 
     initialize();

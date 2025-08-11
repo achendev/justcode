@@ -5,15 +5,16 @@ import { extractCodeToDeploy } from './llm_code_extractor.js';
  * Handles the deployment process for the server backend.
  * @param {object} profile - The active user profile.
  * @param {boolean} fromShortcut - Whether the call originated from a background shortcut.
+ * @param {string|null} hostname - The hostname of the active tab.
  * @returns {Promise<string>} A status message upon completion.
  */
-export async function handleServerDeployment(profile, fromShortcut = false) {
+export async function handleServerDeployment(profile, fromShortcut = false, hostname = null) {
     const path = profile.projectPath;
     if (!path) {
         throw new Error('Please enter a project path.');
     }
     
-    const codeToDeploy = await extractCodeToDeploy(profile, fromShortcut);
+    const codeToDeploy = await extractCodeToDeploy(profile, fromShortcut, hostname);
 
     if (!codeToDeploy || !codeToDeploy.includes(hereDocValue)) {
         throw new Error('No valid deploy script found on page or in clipboard.');
@@ -22,13 +23,10 @@ export async function handleServerDeployment(profile, fromShortcut = false) {
     const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
     const tolerateErrors = profile.tolerateErrors !== false;
     
-    // Check the global setting for verbose logging
     const settings = await chrome.storage.local.get({ showVerboseDeployLog: true });
     
-    // Build the base endpoint URL
     let endpoint = `${serverUrl}/deploycode?path=${encodeURIComponent(path)}&tolerateErrors=${tolerateErrors}&verbose=${settings.showVerboseDeployLog}`;
     
-    // Append post-deploy script parameters if the feature is enabled
     if (profile.runScriptOnDeploy && profile.postDeployScript) {
         endpoint += `&runScript=true&scriptToRun=${encodeURIComponent(profile.postDeployScript)}`;
     }
@@ -50,5 +48,5 @@ export async function handleServerDeployment(profile, fromShortcut = false) {
     }
     
     console.log('JustCode Deploy Result:', resultText);
-    return resultText; // Return the server's response message
+    return resultText;
 }

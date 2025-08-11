@@ -5,12 +5,6 @@ import { extractGeminiAnswer } from './answer_extractors/gemini.js';
 import { extractGrokAnswer } from './answer_extractors/grok.js';
 import { extractGrokAnswerX } from './answer_extractors/x_grok.js';
 
-/**
- * Reads the clipboard content by injecting a script into the active tab.
- * This is required for service worker contexts (like background.js)
- * that do not have direct access to the clipboard API.
- * @returns {Promise<string|null>} The text from the clipboard.
- */
 async function readClipboardFromBackground() {
     const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     if (!tab) {
@@ -35,22 +29,19 @@ async function readClipboardFromBackground() {
 
 /**
  * Extracts the deployment script from either the clipboard or the active LLM page.
- * This function acts as a dispatcher, choosing the correct extraction strategy
- * based on the active tab's URL and the execution context (popup vs. background).
  * @param {object} profile - The active user profile.
  * @param {boolean} fromShortcut - Whether the call originated from a background shortcut.
+ * @param {string|null} [hostname=null] - The hostname of the active tab.
  * @returns {Promise<string|null>} The deployment script text, or null if not found.
  */
-export async function extractCodeToDeploy(profile, fromShortcut = false) {
+export async function extractCodeToDeploy(profile, fromShortcut = false, hostname = null) {
     const isDocumentContext = typeof window !== 'undefined' && window.document;
     const isDetached = isDocumentContext && new URLSearchParams(window.location.search).get('view') === 'window';
 
     if (profile.deployCodeSource === 'clipboard' || isDetached) {
         if (isDocumentContext) {
-            // We are in the popup or a detached window, so we can access the clipboard directly.
             return await navigator.clipboard.readText();
         } else {
-            // We are in the service worker (background script), so we must inject a script.
             return await readClipboardFromBackground();
         }
     }
@@ -61,10 +52,17 @@ export async function extractCodeToDeploy(profile, fromShortcut = false) {
         return null;
     }
 
-    const url = new URL(tab.url);
-    const hostname = url.hostname;
+    if (!hostname) {
+        try {
+            hostname = new URL(tab.url).hostname;
+        } catch (e) {
+            console.error("JustCode Error: Could not determine hostname from invalid URL:", tab.url);
+            hostname = '';
+        }
+    }
+
     let extractFunc;
-    let args = [profile.deployFromFullAnswer]; // Default arguments
+    let args = [profile.deployFromFullAnswer];
 
     if (hostname.includes('aistudio.google.com')) {
         extractFunc = extractAIStudioAnswer;

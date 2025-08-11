@@ -6,22 +6,27 @@ import { pasteFallback } from './paste_handlers/fallback.js';
 
 /**
  * Pastes text into the most likely input field in the active tab.
- * This function contains specific logic for different LLM provider websites
- * to ensure robust pasting behavior.
  * @param {string} text The text to paste.
  * @param {object} [options={}] - Optional parameters for the paste handler.
+ * @param {string|null} [hostname=null] - The hostname of the target tab.
  */
-export async function pasteIntoLLM(text, options = {}) {
+export async function pasteIntoLLM(text, options = {}, hostname = null) {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) {
         console.error('JustCode Error: No active tab found.');
         return;
     }
     
-    const url = new URL(tab.url);
-    const hostname = url.hostname;
-    let pasteFunc;
+    if (!hostname) {
+        try {
+            hostname = new URL(tab.url).hostname;
+        } catch (e) {
+            console.error("JustCode Error: Could not determine hostname from invalid URL:", tab.url);
+            hostname = ''; 
+        }
+    }
     
+    let pasteFunc;
     if (hostname.includes('chatgpt.com')) {
         pasteFunc = pasteChatGPT;
     } else if (hostname.includes('gemini.google.com')) {
@@ -39,27 +44,31 @@ export async function pasteIntoLLM(text, options = {}) {
     });
 }
 
-
 /**
  * Creates a file from the given text and "uploads" it to the active LLM tab.
- * This function dispatches to site-specific handlers where available.
  * @param {string} text The content for the file.
+ * @param {string|null} [hostname=null] - The hostname of the target tab.
  */
-export async function uploadContextAsFile(text) {
+export async function uploadContextAsFile(text, hostname = null) {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) {
         console.error('JustCode Error: No active tab found.');
         return;
     }
 
-    const url = new URL(tab.url);
-    const hostname = url.hostname;
+    if (!hostname) {
+        try {
+            hostname = new URL(tab.url).hostname;
+        } catch (e) {
+            console.error("JustCode Error: Could not determine hostname from invalid URL:", tab.url);
+            hostname = '';
+        }
+    }
+    
     let uploadFunc;
-
     if (hostname.includes('chatgpt.com')) {
         uploadFunc = pasteAsFileChatGPT;
     } else {
-        // Fallback to the generic uploader for other sites.
         uploadFunc = pasteAsFile;
     }
 

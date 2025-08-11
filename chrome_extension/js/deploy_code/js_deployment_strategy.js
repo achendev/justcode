@@ -9,9 +9,10 @@ import { executeFileSystemScript } from './script_executor.js';
  * Handles the deployment process for the JS (File System Access API) backend.
  * @param {object} profile - The active user profile.
  * @param {boolean} fromShortcut - Whether the call originated from a background shortcut.
+ * @param {string|null} hostname - The hostname of the active tab.
  * @returns {Promise<string>} A status message upon completion.
  */
-export async function handleJsDeployment(profile, fromShortcut = false) {
+export async function handleJsDeployment(profile, fromShortcut = false, hostname = null) {
     const handle = await getHandle(profile.id);
     if (!handle) {
         throw new Error('Please select a project folder first to deploy code.');
@@ -20,20 +21,18 @@ export async function handleJsDeployment(profile, fromShortcut = false) {
         throw new Error('Permission to folder lost. Please select it again.');
     }
 
-    const codeToDeploy = await extractCodeToDeploy(profile, fromShortcut);
+    const codeToDeploy = await extractCodeToDeploy(profile, fromShortcut, hostname);
 
     if (!codeToDeploy || !codeToDeploy.includes(hereDocValue)) {
         throw new Error('No valid deploy script found on page or in clipboard.');
     }
     
-    // Only show temporary messages if called from the UI
     if (!fromShortcut) updateTemporaryMessage(profile.id, 'Generating undo script...');
     const undoScript = await generateUndoScript(handle, codeToDeploy);
 
     if (!fromShortcut) updateTemporaryMessage(profile.id, 'Deploying code locally...');
     const { errors, log } = await executeFileSystemScript(handle, codeToDeploy, profile.tolerateErrors !== false);
     
-    // On success, update history
     const undoKey = `undo_stack_${profile.id}`;
     const redoKey = `redo_stack_${profile.id}`;
 
@@ -42,12 +41,11 @@ export async function handleJsDeployment(profile, fromShortcut = false) {
     
     undoStack.push({ undoScript: undoScript, redoScript: codeToDeploy });
     
-    await chrome.storage.local.set({ [undoKey]: undoStack.slice(-20) }); // Limit stack size
+    await chrome.storage.local.set({ [undoKey]: undoStack.slice(-20) });
     await chrome.storage.local.remove(redoKey);
     
     console.log('JustCode Deploy Result: Local file system updated.', { log, errors });
     
-    // Check the global setting for verbose logging
     const settings = await chrome.storage.local.get({ showVerboseDeployLog: true });
 
     if (!settings.showVerboseDeployLog) {

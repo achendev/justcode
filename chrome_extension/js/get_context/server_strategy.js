@@ -4,12 +4,10 @@ import { getInstructionsBlock } from '../context_builder/prompt_formatter.js';
 import { formatExclusionPrompt } from '../exclusion_prompt.js';
 
 async function writeToClipboard(text) {
-    // If navigator.clipboard is available, we're in a document context (popup).
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
         return navigator.clipboard.writeText(text);
     }
     
-    // Otherwise, we're in the service worker and must inject a script.
     const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     if (tab) {
         await chrome.scripting.executeScript({
@@ -22,7 +20,7 @@ async function writeToClipboard(text) {
     }
 }
 
-export async function getContextFromServer(profile, fromShortcut) {
+export async function getContextFromServer(profile, fromShortcut, hostname) {
     const path = profile.projectPath;
     if (!path) {
         return { text: 'Error: Please enter a project path.', type: 'error' };
@@ -48,7 +46,7 @@ export async function getContextFromServer(profile, fromShortcut) {
 
         if (response.status === 413) {
             const responseText = await response.text();
-            await getExclusionSuggestionFromServer(profile, fromShortcut);
+            await getExclusionSuggestionFromServer(profile, fromShortcut, hostname);
             return { text: responseText, type: 'error' };
         }
 
@@ -68,15 +66,15 @@ export async function getContextFromServer(profile, fromShortcut) {
         } else if (profile.contextAsFile) {
             if (profile.separateInstructionsAsFile) {
                 const promptForPasting = `The project context is in the attached file \`context.txt\`. Please use it to fulfill the task described below.\n\n${instructionsBlock}\n\n\n \n`;
-                await uploadContextAsFile(fileContextBlock);
-                await pasteIntoLLM(promptForPasting, { isInstruction: true });
+                await uploadContextAsFile(fileContextBlock, hostname);
+                await pasteIntoLLM(promptForPasting, { isInstruction: true }, hostname);
                 return { text: 'Context uploaded as file, instructions pasted!', type: 'success' };
             } else {
-                await uploadContextAsFile(finalPrompt);
+                await uploadContextAsFile(finalPrompt, hostname);
                 return { text: 'Context uploaded as file!', type: 'success' };
             }
         } else {
-            await pasteIntoLLM(finalPrompt);
+            await pasteIntoLLM(finalPrompt, {}, hostname);
             return { text: 'Context loaded successfully!', type: 'success' };
         }
 
@@ -86,7 +84,7 @@ export async function getContextFromServer(profile, fromShortcut) {
     }
 }
 
-export async function getExclusionSuggestionFromServer(profile, fromShortcut = false) {
+export async function getExclusionSuggestionFromServer(profile, fromShortcut = false, hostname = null) {
     const path = profile.projectPath;
     if (!path) {
         return { text: 'Error: Please enter a project path.', type: 'error' };
@@ -123,7 +121,7 @@ export async function getExclusionSuggestionFromServer(profile, fromShortcut = f
             await writeToClipboard(prompt);
             return { text: 'Exclusion suggestion prompt copied!', type: 'success' };
         } else {
-            await pasteIntoLLM(prompt);
+            await pasteIntoLLM(prompt, {}, hostname);
             return { text: 'Exclusion suggestion prompt loaded!', type: 'success' };
         }
     } catch (error) {
