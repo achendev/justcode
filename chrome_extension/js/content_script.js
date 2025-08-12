@@ -15,7 +15,8 @@
         document.body.dataset.justcodeListenerAttached = 'true';
 
         document.addEventListener('keydown', (event) => {
-            if (!settings || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+            // We only care about the Alt key being pressed, without Ctrl or Meta. Shift is handled by the key/code logic.
+            if (!settings || !event.altKey || event.ctrlKey || event.metaKey) {
                 return;
             }
 
@@ -25,11 +26,25 @@
             }
 
             let command = null;
+            // Use event.key for non-conflicting keys and event.code for keys that might involve Shift.
             switch (event.key) {
-                case 'ArrowLeft': if (settings.isGetContextShortcutEnabled) command = 'get-context-shortcut'; break;
-                case 'ArrowRight': if (settings.isDeployCodeShortcutEnabled) command = 'deploy-code-shortcut'; break;
-                case ',': if (settings.isUndoShortcutEnabled) command = 'undo-code-shortcut'; break;
-                case '.': if (settings.isRedoShortcutEnabled) command = 'redo-code-shortcut'; break;
+                case 'ArrowLeft': 
+                    if (settings.isGetContextShortcutEnabled) command = 'get-context-shortcut'; 
+                    break;
+                case 'ArrowRight': 
+                    if (settings.isDeployCodeShortcutEnabled) command = 'deploy-code-shortcut'; 
+                    break;
+            }
+            
+            // This robustly handles '<' and '>' by checking the physical key pressed ('Comma' or 'Period')
+            // which works whether Shift is held down or not.
+            switch (event.code) {
+                case 'Comma':
+                    if (settings.isUndoShortcutEnabled) command = 'undo-code-shortcut';
+                    break;
+                case 'Period':
+                     if (settings.isRedoShortcutEnabled) command = 'redo-code-shortcut';
+                     break;
             }
 
             if (command) {
