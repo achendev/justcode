@@ -19,7 +19,7 @@ export function handleCloseSettingsClick(event) {
 }
 
 export function handleServerUrlChange(event) {
-    const id = parseInt(event.target.id.split('-'));
+    const id = parseInt(event.target.id.split('-')[1]);
     loadData((profiles, activeProfileId, archivedProfiles) => {
         const profile = profiles.find(p => p.id === id);
         if (profile) {
