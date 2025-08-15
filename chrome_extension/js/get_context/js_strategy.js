@@ -37,9 +37,8 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
         const contextSizeLimit = profile.contextSizeLimit || 3000000;
 
         const allFileStats = await scanDirectory(handle, { excludePatterns, includePatterns });
-        if (allFileStats.length === 0) {
-            return { text: `No files found matching patterns.`, type: 'error' };
-        }
+        
+        // Removed check for allFileStats.length === 0 to allow empty project contexts.
 
         const totalChars = allFileStats.reduce((acc, f) => acc + f.chars, 0);
 

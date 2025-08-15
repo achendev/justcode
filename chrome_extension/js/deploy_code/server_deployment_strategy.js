@@ -1,5 +1,7 @@
-import { hereDocValue } from '../default_instructions.js';
 import { extractCodeToDeploy } from './llm_code_extractor.js';
+
+// A simple regex to check for the presence of at least one valid command.
+const VALID_COMMAND_REGEX = /^\s*(cat\s+>|mkdir|rm|rmdir|mv|touch|chmod)/m;
 
 /**
  * Handles the deployment process for the server backend.
@@ -16,7 +18,7 @@ export async function handleServerDeployment(profile, fromShortcut = false, host
     
     const codeToDeploy = await extractCodeToDeploy(profile, fromShortcut, hostname);
 
-    if (!codeToDeploy || !codeToDeploy.includes(hereDocValue)) {
+    if (!codeToDeploy || !VALID_COMMAND_REGEX.test(codeToDeploy)) {
         throw new Error('No valid deploy script found on page or in clipboard.');
     }
 

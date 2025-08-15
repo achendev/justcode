@@ -1,9 +1,11 @@
 import { updateTemporaryMessage } from '../ui_handlers/message.js';
 import { getHandle, verifyPermission } from '../file_system_manager.js';
-import { hereDocValue } from '../default_instructions.js';
 import { extractCodeToDeploy } from './llm_code_extractor.js';
 import { generateUndoScript } from './undo_generator.js';
 import { executeFileSystemScript } from './script_executor.js';
+
+// A simple regex to check for the presence of at least one valid command.
+const VALID_COMMAND_REGEX = /^\s*(cat\s+>|mkdir|rm|rmdir|mv|touch|chmod)/m;
 
 /**
  * Handles the deployment process for the JS (File System Access API) backend.
@@ -23,7 +25,7 @@ export async function handleJsDeployment(profile, fromShortcut = false, hostname
 
     const codeToDeploy = await extractCodeToDeploy(profile, fromShortcut, hostname);
 
-    if (!codeToDeploy || !codeToDeploy.includes(hereDocValue)) {
+    if (!codeToDeploy || !VALID_COMMAND_REGEX.test(codeToDeploy)) {
         throw new Error('No valid deploy script found on page or in clipboard.');
     }
     
