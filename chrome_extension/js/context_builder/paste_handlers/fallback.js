@@ -22,6 +22,25 @@ export function pasteFallback(textToPaste) {
         targetElement.dispatchEvent(new Event('input', { bubbles: true }));
          // Some frameworks also listen for 'change'
         targetElement.dispatchEvent(new Event('change', { bubbles: true }));
+
+        // After a short delay, scroll to the bottom of the input area.
+        setTimeout(() => {
+            targetElement.focus();
+            // Move cursor to the end for both textarea and contenteditable
+            if (typeof targetElement.selectionStart === 'number') {
+                targetElement.selectionStart = targetElement.selectionEnd = targetElement.value.length;
+            } else if (targetElement.isContentEditable) {
+                const range = document.createRange();
+                const sel = window.getSelection();
+                if (sel) {
+                    range.selectNodeContents(targetElement);
+                    range.collapse(false);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }
+            }
+            targetElement.scrollIntoView({ block: 'end', behavior: 'smooth' });
+        }, 100);
     } else {
         console.error("JustCode: Could not find a suitable textarea or contenteditable element to paste into.");
     }
