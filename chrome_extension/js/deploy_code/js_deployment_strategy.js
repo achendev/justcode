@@ -48,12 +48,18 @@ export async function handleJsDeployment(profile, fromShortcut = false, hostname
     
     console.log('JustCode Deploy Result: Local file system updated.', { log, errors });
     
-    const settings = await chrome.storage.local.get({ showVerboseDeployLog: true });
+    const settings = await chrome.storage.local.get({ showVerboseDeployLog: true, hideErrorsOnSuccess: false });
 
     if (!settings.showVerboseDeployLog) {
         return errors.length > 0
             ? `Deployed with ${errors.length} ignored error(s).`
             : "Code deployed successfully!";
+    }
+
+    if (errors.length > 0 && settings.hideErrorsOnSuccess) {
+        let message = `Deployed with ${errors.length} ignored error(s).\n--- LOG ---\n`;
+        message += log.join('\n');
+        return message;
     }
 
     let message = '';

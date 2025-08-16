@@ -16,6 +16,7 @@ def deploy_code():
     run_script_on_deploy = request.args.get('runScript', 'false').lower() == 'true'
     post_deploy_script = request.args.get('scriptToRun', '')
     verbose_log = request.args.get('verbose', 'true').lower() == 'true'
+    hide_errors_on_success = request.args.get('hideErrorsOnSuccess', 'false').lower() == 'true'
 
     if not path or not path.strip():
         return Response("Error: 'path' parameter is missing.", status=400, mimetype='text/plain')
@@ -160,7 +161,7 @@ def deploy_code():
         deployment_message = ""
         if error_log:
             deployment_message = f"Deployment completed with {len(error_log)} ignored error(s)."
-            if verbose_log:
+            if verbose_log and not hide_errors_on_success:
                  deployment_message += "\n\n" + "\n---\n".join(error_log) + "\n\n--- SUCCESSFUL ACTIONS LOG ---\n"
         else:
             deployment_message = "Code deployed successfully."

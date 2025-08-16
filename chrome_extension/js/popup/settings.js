@@ -4,6 +4,7 @@ export function initializeAppSettings(reRender) {
     const importFileInput = document.getElementById('importSettingsFile');
     const closeOnGetContextCheckbox = document.getElementById('closeOnGetContext');
     const verboseDeployLogCheckbox = document.getElementById('showVerboseDeployLog');
+    const hideErrorsOnSuccessCheckbox = document.getElementById('hideErrorsOnSuccess');
     
     // Shortcut Checkboxes
     const getContextShortcutCheckbox = document.getElementById('isGetContextShortcutEnabled');
@@ -21,6 +22,7 @@ export function initializeAppSettings(reRender) {
     chrome.storage.local.get([
         'closeOnGetContext', 
         'showVerboseDeployLog',
+        'hideErrorsOnSuccess',
         'shortcutDomains', 
         'notificationPosition', 
         'notificationTimeout', 
@@ -32,6 +34,7 @@ export function initializeAppSettings(reRender) {
     ], (data) => {
         closeOnGetContextCheckbox.checked = data.closeOnGetContext === true;
         verboseDeployLogCheckbox.checked = data.showVerboseDeployLog !== false; // Default to true
+        hideErrorsOnSuccessCheckbox.checked = data.hideErrorsOnSuccess === true;
         shortcutDomainsTextarea.value = data.shortcutDomains === undefined ? defaultShortcutDomains : data.shortcutDomains;
         notificationPositionSelector.value = data.notificationPosition || 'bottom-left';
         notificationTimeoutInput.value = data.notificationTimeout === undefined ? 4 : data.notificationTimeout;
@@ -50,6 +53,10 @@ export function initializeAppSettings(reRender) {
 
     verboseDeployLogCheckbox.addEventListener('change', (event) => {
         chrome.storage.local.set({ showVerboseDeployLog: event.target.checked });
+    });
+
+    hideErrorsOnSuccessCheckbox.addEventListener('change', (event) => {
+        chrome.storage.local.set({ hideErrorsOnSuccess: event.target.checked });
     });
 
     const createShortcutChangeListener = (id, key) => {
