@@ -4,6 +4,7 @@ import { undoCode, redoCode } from '../undo_redo.js';
 import { loadData, saveData } from '../storage.js';
 import { updateAndSaveMessage, updateTemporaryMessage } from './message.js';
 import { refreshUndoRedoCounts } from '../ui.js';
+import { handleServerError } from './server_error_handler.js';
 
 // --- Start of New Code ---
 const GET_CONTEXT_HINT_KEY = 'getContextButtonUsageCount';
@@ -164,7 +165,8 @@ export function handleUpdateAppClick(event) {
             updateAndSaveMessage(id, resultText, 'success');
 
         } catch (error) {
-            updateAndSaveMessage(id, `Update failed: ${error.message}`, 'error');
+            const message = handleServerError(error, true);
+            updateAndSaveMessage(id, message, 'error');
             console.error('JustCode Update Error:', error);
         } finally {
             button.disabled = false;

@@ -76,7 +76,7 @@
             notification.classList.toggle('with-spinner', showSpinner);
             
             const textSpan = notification.querySelector('.justcode-notification-text');
-            if (textSpan) textSpan.textContent = text;
+            if (textSpan) textSpan.innerHTML = text; // Use innerHTML to render links
             
             // Trigger fade-in animation
             if (isNew) {

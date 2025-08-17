@@ -2,6 +2,7 @@ import { updateTemporaryMessage } from '../ui_handlers/message.js';
 import { pasteIntoLLM, uploadContextAsFile } from '../context_builder/llm_interface.js';
 import { getInstructionsBlock } from '../context_builder/prompt_formatter.js';
 import { formatExclusionPrompt } from '../exclusion_prompt.js';
+import { handleServerError } from '../ui_handlers/server_error_handler.js';
 
 async function writeToClipboard(text) {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
@@ -80,7 +81,8 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
 
     } catch (error) {
         console.error('JustCode Error:', error);
-        return { text: `Error: ${error.message}`, type: 'error' };
+        const message = handleServerError(error, true);
+        return { text: message, type: 'error' };
     }
 }
 
@@ -126,6 +128,7 @@ export async function getExclusionSuggestionFromServer(profile, fromShortcut = f
         }
     } catch (error) {
         console.error('JustCode Error:', error);
-        return { text: `Error: ${error.message}`, type: 'error' };
+        const message = handleServerError(error, true);
+        return { text: message, type: 'error' };
     }
 }

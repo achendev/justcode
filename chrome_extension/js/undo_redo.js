@@ -2,6 +2,7 @@ import { updateAndSaveMessage, updateTemporaryMessage } from './ui_handlers/mess
 import { getHandle, verifyPermission } from './file_system_manager.js';
 import { executeFileSystemScript } from './deploy_code/script_executor.js';
 import { refreshUndoRedoCounts } from './ui.js';
+import { handleServerError } from './ui_handlers/server_error_handler.js';
 
 // --- Common ---
 async function moveBetweenStacks(profileId, fromStackType, toStackType) {
@@ -121,7 +122,8 @@ async function undoCodeServer(profile, fromShortcut) {
 
     } catch (error) {
         console.error('JustCode Error:', error);
-        const msg = { text: `Error: ${error.message.replace('Error: Undo failed: ', '')}`, type: 'error' };
+        const messageText = handleServerError(error, true);
+        const msg = { text: messageText, type: 'error' };
         if (!fromShortcut) updateAndSaveMessage(profile.id, msg.text, msg.type);
         return msg;
     }
@@ -155,7 +157,8 @@ async function redoCodeServer(profile, fromShortcut) {
 
     } catch (error) {
         console.error('JustCode Error:', error);
-        const msg = { text: `Error: ${error.message.replace('Error: Redo failed: ', '')}`, type: 'error' };
+        const messageText = handleServerError(error, true);
+        const msg = { text: messageText, type: 'error' };
         if (!fromShortcut) updateAndSaveMessage(profile.id, msg.text, msg.type);
         return msg;
     }

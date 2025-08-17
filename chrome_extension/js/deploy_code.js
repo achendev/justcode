@@ -1,5 +1,6 @@
 import { handleJsDeployment } from './deploy_code/js_deployment_strategy.js';
 import { handleServerDeployment } from './deploy_code/server_deployment_strategy.js';
+import { handleServerError } from './ui_handlers/server_error_handler.js';
 
 /**
  * Deploys code to the user's project, choosing the appropriate strategy.
@@ -15,6 +16,7 @@ export async function deployCode(profile, fromShortcut = false, hostname = null)
         return { text: successMessage, type: 'success' };
     } catch (error) {
         console.error('JustCode Deploy Error:', error);
-        return { text: `Error: ${error.message}`, type: 'error' };
+        const message = handleServerError(error, profile.useServerBackend);
+        return { text: message, type: 'error' };
     }
 }
