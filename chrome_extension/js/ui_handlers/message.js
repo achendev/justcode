@@ -12,12 +12,13 @@ function updateMessageInDOM(profileId, text, type) {
 
         if (container && messageDiv && textSpan) {
             if (text) {
-                textSpan.textContent = text;
+                // Use innerHTML to allow for links in messages
+                textSpan.innerHTML = text;
                 // Only change the type class, the other classes are for structure
                 messageDiv.className = `status-message status-${type}`;
                 container.classList.remove('d-none');
             } else {
-                textSpan.textContent = '';
+                textSpan.innerHTML = '';
                 container.classList.add('d-none');
             }
         }

@@ -3,6 +3,7 @@ import { renderDOM, renderArchiveView } from './ui_handlers/renderer.js';
 import { attachAllEventListeners } from './event_attacher.js';
 import { handleAddProfile } from './ui_handlers/profile.js';
 import { getHandle, verifyPermission } from './file_system_manager.js';
+import { updateTemporaryMessage } from './ui_handlers/message.js';
 
 async function refreshUndoRedoCountsJs(profile) {
     const undoBtn = document.querySelector(`.undo-code[data-id='${profile.id}']`);
@@ -116,6 +117,10 @@ export function renderUI(profiles, activeProfileId, archivedProfiles, profilesCo
             if (handle) {
                  const hasPermission = await verifyPermission(handle);
                  updateFolderName(profile.id, hasPermission ? handle.name : `(Permission lost) ${handle.name}`);
+                 if (!hasPermission) {
+                    const message = 'Permission to folder lost. Select it again. Chrome may require this 2-3 times to offer a persistent "Allow on every visit" option. Alternatively, see the <a href="https://github.com/achendev/justcode#using-server-mode" target="_blank" title="JustCode GitHub Repository">Server Mode</a> setup.';
+                    updateTemporaryMessage(profile.id, message, 'warning');
+                 }
             } else {
                 updateFolderName(profile.id, null);
             }

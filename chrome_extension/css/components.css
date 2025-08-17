@@ -22,4 +22,10 @@
 }
 .input-group > .select-project-folder.btn-outline-primary {
     border-color: gray;
+    /* Truncate long folder names */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+    max-width: 196px;
 }

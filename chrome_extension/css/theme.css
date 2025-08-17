@@ -32,6 +32,10 @@ body.light-theme .status-info {
     color: #212529;
     background-color: #e9ecef;
 }
+body.light-theme .status-warning {
+    color: #664d03;
+    background-color: #fff3cd;
+}
 
 /* --- Dark Theme --- */
 body.dark-theme {
@@ -109,4 +113,8 @@ body.dark-theme .status-success {
 body.dark-theme .status-info {
     color: #adb5bd;
     background-color: #495057;
+}
+body.dark-theme .status-warning {
+    color: #ffc107;
+    background-color: rgba(255, 193, 7, 0.15);
 }
