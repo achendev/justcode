@@ -11,7 +11,7 @@ export function handleAddProfile(reRenderCallback) {
             getContextTarget: 'ui',
             deployCodeSource: 'ui',
             contextAsFile: true,
-            separateInstructionsAsFile: true,
+            separateInstructions: 'file',
             excludePatterns: '.git/,venv/,.env,log/,*logs/,tmp/,node_modules/',
             includePatterns: '',
             contextSizeLimit: 3000000,

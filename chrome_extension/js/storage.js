@@ -17,7 +17,7 @@ export function loadData(callback) {
                 deployCodeSource: 'ui', // 'ui' or 'clipboard'
                 deployFromFullAnswer: false,
                 contextAsFile: true,
-                separateInstructions: 'text',
+                separateInstructions: 'file',
                 excludePatterns: defaultExcludePatterns,
                 includePatterns: '',
                 contextSizeLimit: 3000000,
@@ -85,7 +85,7 @@ export function loadData(callback) {
             if (profile.codeBlockDelimiter === undefined) { profile.codeBlockDelimiter = '```'; needsSave = true; }
             if (profile.tolerateErrors === undefined) { profile.tolerateErrors = true; needsSave = true; }
             if (profile.contextAsFile === undefined) { profile.contextAsFile = false; needsSave = true; }
-            if (profile.separateInstructions === undefined) { profile.separateInstructions = 'text'; needsSave = true; }
+            if (profile.separateInstructions === undefined) { profile.separateInstructions = 'file'; needsSave = true; }
             if (profile.runScriptOnDeploy === undefined) { profile.runScriptOnDeploy = false; needsSave = true; }
             if (profile.postDeployScript === undefined) { profile.postDeployScript = defaultPostDeployScript; needsSave = true; }
         });
