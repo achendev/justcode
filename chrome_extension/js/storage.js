@@ -17,7 +17,7 @@ export function loadData(callback) {
                 deployCodeSource: 'ui', // 'ui' or 'clipboard'
                 deployFromFullAnswer: false,
                 contextAsFile: true,
-                separateInstructionsAsFile: true,
+                separateInstructions: 'text',
                 excludePatterns: defaultExcludePatterns,
                 includePatterns: '',
                 contextSizeLimit: 3000000,
@@ -54,6 +54,12 @@ export function loadData(callback) {
                 needsSave = true;
             }
             
+            if (profile.separateInstructionsAsFile !== undefined) {
+                profile.separateInstructions = profile.separateInstructionsAsFile ? 'text' : 'include';
+                delete profile.separateInstructionsAsFile;
+                needsSave = true;
+            }
+
             // Remove obsolete fields
             if (profile.duplicateInstructions !== undefined) {
                 delete profile.duplicateInstructions;
@@ -79,7 +85,7 @@ export function loadData(callback) {
             if (profile.codeBlockDelimiter === undefined) { profile.codeBlockDelimiter = '```'; needsSave = true; }
             if (profile.tolerateErrors === undefined) { profile.tolerateErrors = true; needsSave = true; }
             if (profile.contextAsFile === undefined) { profile.contextAsFile = false; needsSave = true; }
-            if (profile.separateInstructionsAsFile === undefined) { profile.separateInstructionsAsFile = true; needsSave = true; }
+            if (profile.separateInstructions === undefined) { profile.separateInstructions = 'text'; needsSave = true; }
             if (profile.runScriptOnDeploy === undefined) { profile.runScriptOnDeploy = false; needsSave = true; }
             if (profile.postDeployScript === undefined) { profile.postDeployScript = defaultPostDeployScript; needsSave = true; }
         });
@@ -88,7 +94,7 @@ export function loadData(callback) {
         const archivedProfiles = data.archivedProfiles || [];
 
         if (!activeProfileId || !profiles.some(p => p.id === activeProfileId)) {
-            activeProfileId = profiles.length > 0 ? profiles[0].id : null;
+            activeProfileId = profiles.length > 0 ? profiles.id : null;
             needsSave = true;
         }
 

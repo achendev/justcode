@@ -4,6 +4,37 @@ import { pasteGemini } from './paste_handlers/gemini.js';
 import { pastePerplexity } from './paste_handlers/perplexity.js';
 import { pasteFallback } from './paste_handlers/fallback.js';
 
+// Internal helper to avoid duplication
+async function uploadFile(text, filename, hostname) {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab) {
+        console.error('JustCode Error: No active tab found.');
+        return;
+    }
+
+    if (!hostname) {
+        try {
+            hostname = new URL(tab.url).hostname;
+        } catch (e) {
+            console.error("JustCode Error: Could not determine hostname from invalid URL:", tab.url);
+            hostname = '';
+        }
+    }
+    
+    let uploadFunc;
+    if (hostname.includes('chatgpt.com')) {
+        uploadFunc = pasteAsFileChatGPT;
+    } else {
+        uploadFunc = pasteAsFile;
+    }
+
+    await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: uploadFunc,
+        args: [filename, text]
+    });
+}
+
 /**
  * Pastes text into the most likely input field in the active tab.
  * @param {string} text The text to paste.
@@ -50,31 +81,14 @@ export async function pasteIntoLLM(text, options = {}, hostname = null) {
  * @param {string|null} [hostname=null] - The hostname of the target tab.
  */
 export async function uploadContextAsFile(text, hostname = null) {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab) {
-        console.error('JustCode Error: No active tab found.');
-        return;
-    }
+    await uploadFile(text, 'context.txt', hostname);
+}
 
-    if (!hostname) {
-        try {
-            hostname = new URL(tab.url).hostname;
-        } catch (e) {
-            console.error("JustCode Error: Could not determine hostname from invalid URL:", tab.url);
-            hostname = '';
-        }
-    }
-    
-    let uploadFunc;
-    if (hostname.includes('chatgpt.com')) {
-        uploadFunc = pasteAsFileChatGPT;
-    } else {
-        uploadFunc = pasteAsFile;
-    }
-
-    await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: uploadFunc,
-        args: ['context.txt', text]
-    });
+/**
+ * Creates a file for the instructions and "uploads" it to the active LLM tab.
+ * @param {string} text The content for the instructions file.
+ * @param {string|null} [hostname=null] - The hostname of the target tab.
+ */
+export async function uploadInstructionsAsFile(text, hostname = null) {
+    await uploadFile(text, 'critical_instructions.txt', hostname);
 }

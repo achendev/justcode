@@ -28,8 +28,8 @@ export function attachSettingsEventListeners(reRenderCallback) {
     document.querySelectorAll('.tolerate-errors').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => inputHandlers.handleCheckboxChange(e, 'tolerateErrors'));
     });
-    document.querySelectorAll('.separate-instructions-as-file').forEach(checkbox => {
-        checkbox.addEventListener('change', (e) => inputHandlers.handleCheckboxChange(e, 'separateInstructionsAsFile'));
+    document.querySelectorAll('.separate-instructions').forEach(select => {
+        select.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'separateInstructions'));
     });
     document.querySelectorAll('.critical-instructions').forEach(textarea => {
         textarea.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'criticalInstructions'));

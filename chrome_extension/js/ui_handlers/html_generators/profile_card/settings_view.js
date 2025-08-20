@@ -57,9 +57,13 @@ export function getSettingsViewHTML(profile) {
         <hr>
         
         <!-- Instructions Settings -->
-        <div class="form-check mb-2">
-            <input type="checkbox" class="form-check-input separate-instructions-as-file" id="separateInstructionsAsFile-${profile.id}" data-id="${profile.id}" ${profile.separateInstructionsAsFile ? 'checked' : ''}>
-            <label class="form-check-label" for="separateInstructionsAsFile-${profile.id}">Separate instructions using 'As file'</label>
+        <div class="input-group input-group-sm mb-2">
+            <span class="input-group-text" style="width: 120px;">Send Instructions</span>
+            <select class="form-select form-select-sm separate-instructions" id="separateInstructions-${profile.id}" data-id="${profile.id}">
+                <option value="include" ${profile.separateInstructions === 'include' ? 'selected' : ''}>Include in context</option>
+                <option value="file" ${profile.separateInstructions === 'file' ? 'selected' : ''}>As file</option>
+                <option value="text" ${profile.separateInstructions === 'text' ? 'selected' : ''}>As text</option>
+            </select>
         </div>
         <div class="form-check mb-2">
             <input type="checkbox" class="form-check-input custom-instructions-enabled" id="customInstructionsEnabled-${profile.id}" data-id="${profile.id}" ${profile.isCriticalInstructionsEnabled ? 'checked' : ''}>

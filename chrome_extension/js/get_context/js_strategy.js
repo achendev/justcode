@@ -1,7 +1,7 @@
 import { getHandle, verifyPermission } from '../file_system_manager.js';
 import { scanDirectory } from '../context_builder/file_scanner.js';
 import { buildTree, buildTreeWithCounts } from '../context_builder/tree_builder.js';
-import { pasteIntoLLM, uploadContextAsFile } from '../context_builder/llm_interface.js';
+import { pasteIntoLLM, uploadContextAsFile, uploadInstructionsAsFile } from '../context_builder/llm_interface.js';
 import { formatContextPrompt, buildFileContentString, getInstructionsBlock } from '../context_builder/prompt_formatter.js';
 import { formatExclusionPrompt } from '../exclusion_prompt.js';
 
@@ -51,29 +51,44 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
         const treeString = buildTree(filePaths);
         const contentString = await buildFileContentString(handle, filePaths);
         
+        const finalPrompt = formatContextPrompt(treeString, contentString, profile);
+        const { instructionsBlock, codeBlockDelimiter } = getInstructionsBlock(profile);
+        const fileContextPayload = `${treeString}\n\n${contentString}`;
+        const fileContextForUpload = `This is current state of project files:\n${codeBlockDelimiter}bash\n${fileContextPayload}${codeBlockDelimiter}`;
+    
         if (profile.getContextTarget === 'clipboard') {
-            const finalPrompt = formatContextPrompt(treeString, contentString, profile);
             await writeToClipboard(finalPrompt);
             return { text: 'Context copied to clipboard!', type: 'success' };
-        } else if (profile.contextAsFile) {
-            if (profile.separateInstructionsAsFile) {
-                const { instructionsBlock, codeBlockDelimiter } = getInstructionsBlock(profile);
-                const fileContextPayload = `${treeString}\n\n${contentString}`;
-                const fileContentForUpload = `This is current state of project files:\n${codeBlockDelimiter}bash\n${fileContextPayload}${codeBlockDelimiter}`;
-                const promptForPasting = `The project context is in the attached file \`context.txt\`. Please use it to fulfill the task described below.\n\n${instructionsBlock}\n\n\n \n`;
-
-                await uploadContextAsFile(fileContentForUpload, hostname);
-                await pasteIntoLLM(promptForPasting, { isInstruction: true }, hostname);
-                return { text: 'Context uploaded as file, instructions pasted!', type: 'success' };
-            } else {
-                const finalPrompt = formatContextPrompt(treeString, contentString, profile);
-                await uploadContextAsFile(finalPrompt, hostname);
-                return { text: 'Context uploaded as file!', type: 'success' };
-            }
-        } else {
-            const finalPrompt = formatContextPrompt(treeString, contentString, profile);
+        }
+    
+        // If context is pasted as text, separation logic does not apply. Paste everything.
+        if (!profile.contextAsFile) {
             await pasteIntoLLM(finalPrompt, {}, hostname);
             return { text: 'Context loaded successfully!', type: 'success' };
+        }
+    
+        // Context is being sent as a file. Handle instruction separation.
+        switch (profile.separateInstructions) {
+            case 'include':
+                await uploadContextAsFile(finalPrompt, hostname);
+                return { text: 'Context uploaded as file!', type: 'success' };
+            
+            case 'text':
+                const promptForPasting = `The project context is in the attached file \`context.txt\`. Please use it to fulfill the task described below.\n\n${instructionsBlock}\n\n\n \n`;
+                await uploadContextAsFile(fileContextForUpload, hostname);
+                await pasteIntoLLM(promptForPasting, { isInstruction: true }, hostname);
+                return { text: 'Context uploaded as file, instructions pasted!', type: 'success' };
+    
+            case 'file':
+                const chaperonePrompt = `The project context is in the attached file \`context.txt\`. The critical instructions for how to respond are in the attached file \`critical_instructions.txt\`. You MUST follow these instructions to fulfill the task described below.\n\n\n \n`;
+                await uploadContextAsFile(fileContextForUpload, hostname);
+                await uploadInstructionsAsFile(instructionsBlock, hostname);
+                await pasteIntoLLM(chaperonePrompt, { isInstruction: true }, hostname);
+                return { text: 'Context & instructions uploaded as separate files!', type: 'success' };
+    
+            default: // Fallback to 'include'
+                await uploadContextAsFile(finalPrompt, hostname);
+                return { text: 'Context uploaded as file!', type: 'success' };
         }
 
     } catch (error) {
