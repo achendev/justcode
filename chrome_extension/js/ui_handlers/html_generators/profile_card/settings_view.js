@@ -10,7 +10,7 @@ export function getSettingsViewHTML(profile) {
         <!-- Server Mode Settings -->
         <div class="server-mode-item">
             <div class="input-group input-group-sm mb-2">
-                <span class="input-group-text" style="width: 120px;">Server URL</span>
+                <span class="input-group-text" style="width: 130px;">Server URL</span>
                 <input type="text" class="form-control server-url" id="serverUrl-${profile.id}" placeholder="http://127.0.0.1:5010" value="${profile.serverUrl}">
             </div>
             <div class="form-check mb-2">
@@ -18,11 +18,11 @@ export function getSettingsViewHTML(profile) {
                 <label class="form-check-label" for="authEnabled-${profile.id}">Enable Basic Authentication</label>
             </div>
             <div class="input-group input-group-sm mb-2">
-                <span class="input-group-text" style="width: 120px;">Username</span>
+                <span class="input-group-text" style="width: 130px;">Username</span>
                 <input type="text" class="form-control username" id="username-${profile.id}" data-id="${profile.id}" value="${profile.username}">
             </div>
             <div class="input-group input-group-sm mb-3">
-                <span class="input-group-text" style="width: 120px;">Password</span>
+                <span class="input-group-text" style="width: 130px;">Password</span>
                 <input type="password" class="form-control password" id="password-${profile.id}" data-id="${profile.id}" value="${profile.password}">
             </div>
             <hr>
@@ -40,11 +40,11 @@ export function getSettingsViewHTML(profile) {
         
         <!-- Common Settings -->
         <div class="input-group input-group-sm mb-2">
-            <span class="input-group-text" style="width: 120px;">Context Limit</span>
+            <span class="input-group-text" style="width: 130px;">Context Limit</span>
             <input type="number" class="form-control context-size-limit" id="contextSizeLimit-${profile.id}" value="${profile.contextSizeLimit}" title="Context Size Limit (characters)">
         </div>
         <div class="input-group input-group-sm mb-2">
-            <span class="input-group-text" style="width: 120px;">Block Delimiter</span>
+            <span class="input-group-text" style="width: 130px;">Block Delimiter</span>
             <select class="form-select form-select-sm code-block-delimiter" id="codeBlockDelimiter-${profile.id}" data-id="${profile.id}">
                 <option value="~~~" ${profile.codeBlockDelimiter === '~~~' ? 'selected' : ''}>~~~</option>
                 <option value="\`\`\`" ${profile.codeBlockDelimiter === '```' ? 'selected' : ''}>\`\`\`</option>
@@ -58,7 +58,7 @@ export function getSettingsViewHTML(profile) {
         
         <!-- Instructions Settings -->
         <div class="input-group input-group-sm mb-2">
-            <span class="input-group-text" style="width: 120px;">Send Instructions</span>
+            <span class="input-group-text" style="width: 130px;">Send Instructions</span>
             <select class="form-select form-select-sm separate-instructions" id="separateInstructions-${profile.id}" data-id="${profile.id}">
                 <option value="include" ${profile.separateInstructions === 'include' ? 'selected' : ''}>Include in context</option>
                 <option value="file" ${profile.separateInstructions === 'file' ? 'selected' : ''}>As file</option>
