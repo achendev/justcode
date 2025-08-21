@@ -55,7 +55,7 @@ export function loadData(callback) {
             }
             
             if (profile.separateInstructionsAsFile !== undefined) {
-                profile.separateInstructions = profile.separateInstructionsAsFile ? 'text' : 'include';
+                profile.separateInstructions = profile.separateInstructionsAsFile ? 'file' : 'include';
                 delete profile.separateInstructionsAsFile;
                 needsSave = true;
             }
