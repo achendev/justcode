@@ -16,7 +16,7 @@ export function initializeAppSettings(reRender) {
     const shortcutDomainsTextarea = document.getElementById('shortcutDomainsTextarea');
     const notificationPositionSelector = document.getElementById('notificationPositionSelector');
     const notificationTimeoutInput = document.getElementById('notificationTimeoutInput');
-    const defaultShortcutDomains = 'aistudio.google.com,grok.com,x.com,perplexity.ai,gemini.google.com,chatgpt.com';
+    const defaultShortcutDomains = 'aistudio.google.com,grok.com,x.com,www.perplexity.ai,gemini.google.com,chatgpt.com';
 
     // Initialize settings from storage
     chrome.storage.local.get([

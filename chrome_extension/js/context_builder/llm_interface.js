@@ -90,5 +90,5 @@ export async function uploadContextAsFile(text, hostname = null) {
  * @param {string|null} [hostname=null] - The hostname of the target tab.
  */
 export async function uploadInstructionsAsFile(text, hostname = null) {
-    await uploadFile(text, 'critical_instructions.txt', hostname);
+    await uploadFile(text, 'instructions.txt', hostname);
 }

@@ -82,7 +82,7 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
                 return { text: 'Context uploaded as file, instructions pasted!', type: 'success' };
                 
             case 'file':
-                const chaperonePrompt = `The project context is in the attached file \`context.txt\`. The critical instructions for how to respond are in the attached file \`critical_instructions.txt\`. You MUST follow these instructions to fulfill the task described below.\n\n\n \n`;
+                const chaperonePrompt = `The project context is in the attached file \`context.txt\`.\nThe critical instructions for how to respond are in the attached file \`instructions.txt\`.\nYou MUST follow these instructions to fulfill the task described below.\n\n\n \n`;
                 await uploadContextAsFile(fileContextBlock, hostname);
                 await uploadInstructionsAsFile(instructionsBlock, hostname);
                 await pasteIntoLLM(chaperonePrompt, { isInstruction: true }, hostname);
