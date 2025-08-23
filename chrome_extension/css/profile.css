@@ -44,3 +44,9 @@
     border-top-right-radius: 0.25rem;
     border-bottom-right-radius: 0.25rem;
 }
+
+/* Fix for JS Mode folder select button when "forget" button is hidden */
+.js-mode-item .select-project-folder:has(+ .forget-project-folder[style*="display: none"]) {
+    border-top-right-radius: var(--bs-border-radius-sm) !important;
+    border-bottom-right-radius: var(--bs-border-radius-sm) !important;
+}
