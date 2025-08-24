@@ -48,33 +48,43 @@
     max-width: 100%;
 }
 
-/* Custom Scrollbar Styling (affects both horizontal and vertical) */
+/* Custom Scrollbar Styling (body and message text) */
+body::-webkit-scrollbar {
+    width: 8px;
+}
+
 .message-text::-webkit-scrollbar {
     height: 6px;
     width: 6px;
 }
 
+body::-webkit-scrollbar-track,
 .message-text::-webkit-scrollbar-track {
-    background: transparent; /* Make the track invisible */
+    background: transparent;
 }
 
+body::-webkit-scrollbar-thumb,
 .message-text::-webkit-scrollbar-thumb {
     border-radius: 10px;
     border: 2px solid transparent;
-    background-clip: content-box; /* Ensures border doesn't add to the size */
+    background-clip: content-box;
 }
 
 /* --- Theme-specific scrollbar colors --- */
+body.light-theme::-webkit-scrollbar-thumb,
 body.light-theme .message-text::-webkit-scrollbar-thumb {
     background-color: rgba(33, 37, 41, 0.2); /* Semi-transparent dark gray */
 }
+body.light-theme::-webkit-scrollbar-thumb:hover,
 body.light-theme .message-text::-webkit-scrollbar-thumb:hover {
     background-color: rgba(33, 37, 41, 0.4);
 }
 
+body.dark-theme::-webkit-scrollbar-thumb,
 body.dark-theme .message-text::-webkit-scrollbar-thumb {
     background-color: rgba(248, 249, 250, 0.2); /* Semi-transparent light gray */
 }
+body.dark-theme::-webkit-scrollbar-thumb:hover,
 body.dark-theme .message-text::-webkit-scrollbar-thumb:hover {
     background-color: rgba(248, 249, 250, 0.4);
 }
