@@ -1,7 +1,6 @@
 import { loadData, saveData } from '../storage.js';
 
-function updateMessageInDOM(profileId, text, type) {
-    // If document is not defined, we're likely in a background script. Do nothing.
+async function updateMessageInDOM(profileId, text, type) {
     if (typeof document === 'undefined') return;
 
     const profileCard = document.getElementById(`profile-${profileId}`);
@@ -12,9 +11,9 @@ function updateMessageInDOM(profileId, text, type) {
 
         if (container && messageDiv && textSpan) {
             if (text) {
-                // Use innerHTML to allow for links in messages
+                const settings = await chrome.storage.local.get({ wordWrapMessagesEnabled: true });
                 textSpan.innerHTML = text;
-                // Only change the type class, the other classes are for structure
+                textSpan.classList.toggle('word-wrap-enabled', settings.wordWrapMessagesEnabled);
                 messageDiv.className = `status-message status-${type}`;
                 container.classList.remove('d-none');
             } else {
@@ -30,16 +29,21 @@ function updateMessageInDOM(profileId, text, type) {
  * @param {number} profileId The ID of the profile to update.
  * @param {string} text The message text.
  * @param {'info' | 'success' | 'error'} type The type of message.
+ * @returns {Promise<void>} A promise that resolves when the message is saved.
  */
 export function updateAndSaveMessage(profileId, text, type = 'info') {
-    updateMessageInDOM(profileId, text, type);
-    
-    loadData((profiles, activeProfileId, archivedProfiles) => {
-        const profile = profiles.find(p => p.id === profileId);
-        if (profile) {
-            profile.lastMessage = { text, type };
-            saveData(profiles, activeProfileId, archivedProfiles);
-        }
+    return new Promise(async (resolve) => {
+        await updateMessageInDOM(profileId, text, type);
+        
+        loadData((profiles, activeProfileId, archivedProfiles) => {
+            const profile = profiles.find(p => p.id === profileId);
+            if (profile) {
+                profile.lastMessage = { text, type };
+                saveData(profiles, activeProfileId, archivedProfiles, resolve);
+            } else {
+                resolve();
+            }
+        });
     });
 }
 
@@ -49,17 +53,15 @@ export function updateAndSaveMessage(profileId, text, type = 'info') {
  * @param {string} text The message text.
  * @param {'info' | 'success' | 'error'} type The type of message.
  */
-export function updateTemporaryMessage(profileId, text, type = 'info') {
-    updateMessageInDOM(profileId, text, type);
+export async function updateTemporaryMessage(profileId, text, type = 'info') {
+    await updateMessageInDOM(profileId, text, type);
 }
 
 /**
  * Handles the click event for closing a status message.
  * @param {MouseEvent} event The click event.
  */
-export function handleCloseMessage(event) {
+export async function handleCloseMessage(event) {
     const profileId = parseInt(event.currentTarget.dataset.id);
-    // This function will call updateMessageInDOM with empty text, hiding the element
-    // and also clearing the message from storage so it doesn't reappear.
-    updateAndSaveMessage(profileId, '', 'info');
+    await updateAndSaveMessage(profileId, '', 'info');
 }

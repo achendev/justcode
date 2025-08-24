@@ -94,20 +94,23 @@ export function loadData(callback) {
         const archivedProfiles = data.archivedProfiles || [];
 
         if (!activeProfileId || !profiles.some(p => p.id === activeProfileId)) {
-            activeProfileId = profiles.length > 0 ? profiles.id : null;
+            activeProfileId = profiles.length > 0 ? profiles[0].id : null;
             needsSave = true;
         }
 
         if (needsSave) {
-            chrome.storage.local.set({ profiles, activeProfileId, archivedProfiles }, () => callback(profiles, activeProfileId, archivedProfiles));
+            saveData(profiles, activeProfileId, archivedProfiles, () => callback(profiles, activeProfileId, archivedProfiles));
         } else {
             callback(profiles, activeProfileId, archivedProfiles);
         }
     });
 }
 
-export function saveData(profiles, activeProfileId, archivedProfiles) {
+export function saveData(profiles, activeProfileId, archivedProfiles, callback) {
     chrome.storage.local.set({ profiles, activeProfileId, archivedProfiles }, () => {
         console.log('JustCode: Data saved.');
+        if (callback) {
+            callback();
+        }
     });
 }

@@ -106,6 +106,13 @@ export function renderUI(profiles, activeProfileId, archivedProfiles, profilesCo
     renderDOM(profiles, activeProfileId, profilesContainer, profileTabs);
     renderArchiveView(archivedProfiles, archiveListContainer);
 
+    // After rendering, apply the global word wrap setting to the message blocks
+    chrome.storage.local.get({ wordWrapMessagesEnabled: true }, (data) => {
+        document.querySelectorAll('.message-text').forEach(span => {
+            span.classList.toggle('word-wrap-enabled', data.wordWrapMessagesEnabled);
+        });
+    });
+
     const reRenderCallback = (newProfiles, newActiveProfileId, newArchivedProfiles) => {
         renderUI(newProfiles, newActiveProfileId, newArchivedProfiles, profilesContainer, profileTabs, archiveListContainer);
     };

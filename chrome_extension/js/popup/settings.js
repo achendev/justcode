@@ -5,6 +5,7 @@ export function initializeAppSettings(reRender) {
     const closeOnGetContextCheckbox = document.getElementById('closeOnGetContext');
     const verboseDeployLogCheckbox = document.getElementById('showVerboseDeployLog');
     const hideErrorsOnSuccessCheckbox = document.getElementById('hideErrorsOnSuccess');
+    const wordWrapMessagesCheckbox = document.getElementById('wordWrapMessages');
     
     // Shortcut Checkboxes
     const getContextShortcutCheckbox = document.getElementById('isGetContextShortcutEnabled');
@@ -23,6 +24,7 @@ export function initializeAppSettings(reRender) {
         'closeOnGetContext', 
         'showVerboseDeployLog',
         'hideErrorsOnSuccess',
+        'wordWrapMessagesEnabled',
         'shortcutDomains', 
         'notificationPosition', 
         'notificationTimeout', 
@@ -35,6 +37,7 @@ export function initializeAppSettings(reRender) {
         closeOnGetContextCheckbox.checked = data.closeOnGetContext === true;
         verboseDeployLogCheckbox.checked = data.showVerboseDeployLog !== false; // Default to true
         hideErrorsOnSuccessCheckbox.checked = data.hideErrorsOnSuccess === true;
+        wordWrapMessagesCheckbox.checked = data.wordWrapMessagesEnabled !== false; // Default to true
         shortcutDomainsTextarea.value = data.shortcutDomains === undefined ? defaultShortcutDomains : data.shortcutDomains;
         notificationPositionSelector.value = data.notificationPosition || 'bottom-left';
         notificationTimeoutInput.value = data.notificationTimeout === undefined ? 4 : data.notificationTimeout;
@@ -57,6 +60,15 @@ export function initializeAppSettings(reRender) {
 
     hideErrorsOnSuccessCheckbox.addEventListener('change', (event) => {
         chrome.storage.local.set({ hideErrorsOnSuccess: event.target.checked });
+    });
+
+    wordWrapMessagesCheckbox.addEventListener('change', (event) => {
+        const isEnabled = event.target.checked;
+        chrome.storage.local.set({ wordWrapMessagesEnabled: isEnabled });
+        // Live update any visible messages
+        document.querySelectorAll('.message-text').forEach(span => {
+            span.classList.toggle('word-wrap-enabled', isEnabled);
+        });
     });
 
     const createShortcutChangeListener = (id, key) => {

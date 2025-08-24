@@ -26,6 +26,6 @@ export async function handleForgetFolder(event) {
     if (confirm('Are you sure you want to forget this folder? You will need to select it again to grant access.')) {
         await forgetHandle(id);
         updateFolderName(id, null);
-        updateAndSaveMessage(id, 'Folder access has been removed.', 'info');
+        await updateAndSaveMessage(id, 'Folder access has been removed.', 'info');
     }
 }

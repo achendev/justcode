@@ -43,7 +43,7 @@ async function performAction(event, actionFunc, ...extraArgs) {
 
     allActionButtons.forEach(btn => btn.disabled = true);
     button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>`;
-    updateTemporaryMessage(id, '');
+    await updateTemporaryMessage(id, '');
 
     try {
         const result = await new Promise((resolve, reject) => {
@@ -83,7 +83,7 @@ async function performAction(event, actionFunc, ...extraArgs) {
             }
              // --- End of Modified Code ---
             
-            updateAndSaveMessage(id, messageText, result.type);
+            await updateAndSaveMessage(id, messageText, result.type);
 
             if (actionFunc === getContext) {
                 const settings = await chrome.storage.local.get({ closeOnGetContext: false });
@@ -94,7 +94,7 @@ async function performAction(event, actionFunc, ...extraArgs) {
             }
         }
     } catch (error) {
-        updateAndSaveMessage(id, `Error: ${error.message}`, 'error');
+        await updateAndSaveMessage(id, `Error: ${error.message}`, 'error');
         console.error("JustCode Action Error:", error);
     } finally {
         button.innerHTML = originalButtonHTML;
@@ -143,7 +143,7 @@ export function handleUpdateAppClick(event) {
     loadData(async (profiles) => {
         const activeProfile = profiles.find(p => p.id === id);
         if (!activeProfile || !activeProfile.serverUrl) {
-            updateAndSaveMessage(id, 'Error: No active profile or server URL configured.', 'error');
+            await updateAndSaveMessage(id, 'Error: No active profile or server URL configured.', 'error');
             button.disabled = false;
             button.innerHTML = originalButtonHTML;
             return;
@@ -162,11 +162,11 @@ export function handleUpdateAppClick(event) {
             const resultText = await response.text();
             if (!response.ok) throw new Error(resultText);
             
-            updateAndSaveMessage(id, resultText, 'success');
+            await updateAndSaveMessage(id, resultText, 'success');
 
         } catch (error) {
             const message = handleServerError(error, true);
-            updateAndSaveMessage(id, message, 'error');
+            await updateAndSaveMessage(id, message, 'error');
             console.error('JustCode Update Error:', error);
         } finally {
             button.disabled = false;

@@ -86,7 +86,7 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
                 await uploadContextAsFile(fileContextBlock, hostname);
                 await uploadInstructionsAsFile(instructionsBlock, hostname);
                 await pasteIntoLLM(chaperonePrompt, { isInstruction: true }, hostname);
-                return { text: 'Context & instructions uploaded as separate files!', type: 'success' };
+                return { text: 'Context & instructions uploaded as files!', type: 'success' };
     
             default: // Fallback to 'include'
                 await uploadContextAsFile(finalPrompt, hostname);
