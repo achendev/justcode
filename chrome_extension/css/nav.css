@@ -11,8 +11,9 @@
 .nav-link {
     padding: 5px 10px;
     font-size: 0.875rem;
-    transition: background-color 0.3s, color 0.3s;
+    transition: background-color 0.3s, color 0.3s, border-color 0.2s;
     white-space: nowrap;
+    cursor: grab;
 }
 .nav-link.active {
     border-bottom: none;
@@ -22,4 +23,18 @@
 }
 .tab-content.active {
     display: block;
+}
+
+/* Drag and Drop styles */
+.nav-link.dragging {
+    opacity: 0.4;
+    cursor: grabbing;
+}
+.nav-link.drag-over {
+    /* Simple visual feedback for drop target */
+    border-bottom: 2px solid #0d6efd !important;
+}
+
+body.dark-theme .nav-link.drag-over {
+    border-bottom-color: #80bdff !important;
 }

@@ -1,9 +1,57 @@
 import * as profileHandlers from '../ui_handlers/profile.js';
 
+let draggedProfileId = null;
+
 export function attachProfileEventListeners(reRenderCallback) {
     // --- Listeners for the main profile view ---
     document.querySelectorAll('.nav-link').forEach(tab => {
+        tab.setAttribute('draggable', true);
+
         tab.addEventListener('click', (e) => profileHandlers.handleTabSwitch(e, reRenderCallback));
+        
+        // Drag and Drop listeners
+        tab.addEventListener('dragstart', (e) => {
+            if (e.target.classList.contains('nav-link')) {
+                draggedProfileId = parseInt(e.target.dataset.id);
+                e.dataTransfer.effectAllowed = 'move';
+                // Add class after a short delay to ensure the drag image is the original element
+                setTimeout(() => {
+                    e.target.classList.add('dragging');
+                }, 0);
+            }
+        });
+
+        tab.addEventListener('dragend', (e) => {
+            e.target.classList.remove('dragging');
+            document.querySelectorAll('.nav-link.drag-over').forEach(t => t.classList.remove('drag-over'));
+            draggedProfileId = null;
+        });
+
+        tab.addEventListener('dragover', (e) => {
+            e.preventDefault(); // This is necessary to allow a drop.
+        });
+
+        tab.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            const targetId = parseInt(e.currentTarget.dataset.id);
+            if (draggedProfileId !== null && draggedProfileId !== targetId) {
+                e.currentTarget.classList.add('drag-over');
+            }
+        });
+        
+        tab.addEventListener('dragleave', (e) => {
+            e.currentTarget.classList.remove('drag-over');
+        });
+
+        tab.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            const targetProfileId = parseInt(e.currentTarget.dataset.id);
+
+            if (draggedProfileId !== null && draggedProfileId !== targetProfileId) {
+                profileHandlers.handleProfileReorder(draggedProfileId, targetProfileId, reRenderCallback);
+            }
+        });
     });
 
     document.querySelectorAll('.profile-name-input').forEach(input => {

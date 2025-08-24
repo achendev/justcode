@@ -14,6 +14,24 @@ function moveProfile(id, direction, reRenderCallback) {
     });
 }
 
+export function handleProfileReorder(draggedId, targetId, reRenderCallback) {
+    loadData((profiles, activeProfileId, archivedProfiles) => {
+        const draggedIndex = profiles.findIndex(p => p.id === draggedId);
+        const targetIndex = profiles.findIndex(p => p.id === targetId);
+
+        if (draggedIndex === -1 || targetIndex === -1 || draggedIndex === targetIndex) {
+            return;
+        }
+
+        const newProfiles = [...profiles];
+        const [draggedProfile] = newProfiles.splice(draggedIndex, 1);
+        newProfiles.splice(targetIndex, 0, draggedProfile);
+
+        saveData(newProfiles, activeProfileId, archivedProfiles);
+        reRenderCallback(newProfiles, activeProfileId, archivedProfiles);
+    });
+}
+
 export function handleTabSwitch(event, reRenderCallback) {
     event.preventDefault();
     const id = parseInt(event.target.dataset.id);

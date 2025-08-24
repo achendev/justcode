@@ -14,7 +14,8 @@ import {
 import { 
     handleMoveProfileLeft, 
     handleMoveProfileRight, 
-    handleTabSwitch 
+    handleTabSwitch,
+    handleProfileReorder
 } from './profile_actions/navigation.js';
 
 // This file acts as a facade, re-exporting all the profile handler functions
@@ -31,5 +32,6 @@ export {
     handleRestoreProfile,
     handleMoveProfileLeft,
     handleMoveProfileRight,
-    handleTabSwitch
+    handleTabSwitch,
+    handleProfileReorder
 };
