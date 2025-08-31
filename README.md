@@ -113,6 +113,46 @@ You have two options:
 
 ---
 
+## 🚀 Quick Start Guide
+
+### 1. Go to Your LLM
+Navigate to your favorite AI chat interface. We highly recommend [Google AI Studio](https://aistudio.google.com/) with the Gemini 2.5 Pro model for the best results.
+<p align="center"><img src="https://github.com/user-attachments/assets/421d9bb9-bb44-4d99-97dc-4e1a89794a54" width="600" /></p>
+
+### 2. Open JustCode
+Click the JustCode icon in your Chrome toolbar. We suggest pinning it for easy access!
+<p align="center"><img src="https://github.com/user-attachments/assets/6effc507-c66e-40c1-91fe-d65eb26baaef" width="600" /></p>
+
+### 3. Select Your Project Folder
+In the "Browser (JS) Mode", click "Select Project Folder". You may need to grant permission **2-3 times** until Chrome offers the **"Allow on every visit"** option. This is a crucial step for persistent access.
+<br>
+<small>Alternatively, for more advanced control, check out the [Server Mode setup](#using-server-mode).</small>
+<p align="center"><img src="https://github.com/user-attachments/assets/9e2a1135-6af0-4259-a134-27bdcc44d194" width="600" /></p>
+
+### 4. Get Context & Add Your Task
+Click **"Get Context"**. This will load your project files into the AI's chat box. Scroll to the bottom and type your task, for example: *"Add a new feature that does X and Y."*
+<p align="center"><img src="https://github.com/user-attachments/assets/2b1d0fa3-45d3-4d47-9b25-9bb4203fd52b" width="600" /></p>
+
+### 5. Filter Large Projects (If Needed)
+If your project is large, you'll get a prompt to create an "exclude list". Just send this prompt to the AI. It will reply with a list of files to ignore. Copy this list, paste it into the "Exclude Patterns" field in your JustCode profile, and click **"Get Context"** again.
+<br>
+<small>**Tip:** Most projects are 50k-700k characters. If yours is larger, you likely have unneeded files that should be excluded.</small>
+<p align="center"><img src="https://github.com/user-attachments/assets/3a384ab5-4314-4271-9753-0ed03ee0f8cc" width="600" /></p>
+
+### 6. Deploy Code
+After the AI generates its response (a bash script), simply click **"Deploy Code"** in the JustCode extension. The changes will be applied directly to your local files.
+<p align="center"><img src="https://github.com/user-attachments/assets/87c88519-0ea8-48c6-9bbf-f848bcdba675" width="600" /></p>
+
+### 7. Verify & Undo
+Check the changes in your IDE. If the result isn't what you expected, just click **"Undo"**. Don't be discouraged if it's not perfect—around 15% of AI answers have minor mistakes. Refine your prompt and try again!
+<p align="center"><img src="https://github.com/user-attachments/assets/ab620c66-ab97-49ce-b2f7-e77a84e86d1c" width="600" /></p>
+
+### 8. Support the Project
+If you find JustCode useful, please consider supporting the project by leaving a star on the [GitHub repository](https://github.com/achendev/justcode). It helps a lot! Thanks in advance!
+<p align="center"><img src="https://github.com/user-attachments/assets/7bec8b50-2f72-4036-94c5-9d96627aabc8" width="600" /></p>
+
+---
+
 ### Running the Server (Optional - Only for Server Backend)
 
 The provided helper scripts (`app.sh` for macOS/Linux, `app.bat` for Windows) automate the entire server setup process, including creating a virtual environment and installing dependencies.
@@ -168,20 +208,6 @@ If you click `Get Context` and the tool determines that your project's content e
 4.  **Update and Retry:** You can then copy this list, paste it into your profile's "Exclude Patterns" field, and click `Get Context` again.
 
 This workflow turns the tedious task of manually curating a large project's context into a quick, AI-assisted process.
-
-## 🔄 Usage Workflow
-
-1.  **Select Backend & Location:** Open the JustCode popup. For your profile, choose your desired backend (Browser or Server) and set the project location.
-2.  **Go to LLM:** Navigate to your preferred LLM chat interface (e.g., Google AI Studio, Grok.com, Perplexity.ai).
-3.  **Get Context:** Click the `Get Context` button or use its shortcut (`(ALT + ←) or (⌥←)`).
-4.  **Paste & Prompt:** The context is either copied to your clipboard or pasted directly into your LLM chat. Scroll to the **bottom** of the context block and add your task instructions (e.g., "Add a new endpoint called `/status`").
-5.  **Submit to LLM:** Send the combined context and your instructions to the model.
-6.  **Get Response:** The LLM will analyze your request and respond with a `bash` script.
-7.  **Deploy Code:** Click the `Deploy Code` button or use its shortcut (`(ALT + →) or (⌥→)`). The extension will extract the script from the LLM's response or your clipboard and apply the changes to your local files.
-8.  **Verify & Iterate:** Check your files. If something is wrong, just click **Undo** (`(ALT + <) or (⌥<)`)!
-
-> **💡 Pro Tip: What if a deployment goes wrong?**   
-> If a deployment fails or makes unwanted changes, just click the **Undo** button for that profile. It will instantly restore your files. Clicked Undo by mistake? Click **Redo** (`(ALT + >) or (⌥>)`)!
 
 ## ⚠️ Security Warning
 
