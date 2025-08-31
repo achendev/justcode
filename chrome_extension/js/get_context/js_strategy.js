@@ -4,23 +4,7 @@ import { buildTree, buildTreeWithCounts } from '../context_builder/tree_builder.
 import { pasteIntoLLM, uploadContextAsFile, uploadInstructionsAsFile } from '../context_builder/llm_interface.js';
 import { formatContextPrompt, buildFileContentString, getInstructionsBlock } from '../context_builder/prompt_formatter.js';
 import { formatExclusionPrompt } from '../exclusion_prompt.js';
-
-async function writeToClipboard(text) {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        return navigator.clipboard.writeText(text);
-    }
-    
-    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-    if (tab) {
-        await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: (textToCopy) => navigator.clipboard.writeText(textToCopy),
-            args: [text],
-        });
-    } else {
-        throw new Error("No active tab found to write to clipboard.");
-    }
-}
+import { writeToClipboard } from '../utils/clipboard.js';
 
 export async function getContextFromJS(profile, fromShortcut, hostname) {
     const handle = await getHandle(profile.id);

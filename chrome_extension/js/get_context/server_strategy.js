@@ -3,23 +3,7 @@ import { pasteIntoLLM, uploadContextAsFile, uploadInstructionsAsFile } from '../
 import { getInstructionsBlock } from '../context_builder/prompt_formatter.js';
 import { formatExclusionPrompt } from '../exclusion_prompt.js';
 import { handleServerError } from '../ui_handlers/server_error_handler.js';
-
-async function writeToClipboard(text) {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        return navigator.clipboard.writeText(text);
-    }
-    
-    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-    if (tab) {
-        await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: (textToCopy) => navigator.clipboard.writeText(textToCopy),
-            args: [text],
-        });
-    } else {
-        throw new Error("No active tab found to write to clipboard.");
-    }
-}
+import { writeToClipboard } from '../utils/clipboard.js';
 
 export async function getContextFromServer(profile, fromShortcut, hostname) {
     const path = profile.projectPath;
