@@ -27,6 +27,16 @@ export function getSettingsViewHTML(profile) {
             </div>
             <hr>
             <div class="form-check mb-2">
+                <input type="checkbox" class="form-check-input gather-additional-context" id="gatherAdditionalContext-${profile.id}" data-id="${profile.id}" ${profile.gatherAdditionalContext ? 'checked' : ''}>
+                <label class="form-check-label" for="gatherAdditionalContext-${profile.id}">Gather additional context script</label>
+            </div>
+            <div class="mb-3">
+                <label for="additionalContextScript-${profile.id}" class="form-label">Additional context script:</label>
+                <textarea class="form-control form-control-sm additional-context-script" id="additionalContextScript-${profile.id}" rows="4" data-id="${profile.id}" ${!profile.gatherAdditionalContext ? 'disabled' : ''}>${profile.additionalContextScript}</textarea>
+                <small class="form-text text-muted">Runs in project root. Output is appended to context.</small>
+            </div>
+            <hr>
+            <div class="form-check mb-2">
                 <input type="checkbox" class="form-check-input run-script-on-deploy" id="runScriptOnDeploy-${profile.id}" data-id="${profile.id}" ${profile.runScriptOnDeploy ? 'checked' : ''}>
                 <label class="form-check-label" for="runScriptOnDeploy-${profile.id}">Run script after deploying code</label>
             </div>

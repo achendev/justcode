@@ -36,6 +36,9 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
     if (includePatterns) {
         endpoint += `&include=${encodeURIComponent(includePatterns)}`;
     }
+    if (profile.gatherAdditionalContext && profile.additionalContextScript) {
+        endpoint += `&gather_context=true&context_script=${encodeURIComponent(profile.additionalContextScript)}`;
+    }
     
     try {
         const headers = {};

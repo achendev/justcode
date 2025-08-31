@@ -5,6 +5,7 @@ export function loadData(callback) {
         const defaultExcludePatterns = '.git/,venv/,.env,log/,*logs/,tmp/,node_modules/';
         const defaultServerUrl = 'http://127.0.0.1:5010';
         const defaultPostDeployScript = 'set -x\necho Deploy completed';
+        const defaultAdditionalContextScript = 'echo "Example: Get current git branch"\ngit rev-parse --abbrev-ref HEAD';
         let profiles = data.profiles;
         let needsSave = false;
 
@@ -34,6 +35,8 @@ export function loadData(callback) {
                 isAuthEnabled: false,
                 username: '',
                 password: '',
+                gatherAdditionalContext: false,
+                additionalContextScript: defaultAdditionalContextScript,
                 runScriptOnDeploy: false,
                 postDeployScript: defaultPostDeployScript,
             }];
@@ -88,6 +91,8 @@ export function loadData(callback) {
             if (profile.separateInstructions === undefined) { profile.separateInstructions = 'file'; needsSave = true; }
             if (profile.runScriptOnDeploy === undefined) { profile.runScriptOnDeploy = false; needsSave = true; }
             if (profile.postDeployScript === undefined) { profile.postDeployScript = defaultPostDeployScript; needsSave = true; }
+            if (profile.gatherAdditionalContext === undefined) { profile.gatherAdditionalContext = false; needsSave = true; }
+            if (profile.additionalContextScript === undefined) { profile.additionalContextScript = defaultAdditionalContextScript; needsSave = true; }
         });
 
         let activeProfileId = data.activeProfileId;

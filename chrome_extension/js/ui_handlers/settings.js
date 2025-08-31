@@ -52,6 +52,25 @@ export function handleCustomInstructionsToggle(event) {
     });
 }
 
+export function handleGatherAdditionalContextToggle(event) {
+    const id = parseInt(event.target.dataset.id);
+    const isChecked = event.target.checked;
+    
+    const profileCard = document.getElementById(`profile-${id}`);
+    const textarea = profileCard.querySelector('.additional-context-script');
+    if (textarea) {
+        textarea.disabled = !isChecked;
+    }
+
+    loadData((profiles, activeProfileId, archivedProfiles) => {
+        const profile = profiles.find(p => p.id === id);
+        if (profile) {
+            profile.gatherAdditionalContext = isChecked;
+            saveData(profiles, activeProfileId, archivedProfiles);
+        }
+    });
+}
+
 export function handleRunScriptOnDeployToggle(event) {
     const id = parseInt(event.target.dataset.id);
     const isChecked = event.target.checked;
