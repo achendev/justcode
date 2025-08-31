@@ -1,4 +1,4 @@
-import { loadData, saveData } from './storage.js';
+import { saveData } from './storage.js';
 import { getContext } from './get_context.js';
 import { deployCode } from './deploy_code.js';
 import { undoCode, redoCode } from './undo_redo.js';
@@ -12,7 +12,8 @@ const AppSettings = {
     isGetContextShortcutEnabled: true,
     isDeployCodeShortcutEnabled: true,
     isUndoShortcutEnabled: true,
-    isRedoShortcutEnabled: true
+    isRedoShortcutEnabled: true,
+    rememberTabProfile: true
 };
 
 // --- Function to load settings and ensure defaults are set ---
@@ -172,23 +173,56 @@ async function executeCommand(command, hostname) {
     chrome.tabs.sendMessage(tab.id, { type: 'showNotificationOnPage', notificationId, text: progressText, messageType: 'info', showSpinner: true, fromShortcut: true })
         .catch(err => console.log("Could not send initial notification.", err.message));
 
-    loadData(async (profiles, activeProfileId, archivedProfiles) => {
-        const activeProfile = profiles.find(p => p.id === activeProfileId);
-        if (activeProfile) {
-            const result = await actionFunc(activeProfile, true, hostname); // Pass hostname
+    try {
+        const settings = await chrome.storage.local.get({ rememberTabProfile: true });
+        const data = await chrome.storage.local.get(['profiles', 'activeProfileId', 'archivedProfiles', 'tabProfileMap']);
+
+        const profiles = data.profiles || [];
+        const archivedProfiles = data.archivedProfiles || [];
+        let activeProfileId = data.activeProfileId; // This is the global active profile
+        const tabProfileMap = data.tabProfileMap || {};
+
+        let profileToUseId = activeProfileId;
+
+        if (settings.rememberTabProfile) {
+            const profileIdForTab = tabProfileMap[tab.id];
+            if (profileIdForTab && profiles.some(p => p.id === profileIdForTab)) {
+                profileToUseId = profileIdForTab;
+            }
+        }
+        
+        // If getContext is used, update the association for the current tab.
+        // It uses the profile determined above (either tab-specific or global default).
+        if (command === 'get-context-shortcut' && settings.rememberTabProfile) {
+            tabProfileMap[tab.id] = profileToUseId;
+            await chrome.storage.local.set({ tabProfileMap });
+        }
+        
+        const profileToUse = profiles.find(p => p.id === profileToUseId);
+
+        if (profileToUse) {
+            const result = await actionFunc(profileToUse, true, hostname);
             const messageTextToShow = result?.text || 'Action completed.';
             const messageTypeToShow = result?.type || 'info';
             
-            activeProfile.lastMessage = { text: messageTextToShow, type: messageTypeToShow };
+            // Update the profile's last message and save all data.
+            // Note: we save the original global activeProfileId, not the one we used for this action.
+            const profileInArray = profiles.find(p => p.id === profileToUseId);
+            if (profileInArray) {
+                profileInArray.lastMessage = { text: messageTextToShow, type: messageTypeToShow };
+            }
             saveData(profiles, activeProfileId, archivedProfiles);
 
             chrome.tabs.sendMessage(tab.id, { type: 'showNotificationOnPage', notificationId, text: messageTextToShow, messageType: messageTypeToShow, showSpinner: false, fromShortcut: true })
                 .catch(err => console.log("Could not send final notification.", err.message));
         } else {
-            chrome.tabs.sendMessage(tab.id, { type: 'showNotificationOnPage', notificationId, text: 'Error: Active profile not found.', messageType: 'error', showSpinner: false, fromShortcut: true })
-                .catch(err => console.log("Could not send error notification.", err.message));
+            throw new Error('Active profile not found.');
         }
-    });
+    } catch (error) {
+        console.error("JustCode shortcut error:", error);
+        chrome.tabs.sendMessage(tab.id, { type: 'showNotificationOnPage', notificationId, text: `Error: ${error.message}`, messageType: 'error', showSpinner: false, fromShortcut: true })
+                .catch(err => console.log("Could not send error notification.", err.message));
+    }
 }
 
 // Listen for messages from content scripts or other parts of the extension.
@@ -231,3 +265,17 @@ chrome.runtime.onStartup.addListener(() => {
 // Immediately attempt to initialize all tabs when the service worker starts up.
 // This is the key part that handles developer reloads.
 initializeAllTabs();
+
+// Clean up tab-profile associations for closed tabs.
+chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
+    const settings = await chrome.storage.local.get({ rememberTabProfile: true });
+    if (settings.rememberTabProfile) {
+        const data = await chrome.storage.local.get({ tabProfileMap: {} });
+        const tabProfileMap = data.tabProfileMap;
+        if (tabProfileMap[tabId]) {
+            delete tabProfileMap[tabId];
+            await chrome.storage.local.set({ tabProfileMap });
+            console.log(`JustCode: Cleaned up tab-profile association for closed tab ${tabId}`);
+        }
+    }
+});

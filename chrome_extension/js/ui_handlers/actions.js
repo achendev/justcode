@@ -54,6 +54,20 @@ async function performAction(event, actionFunc, ...extraArgs) {
                         return reject(new Error("Profile not found."));
                     }
                     const actionResult = await actionFunc(profile, ...extraArgs);
+
+                    if (actionFunc === getContext) {
+                        const settings = await chrome.storage.local.get({ rememberTabProfile: true });
+                        if (settings.rememberTabProfile) {
+                            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                            if (tab && tab.id) {
+                                const mapData = await chrome.storage.local.get({ tabProfileMap: {} });
+                                const tabProfileMap = mapData.tabProfileMap;
+                                tabProfileMap[tab.id] = profile.id;
+                                await chrome.storage.local.set({ tabProfileMap });
+                            }
+                        }
+                    }
+
                     resolve(actionResult);
                 } catch (err) {
                     reject(err);

@@ -3,6 +3,7 @@ export function initializeAppSettings(reRender) {
     const importBtn = document.getElementById('importSettingsButton');
     const importFileInput = document.getElementById('importSettingsFile');
     const closeOnGetContextCheckbox = document.getElementById('closeOnGetContext');
+    const rememberTabProfileCheckbox = document.getElementById('rememberTabProfile');
     const verboseDeployLogCheckbox = document.getElementById('showVerboseDeployLog');
     const hideErrorsOnSuccessCheckbox = document.getElementById('hideErrorsOnSuccess');
     const wordWrapMessagesCheckbox = document.getElementById('wordWrapMessages');
@@ -21,7 +22,8 @@ export function initializeAppSettings(reRender) {
 
     // Initialize settings from storage
     chrome.storage.local.get([
-        'closeOnGetContext', 
+        'closeOnGetContext',
+        'rememberTabProfile',
         'showVerboseDeployLog',
         'hideErrorsOnSuccess',
         'wordWrapMessagesEnabled',
@@ -35,6 +37,7 @@ export function initializeAppSettings(reRender) {
         'showNotificationProgressBar'
     ], (data) => {
         closeOnGetContextCheckbox.checked = data.closeOnGetContext === true;
+        rememberTabProfileCheckbox.checked = data.rememberTabProfile !== false; // Default true
         verboseDeployLogCheckbox.checked = data.showVerboseDeployLog !== false; // Default to true
         hideErrorsOnSuccessCheckbox.checked = data.hideErrorsOnSuccess === true;
         wordWrapMessagesCheckbox.checked = data.wordWrapMessagesEnabled !== false; // Default to true
@@ -52,6 +55,10 @@ export function initializeAppSettings(reRender) {
     // Add listeners for settings changes
     closeOnGetContextCheckbox.addEventListener('change', (event) => {
         chrome.storage.local.set({ closeOnGetContext: event.target.checked });
+    });
+
+    rememberTabProfileCheckbox.addEventListener('change', (event) => {
+        chrome.storage.local.set({ rememberTabProfile: event.target.checked });
     });
 
     verboseDeployLogCheckbox.addEventListener('change', (event) => {
