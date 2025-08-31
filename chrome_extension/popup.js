@@ -6,8 +6,9 @@ import { initializeListeners } from './js/popup/listeners.js';
 import { initializeMessaging } from './js/popup/messaging.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const reRender = initializeUI();
+    // Initialize theme first to prevent any flash of unstyled/wrongly-themed content.
     initializeTheme();
+
     try {
         const settings = await chrome.storage.local.get({ rememberTabProfile: true });
         if (settings.rememberTabProfile) {
@@ -19,6 +20,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const profileIdForTab = tabProfileMap[tab.id];
 
                 if (profileIdForTab && profiles.some(p => p.id === profileIdForTab)) {
+                    // If the active profile is not the one remembered for this tab, update it.
+                    // This change will be picked up when initializeUI() calls loadData().
                     if (data.activeProfileId !== profileIdForTab) {
                         await chrome.storage.local.set({ activeProfileId: profileIdForTab });
                     }
@@ -29,8 +32,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error("JustCode: Error setting active profile from tab memory.", e);
     }
 
-    // Each function initializes a specific part of the application's functionality.
-    // This keeps the main entry point clean and follows the Single Responsibility Principle.
+    // The rest of the initialization can proceed now that the theme and active profile are set.
+    const reRender = initializeUI();
     initializeViews();
     initializeAppSettings(reRender);
     initializeListeners(reRender);
