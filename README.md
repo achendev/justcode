@@ -12,6 +12,48 @@ Just Code is a rapid development tool that bridges the gap between your local de
 
 This creates a tight, safe, and incredibly fast feedback loop for iterating on code with AI assistance. Because the LLM receives the full context, it can generate scripts that create, modify, and delete dozens of files at once, allowing you to implement complex features with a single deployment.
 
+---
+
+## 🚀 Quick Start Guide
+
+### 1. Go to Your LLM
+Navigate to your favorite AI chat interface. We highly recommend [Google AI Studio](https://aistudio.google.com/) with the Gemini 2.5 Pro model for the best results.
+<p align="center"><img src="https://github.com/user-attachments/assets/421d9bb9-bb44-4d99-97dc-4e1a89794a54" width="600" /></p>
+
+### 2. Open JustCode
+Click the JustCode icon in your Chrome toolbar. We suggest pinning it for easy access!
+<p align="center"><img src="https://github.com/user-attachments/assets/6effc507-c66e-40c1-91fe-d65eb26baaef" width="350" /></p>
+
+### 3. Select Your Project Folder
+In the "Browser (JS) Mode", click "Select Project Folder". You may need to grant permission **2-3 times** until Chrome offers the **"Allow on every visit"** option. This is a crucial step for persistent access.
+<br>
+<small>Alternatively, for more advanced control, check out the [Server Mode setup](#using-server-mode).</small>
+<p align="center"><img src="https://github.com/user-attachments/assets/9e2a1135-6af0-4259-a134-27bdcc44d194" width="400" /></p>
+
+### 4. Get Context & Add Your Task
+Click **"Get Context"**. This will load your project files into the AI's chat box. Scroll to the bottom and type your task, for example: *"Add a new feature that does X and Y."*
+<p align="center"><img src="https://github.com/user-attachments/assets/2b1d0fa3-45d3-4d47-9b25-9bb4203fd52b" width="600" /></p>
+
+### 5. Filter Large Projects (If Needed)
+If your project is large, you'll get a prompt to create an "exclude list". Just send this prompt to the AI. It will reply with a list of files to ignore. Copy this list, paste it into the "Exclude Patterns" field in your JustCode profile, and click **"Get Context"** again.
+<br>
+<small>**Tip:** Most projects are 50k-700k characters. If yours is larger, you likely have unneeded files that should be excluded.</small>
+<p align="center"><img src="https://github.com/user-attachments/assets/3a384ab5-4314-4271-9753-0ed03ee0f8cc" width="300" /></p>
+
+### 6. Deploy Code
+After the AI generates its response (a bash script), simply click **"Deploy Code"** in the JustCode extension. The changes will be applied directly to your local files.
+<p align="center"><img src="https://github.com/user-attachments/assets/87c88519-0ea8-48c6-9bbf-f848bcdba675" width="600" /></p>
+
+### 7. Verify & Undo
+Check the changes in your IDE. If the result isn't what you expected, just click **"Undo"**. Don't be discouraged if it's not perfect—around 15% of AI answers have minor mistakes. Refine your prompt and try again!
+<p align="center"><img src="https://github.com/user-attachments/assets/ab620c66-ab97-49ce-b2f7-e77a84e86d1c" width="600" /></p>
+
+### 8. Support the Project
+If you find JustCode useful, please consider supporting the project by leaving a star on the [GitHub repository](https://github.com/achendev/justcode). It helps a lot! Thanks in advance!
+<p align="center"><img src="https://github.com/user-attachments/assets/7bec8b50-2f72-4036-94c5-9d96627aabc8" width="600" /></p>
+
+---
+
 > **💡 Pro Tip: Recommended LLM**   
 > While JustCode can work with many LLMs, it is highly optimized for and tested with **Google AI Studio** using the **Gemini 2.5 Pro** model. Its large context window (1 million tokens) and strong instruction-following capabilities provide the most reliable results.
 
@@ -110,48 +152,6 @@ You have two options:
 1. Make sure the **server icon** is selected in the backend toggle.
 2. Follow the OS-specific instructions in the **"Running the Server (Optional)"** section below to start the local Python server.
 3. In the extension, enter the **full, absolute path** to your project in the "Project Location" text field (e.g., `/Users/yourname/projects/my-app` or `C:\Users\yourname\projects\my-app`).
-
----
-
-## 🚀 Quick Start Guide
-
-### 1. Go to Your LLM
-Navigate to your favorite AI chat interface. We highly recommend [Google AI Studio](https://aistudio.google.com/) with the Gemini 2.5 Pro model for the best results.
-<p align="center"><img src="https://github.com/user-attachments/assets/421d9bb9-bb44-4d99-97dc-4e1a89794a54" width="600" /></p>
-
-### 2. Open JustCode
-Click the JustCode icon in your Chrome toolbar. We suggest pinning it for easy access!
-<p align="center"><img src="https://github.com/user-attachments/assets/6effc507-c66e-40c1-91fe-d65eb26baaef" width="350" /></p>
-
-### 3. Select Your Project Folder
-In the "Browser (JS) Mode", click "Select Project Folder". You may need to grant permission **2-3 times** until Chrome offers the **"Allow on every visit"** option. This is a crucial step for persistent access.
-<br>
-<small>Alternatively, for more advanced control, check out the [Server Mode setup](#using-server-mode).</small>
-<p align="center"><img src="https://github.com/user-attachments/assets/9e2a1135-6af0-4259-a134-27bdcc44d194" width="600" /></p>
-
-### 4. Get Context & Add Your Task
-Click **"Get Context"**. This will load your project files into the AI's chat box. Scroll to the bottom and type your task, for example: *"Add a new feature that does X and Y."*
-<p align="center"><img src="https://github.com/user-attachments/assets/2b1d0fa3-45d3-4d47-9b25-9bb4203fd52b" width="600" /></p>
-
-### 5. Filter Large Projects (If Needed)
-If your project is large, you'll get a prompt to create an "exclude list". Just send this prompt to the AI. It will reply with a list of files to ignore. Copy this list, paste it into the "Exclude Patterns" field in your JustCode profile, and click **"Get Context"** again.
-<br>
-<small>**Tip:** Most projects are 50k-700k characters. If yours is larger, you likely have unneeded files that should be excluded.</small>
-<p align="center"><img src="https://github.com/user-attachments/assets/3a384ab5-4314-4271-9753-0ed03ee0f8cc" width="600" /></p>
-
-### 6. Deploy Code
-After the AI generates its response (a bash script), simply click **"Deploy Code"** in the JustCode extension. The changes will be applied directly to your local files.
-<p align="center"><img src="https://github.com/user-attachments/assets/87c88519-0ea8-48c6-9bbf-f848bcdba675" width="600" /></p>
-
-### 7. Verify & Undo
-Check the changes in your IDE. If the result isn't what you expected, just click **"Undo"**. Don't be discouraged if it's not perfect—around 15% of AI answers have minor mistakes. Refine your prompt and try again!
-<p align="center"><img src="https://github.com/user-attachments/assets/ab620c66-ab97-49ce-b2f7-e77a84e86d1c" width="600" /></p>
-
-### 8. Support the Project
-If you find JustCode useful, please consider supporting the project by leaving a star on the [GitHub repository](https://github.com/achendev/justcode). It helps a lot! Thanks in advance!
-<p align="center"><img src="https://github.com/user-attachments/assets/7bec8b50-2f72-4036-94c5-9d96627aabc8" width="600" /></p>
-
----
 
 ### Running the Server (Optional - Only for Server Backend)
 
