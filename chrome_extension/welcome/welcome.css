@@ -25,6 +25,9 @@ body.light-theme .btn-outline-primary:hover {
     color: #fff;
     background-color: #0d6efd;
 }
+body.light-theme .step-screenshot {
+    border: 0px;
+}
 
 /* Dark Theme */
 body.dark-theme {
@@ -45,6 +48,9 @@ body.dark-theme .btn-outline-primary {
 body.dark-theme .btn-outline-primary:hover {
     color: #212529;
     background-color: #80bdff;
+}
+body.dark-theme .step-screenshot {
+    border: 0px;
 }
 
 /* Header */
@@ -95,6 +101,28 @@ body.dark-theme .step-card:hover {
 }
 
 .step-content p {
-    margin-bottom: 0;
+    margin-bottom: 1rem;
     font-size: 0.95rem;
+}
+
+.step-screenshot {
+    display: block;
+    max-width: 60vh;
+    max-height: 35vh;
+    border-radius: 4px;
+    margin-top: 1rem;
+    cursor: pointer;
+    transition: transform 0.25s ease-in-out, box-shadow 0.25s ease-in-out;
+    transform-origin: center;
+}
+
+.step-screenshot:hover {
+    position: relative;
+    z-index: 10;
+    transform: scale(1.7);
+    /* box-shadow: 0 8px 24px rgba(0,0,0,0.25); */
+}
+
+body.dark-theme .step-screenshot:hover {
+    /* box-shadow: 0 8px 24px rgba(0,0,0,0.5); */
 }
