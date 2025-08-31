@@ -7,6 +7,7 @@ export function initializeAppSettings(reRender) {
     const verboseDeployLogCheckbox = document.getElementById('showVerboseDeployLog');
     const hideErrorsOnSuccessCheckbox = document.getElementById('hideErrorsOnSuccess');
     const wordWrapMessagesCheckbox = document.getElementById('wordWrapMessages');
+    const robustDeployCheckbox = document.getElementById('robustDeployFallback');
     
     // Shortcut Checkboxes
     const getContextShortcutCheckbox = document.getElementById('isGetContextShortcutEnabled');
@@ -27,6 +28,7 @@ export function initializeAppSettings(reRender) {
         'showVerboseDeployLog',
         'hideErrorsOnSuccess',
         'wordWrapMessagesEnabled',
+        'robustDeployFallback',
         'shortcutDomains', 
         'notificationPosition', 
         'notificationTimeout', 
@@ -41,6 +43,7 @@ export function initializeAppSettings(reRender) {
         verboseDeployLogCheckbox.checked = data.showVerboseDeployLog !== false; // Default to true
         hideErrorsOnSuccessCheckbox.checked = data.hideErrorsOnSuccess === true;
         wordWrapMessagesCheckbox.checked = data.wordWrapMessagesEnabled !== false; // Default to true
+        robustDeployCheckbox.checked = data.robustDeployFallback !== false; // Default true
         shortcutDomainsTextarea.value = data.shortcutDomains === undefined ? defaultShortcutDomains : data.shortcutDomains;
         notificationPositionSelector.value = data.notificationPosition || 'bottom-left';
         notificationTimeoutInput.value = data.notificationTimeout === undefined ? 4 : data.notificationTimeout;
@@ -76,6 +79,10 @@ export function initializeAppSettings(reRender) {
         document.querySelectorAll('.message-text').forEach(span => {
             span.classList.toggle('word-wrap-enabled', isEnabled);
         });
+    });
+
+    robustDeployCheckbox.addEventListener('change', (event) => {
+        chrome.storage.local.set({ robustDeployFallback: event.target.checked });
     });
 
     const createShortcutChangeListener = (id, key) => {

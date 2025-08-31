@@ -3,6 +3,7 @@ import { getHandle, verifyPermission } from '../file_system_manager.js';
 import { extractCodeToDeploy } from './llm_code_extractor.js';
 import { generateUndoScript } from './undo_generator.js';
 import { executeFileSystemScript } from './script_executor.js';
+import { prepareForFullAnswerExtraction, revertFullAnswerExtraction } from './robust_fallback_handlers/aistudio.js';
 
 // A simple regex to check for the presence of at least one valid command.
 const VALID_COMMAND_REGEX = /^\s*(cat\s+>|mkdir|rm|rmdir|mv|touch|chmod)/m;
@@ -23,7 +24,44 @@ export async function handleJsDeployment(profile, fromShortcut = false, hostname
         throw new Error('Permission to folder lost. Please select it again.');
     }
 
-    const codeToDeploy = await extractCodeToDeploy(profile, fromShortcut, hostname);
+    const appSettings = await chrome.storage.local.get({ robustDeployFallback: true });
+    let codeToDeploy = await extractCodeToDeploy(profile, fromShortcut, hostname);
+    let usedFallback = false;
+
+    if (
+        appSettings.robustDeployFallback &&
+        profile.deployCodeSource === 'ui' &&
+        !profile.deployFromFullAnswer &&
+        (!codeToDeploy || !VALID_COMMAND_REGEX.test(codeToDeploy))
+    ) {
+        console.log("JustCode: Code block empty/invalid. Trying fallback to full answer.");
+        usedFallback = true;
+        
+        let stateChanged = false;
+        const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+
+        // Special handling for AI Studio
+        if (tab && hostname && hostname.includes('aistudio.google.com')) {
+            const results = await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: prepareForFullAnswerExtraction,
+            });
+            stateChanged = results[0]?.result || false;
+        }
+        
+        // Now extract from the full answer
+        const tempProfile = { ...profile, deployFromFullAnswer: true };
+        codeToDeploy = await extractCodeToDeploy(tempProfile, fromShortcut, hostname);
+        
+        // Revert the state if we changed it
+        if (tab && stateChanged) {
+            await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: revertFullAnswerExtraction,
+            });
+        }
+    }
+
 
     if (!codeToDeploy || !VALID_COMMAND_REGEX.test(codeToDeploy)) {
         throw new Error('No valid deploy script found on page or in clipboard.');
@@ -50,26 +88,30 @@ export async function handleJsDeployment(profile, fromShortcut = false, hostname
     
     const settings = await chrome.storage.local.get({ showVerboseDeployLog: true, hideErrorsOnSuccess: false });
 
+    let finalMessage;
+    
     if (!settings.showVerboseDeployLog) {
-        return errors.length > 0
+        finalMessage = errors.length > 0
             ? `Deployed with ${errors.length} ignored error(s).`
             : "Code deployed successfully!";
-    }
-
-    if (errors.length > 0 && settings.hideErrorsOnSuccess) {
+    } else if (errors.length > 0 && settings.hideErrorsOnSuccess) {
         let message = `Deployed with ${errors.length} ignored error(s).\n--- LOG ---\n`;
         message += log.join('\n');
-        return message;
-    }
-
-    let message = '';
-    if (errors.length > 0) {
-        const errorDetails = errors.join('\n---\n');
-        message += `Deployed with ${errors.length} ignored error(s):\n${errorDetails}\n\n--- LOG ---\n`;
+        finalMessage = message;
     } else {
-        message = "Successfully deployed code.\n--- LOG ---\n";
+        let message = '';
+        if (errors.length > 0) {
+            const errorDetails = errors.join('\n---\n');
+            message += `Deployed with ${errors.length} ignored error(s):\n${errorDetails}\n\n--- LOG ---\n`;
+        } else {
+            message = "Successfully deployed code.\n--- LOG ---\n";
+        }
+        message += log.join('\n');
+        finalMessage = message;
     }
-    message += log.join('\n');
     
-    return message;
+    if (usedFallback) {
+        return "Used robust deploy fallback. " + finalMessage;
+    }
+    return finalMessage;
 }

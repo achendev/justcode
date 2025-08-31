@@ -1,4 +1,5 @@
 import { extractCodeToDeploy } from './llm_code_extractor.js';
+import { prepareForFullAnswerExtraction, revertFullAnswerExtraction } from './robust_fallback_handlers/aistudio.js';
 
 // A simple regex to check for the presence of at least one valid command.
 const VALID_COMMAND_REGEX = /^\s*(cat\s+>|mkdir|rm|rmdir|mv|touch|chmod)/m;
@@ -16,7 +17,44 @@ export async function handleServerDeployment(profile, fromShortcut = false, host
         throw new Error('Please enter a project path.');
     }
     
-    const codeToDeploy = await extractCodeToDeploy(profile, fromShortcut, hostname);
+    const appSettings = await chrome.storage.local.get({ robustDeployFallback: true });
+    let codeToDeploy = await extractCodeToDeploy(profile, fromShortcut, hostname);
+    let usedFallback = false;
+
+    if (
+        appSettings.robustDeployFallback &&
+        profile.deployCodeSource === 'ui' &&
+        !profile.deployFromFullAnswer &&
+        (!codeToDeploy || !VALID_COMMAND_REGEX.test(codeToDeploy))
+    ) {
+        console.log("JustCode: Code block empty/invalid. Trying fallback to full answer.");
+        usedFallback = true;
+        
+        let stateChanged = false;
+        const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+
+        // Special handling for AI Studio
+        if (tab && hostname && hostname.includes('aistudio.google.com')) {
+            const results = await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: prepareForFullAnswerExtraction,
+            });
+            stateChanged = results[0]?.result || false;
+        }
+        
+        // Now extract from the full answer
+        const tempProfile = { ...profile, deployFromFullAnswer: true };
+        codeToDeploy = await extractCodeToDeploy(tempProfile, fromShortcut, hostname);
+        
+        // Revert the state if we changed it
+        if (tab && stateChanged) {
+            await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: revertFullAnswerExtraction,
+            });
+        }
+    }
+
 
     if (!codeToDeploy || !VALID_COMMAND_REGEX.test(codeToDeploy)) {
         throw new Error('No valid deploy script found on page or in clipboard.');
@@ -44,11 +82,15 @@ export async function handleServerDeployment(profile, fromShortcut = false, host
         body: codeToDeploy
     });
 
-    const resultText = await response.text();
+    let resultText = await response.text();
     if (!response.ok) {
         throw new Error(`Deploy failed: ${resultText}`);
     }
     
+    if (usedFallback) {
+        resultText = "Used robust deploy fallback. " + resultText;
+    }
+
     console.log('JustCode Deploy Result:', resultText);
     return resultText;
 }
