@@ -35,7 +35,7 @@ Click **"Get Context"**. This will load your project files into the AI's chat bo
 <p align="center"><img src="https://github.com/user-attachments/assets/2b1d0fa3-45d3-4d47-9b25-9bb4203fd52b" width="600" /></p>
 
 ### 5. Filter Large Projects (If Needed)
-If your project is large, you'll get a prompt to create an "exclude list". Just send this prompt to the AI. It will reply with a list of files to ignore. Copy this list, paste it into the "Exclude Patterns" field in your JustCode profile, and click **"Get Context"** again.
+If your project is large, you'll get a prompt to create an "exclude list". Just send this prompt to the AI. It will reply with a list of files to ignore. Copy this list, paste it into the "Exclude Patterns" field in your JustCode profile, and click **"Get Context"** again. You may need to repeat this process a few times to fine-tune your exclusions until the project size is under the limit.
 <br>
 <small>**Tip:** Most projects are 50k-700k characters. If yours is larger, you likely have unneeded files that should be excluded.</small>
 <p align="center"><img src="https://github.com/user-attachments/assets/3a384ab5-4314-4271-9753-0ed03ee0f8cc" width="300" /></p>
