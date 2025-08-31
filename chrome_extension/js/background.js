@@ -5,7 +5,7 @@ import { undoCode, redoCode } from './undo_redo.js';
 
 // --- Default settings are now managed here as a single source of truth ---
 const AppSettings = {
-    shortcutDomains: 'aistudio.google.com,grok.com,x.com,perplexity.ai,gemini.google.com,chatgpt.com',
+    shortcutDomains: 'aistudio.google.com,grok.com,x.com,www.perplexity.ai,gemini.google.com,chatgpt.com',
     notificationPosition: 'bottom-left',
     notificationTimeout: 4,
     showNotificationProgressBar: true,
