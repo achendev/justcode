@@ -121,7 +121,7 @@ Navigate to your favorite AI chat interface. We highly recommend [Google AI Stud
 
 ### 2. Open JustCode
 Click the JustCode icon in your Chrome toolbar. We suggest pinning it for easy access!
-<p align="center"><img src="https://github.com/user-attachments/assets/6effc507-c66e-40c1-91fe-d65eb26baaef" width="600" /></p>
+<p align="center"><img src="https://github.com/user-attachments/assets/6effc507-c66e-40c1-91fe-d65eb26baaef" width="350" /></p>
 
 ### 3. Select Your Project Folder
 In the "Browser (JS) Mode", click "Select Project Folder". You may need to grant permission **2-3 times** until Chrome offers the **"Allow on every visit"** option. This is a crucial step for persistent access.
