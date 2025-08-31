@@ -49,7 +49,13 @@
     ],
     "web_accessible_resources": [
         {
-            "resources": ["css/notification.css"],
+            "resources": [
+                "css/notification.css",
+                "welcome/welcome.html",
+                "welcome/welcome.css",
+                "welcome/welcome.js",
+                "icons/icon128.png"
+            ],
             "matches": ["<all_urls>"]
         }
     ],

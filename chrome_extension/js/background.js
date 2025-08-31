@@ -216,6 +216,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // On first install or update, and on browser startup, ensure all tabs are initialized.
 chrome.runtime.onInstalled.addListener((details) => {
+    if (details.reason === 'install') {
+        // Open the welcome page on first install
+        chrome.tabs.create({ url: chrome.runtime.getURL('welcome/welcome.html') });
+    }
     if (details.reason === 'install' || details.reason === 'update') {
         initializeAllTabs();
     }
