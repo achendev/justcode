@@ -107,7 +107,7 @@ body.dark-theme .step-card:hover {
 
 .step-screenshot {
     display: block;
-    max-width: 60vh;
+    max-width: 40vh;
     max-height: 35vh;
     border-radius: 4px;
     margin-top: 1rem;
@@ -119,6 +119,6 @@ body.dark-theme .step-card:hover {
 .step-screenshot:hover {
     position: relative;
     z-index: 10;
-    transform: scale(1.7);
+    transform: scale(2);
     /* box-shadow: 0 8px 24px rgba(0,0,0,0.25); */
 }
