@@ -45,7 +45,7 @@ export async function handleJsDeployment(profile, fromShortcut = false, hostname
     
     console.log('JustCode Deploy Result: Local file system updated.', { log, errors });
     
-    const settings = await chrome.storage.local.get({ showVerboseDeployLog: true, hideErrorsOnSuccess: false });
+    const settings = await chrome.storage.local.get({ showVerboseDeployLog: true, hideErrorsOnSuccess: true });
 
     let finalMessage;
     

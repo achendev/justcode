@@ -22,7 +22,7 @@ export async function handleServerDeployment(profile, fromShortcut = false, host
     const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
     const tolerateErrors = profile.tolerateErrors !== false;
     
-    const settings = await chrome.storage.local.get({ showVerboseDeployLog: true, hideErrorsOnSuccess: false });
+    const settings = await chrome.storage.local.get({ showVerboseDeployLog: true, hideErrorsOnSuccess: true });
     
     let endpoint = `${serverUrl}/deploycode?path=${encodeURIComponent(path)}&tolerateErrors=${tolerateErrors}&verbose=${settings.showVerboseDeployLog}&hideErrorsOnSuccess=${settings.hideErrorsOnSuccess}`;
     

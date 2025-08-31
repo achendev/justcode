@@ -41,7 +41,7 @@ export function initializeAppSettings(reRender) {
         closeOnGetContextCheckbox.checked = data.closeOnGetContext === true;
         rememberTabProfileCheckbox.checked = data.rememberTabProfile !== false; // Default true
         verboseDeployLogCheckbox.checked = data.showVerboseDeployLog !== false; // Default to true
-        hideErrorsOnSuccessCheckbox.checked = data.hideErrorsOnSuccess === true;
+        hideErrorsOnSuccessCheckbox.checked = data.hideErrorsOnSuccess !== false; // Default to true
         wordWrapMessagesCheckbox.checked = data.wordWrapMessagesEnabled !== false; // Default to true
         robustDeployCheckbox.checked = data.robustDeployFallback !== false; // Default true
         shortcutDomainsTextarea.value = data.shortcutDomains === undefined ? defaultShortcutDomains : data.shortcutDomains;
