@@ -1,21 +1,51 @@
 import { get, set, del } from './db/idb.js';
 
 /**
- * Saves a directory handle to IndexedDB for a given profile ID.
+ * Saves a directory handle to IndexedDB for a given profile ID and index.
  * @param {number} profileId
+ * @param {number} index
  * @param {FileSystemDirectoryHandle} handle
  */
-export async function saveHandle(profileId, handle) {
-    await set(profileId, handle);
+export async function saveHandle(profileId, index, handle) {
+    await set(`handle_${profileId}_${index}`, handle);
 }
 
 /**
- * Retrieves a stored directory handle from IndexedDB.
+ * Retrieves all stored directory handles for a profile.
  * @param {number} profileId
- * @returns {Promise<FileSystemDirectoryHandle|null>}
+ * @param {number} count The number of handles to retrieve.
+ * @returns {Promise<Array<FileSystemDirectoryHandle|null>>}
  */
-export async function getHandle(profileId) {
-    return await get(profileId);
+export async function getHandles(profileId, count) {
+    if (count === 0) return [];
+    const promises = [];
+    for (let i = 0; i < count; i++) {
+        promises.push(get(`handle_${profileId}_${i}`));
+    }
+    return Promise.all(promises);
+}
+
+/**
+ * Deletes a specific handle from IndexedDB.
+ * @param {number} profileId
+ * @param {number} index
+ */
+export async function forgetHandle(profileId, index) {
+    await del(`handle_${profileId}_${index}`);
+}
+
+/**
+ * Deletes all handles associated with a profile.
+ * Used when a profile is deleted.
+ * @param {number} profileId
+ */
+export async function forgetAllHandlesForProfile(profileId) {
+    const promises = [];
+    // Try to delete a reasonable number of handles, ignoring errors for non-existent ones.
+    for (let i = 0; i < 20; i++) {
+        promises.push(del(`handle_${profileId}_${i}`).catch(() => {}));
+    }
+    await Promise.all(promises);
 }
 
 /**
@@ -43,13 +73,4 @@ export async function requestPermission(handle) {
     }
     // Request permission. If granted, return true.
     return (await handle.requestPermission(options)) === 'granted';
-}
-
-
-/**
- * Deletes a handle from IndexedDB.
- * @param {number} profileId
- */
-export async function forgetHandle(profileId) {
-    await del(profileId);
 }

@@ -29,6 +29,8 @@ export function loadData(callback) {
                 lastMessage: { text: '', type: 'info' },
                 // Mode toggle
                 useServerBackend: false,
+                // JS-specific fields
+                jsProjectFolderNames: [], // Array of folder names for display
                 // Server-specific fields
                 projectPaths: [''],
                 serverUrl: defaultServerUrl,
@@ -56,21 +58,16 @@ export function loadData(callback) {
                 delete profile.deployFromClipboard;
                 needsSave = true;
             }
-            
             if (profile.separateInstructionsAsFile !== undefined) {
                 profile.separateInstructions = profile.separateInstructionsAsFile ? 'file' : 'include';
                 delete profile.separateInstructionsAsFile;
                 needsSave = true;
             }
-
-            // Migration from projectPath to projectPaths
             if (profile.projectPath !== undefined) {
                 profile.projectPaths = Array.isArray(profile.projectPath) ? profile.projectPath : [profile.projectPath];
                 delete profile.projectPath;
                 needsSave = true;
             }
-
-            // Remove obsolete fields
             if (profile.duplicateInstructions !== undefined) {
                 delete profile.duplicateInstructions;
                 needsSave = true;
@@ -80,7 +77,8 @@ export function loadData(callback) {
             if (profile.getContextTarget === undefined) { profile.getContextTarget = 'ui'; needsSave = true; }
             if (profile.deployCodeSource === undefined) { profile.deployCodeSource = 'ui'; needsSave = true; }
             if (profile.deployFromFullAnswer === undefined) { profile.deployFromFullAnswer = false; needsSave = true; }
-            if (profile.useServerBackend === undefined) { profile.useServerBackend = true; needsSave = true; }
+            if (profile.useServerBackend === undefined) { profile.useServerBackend = false; needsSave = true; }
+            if (profile.jsProjectFolderNames === undefined) { profile.jsProjectFolderNames = []; needsSave = true; }
             if (profile.projectPaths === undefined) { profile.projectPaths = ['']; needsSave = true; }
             if (profile.serverUrl === undefined) { profile.serverUrl = defaultServerUrl; needsSave = true; }
             if (profile.isAuthEnabled === undefined) { profile.isAuthEnabled = false; needsSave = true; }

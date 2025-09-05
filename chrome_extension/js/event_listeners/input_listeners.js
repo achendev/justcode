@@ -9,6 +9,12 @@ export function attachInputEventListeners(reRenderCallback) {
     document.querySelectorAll('.forget-project-folder').forEach(button => {
         button.addEventListener('click', folderHandlers.handleForgetFolder);
     });
+    document.querySelectorAll('.add-js-project-folder').forEach(button => {
+        button.addEventListener('click', (e) => folderHandlers.handleAddJsProjectFolder(e, reRenderCallback));
+    });
+    document.querySelectorAll('.remove-js-project-folder').forEach(button => {
+        button.addEventListener('click', (e) => folderHandlers.handleRemoveJsProjectFolder(e, reRenderCallback));
+    });
 
     // --- Server Mode ---
      document.querySelectorAll('.project-path').forEach(input => {

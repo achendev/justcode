@@ -2,7 +2,7 @@ import { loadData } from './storage.js';
 import { renderDOM, renderArchiveView } from './ui_handlers/renderer.js';
 import { attachAllEventListeners } from './event_attacher.js';
 import { handleAddProfile } from './ui_handlers/profile.js';
-import { getHandle, verifyPermission } from './file_system_manager.js';
+import { getHandles, verifyPermission } from './file_system_manager.js';
 import { updateTemporaryMessage } from './ui_handlers/message.js';
 
 async function refreshUndoRedoCountsJs(profile) {
@@ -88,10 +88,9 @@ export async function refreshUndoRedoCounts(profile) {
     }
 }
 
-
-export function updateFolderName(profileId, folderName) {
-    const nameSpan = document.getElementById(`selectedProjectName-${profileId}`);
-    const forgetBtn = document.getElementById(`forgetProjectFolder-${profileId}`);
+export function updateFolderName(profileId, index, folderName) {
+    const nameSpan = document.getElementById(`selectedProjectName-${profileId}-${index}`);
+    const forgetBtn = document.getElementById(`forgetProjectFolder-${profileId}-${index}`);
     if (nameSpan) {
         if (folderName) {
             nameSpan.textContent = folderName;
@@ -107,7 +106,6 @@ export function renderUI(profiles, activeProfileId, archivedProfiles, profilesCo
     renderDOM(profiles, activeProfileId, profilesContainer, profileTabs);
     renderArchiveView(archivedProfiles, archiveListContainer);
 
-    // After rendering, apply the global word wrap setting to the message blocks
     chrome.storage.local.get({ wordWrapMessagesEnabled: true }, (data) => {
         document.querySelectorAll('.message-text').forEach(span => {
             span.classList.toggle('word-wrap-enabled', data.wordWrapMessagesEnabled);
@@ -121,17 +119,22 @@ export function renderUI(profiles, activeProfileId, archivedProfiles, profilesCo
     
     profiles.forEach(async (profile) => {
         if (!profile.useServerBackend) {
-            const handle = await getHandle(profile.id);
-            if (handle) {
-                 const hasPermission = await verifyPermission(handle);
-                 updateFolderName(profile.id, hasPermission ? handle.name : `(Permission lost) ${handle.name}`);
-                 if (!hasPermission) {
-                    const message = 'Permission to folder lost. Select it again. Chrome may require this 2-3 times to offer a persistent "Allow on every visit" option. Alternatively, see the <a href="https://github.com/achendev/justcode#using-server-mode" target="_blank" title="JustCode GitHub Repository">Server Mode</a> setup.';
-                    updateTemporaryMessage(profile.id, message, 'warning');
-                 }
-            } else {
-                updateFolderName(profile.id, null);
-            }
+            const folderCount = (profile.jsProjectFolderNames || []).length || 1;
+            const handles = await getHandles(profile.id, folderCount);
+            
+            handles.forEach(async (handle, index) => {
+                if (handle) {
+                    const hasPermission = await verifyPermission(handle);
+                    const displayName = hasPermission ? handle.name : `(Permission lost) ${handle.name}`;
+                    updateFolderName(profile.id, index, displayName);
+                    if (!hasPermission) {
+                        const message = 'Permission to folder lost. Select it again. Chrome may require this 2-3 times to offer a persistent "Allow on every visit" option. Alternatively, see the <a href="https://github.com/achendev/justcode#using-server-mode" target="_blank" title="JustCode GitHub Repository">Server Mode</a> setup.';
+                        updateTemporaryMessage(profile.id, message, 'warning');
+                    }
+                } else {
+                    updateFolderName(profile.id, index, null);
+                }
+            });
         }
         refreshUndoRedoCounts(profile);
     });
@@ -144,21 +147,6 @@ export function initUI(profilesContainer, profileTabs, addProfileButton, archive
 
     addProfileButton.addEventListener('click', () => {
         handleAddProfile(reRenderCallback);
-    });
-
-    const mainView = document.getElementById('mainView');
-    const archiveView = document.getElementById('archiveView');
-    const archiveButton = document.getElementById('archiveButton');
-    const closeArchiveButton = document.getElementById('closeArchive');
-
-    archiveButton.addEventListener('click', () => {
-        mainView.style.display = 'none';
-        archiveView.style.display = 'block';
-    });
-
-    closeArchiveButton.addEventListener('click', () => {
-        mainView.style.display = 'block';
-        archiveView.style.display = 'none';
     });
 
     loadData((profiles, activeProfileId, archivedProfiles) => {

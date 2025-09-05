@@ -1,6 +1,6 @@
 import { loadData, saveData } from '../../storage.js';
 import { defaultCriticalInstructions } from '../../default_instructions.js';
-import { forgetHandle } from '../../file_system_manager.js';
+import { forgetAllHandlesForProfile } from '../../file_system_manager.js';
 
 export function handleAddProfile(reRenderCallback) {
     loadData((profiles, activeProfileId, archivedProfiles) => {
@@ -22,6 +22,8 @@ export function handleAddProfile(reRenderCallback) {
             lastMessage: { text: '', type: 'info' },
             // Mode toggle
             useServerBackend: false,
+            // JS-specific fields
+            jsProjectFolderNames: [],
             // Server-specific fields
             projectPaths: [''],
             serverUrl: 'http://127.0.0.1:5010',
@@ -61,7 +63,8 @@ export function handleCopyProfile(event, reRenderCallback) {
         newProfile.lastMessage = { text: '', type: 'info' }; 
         
         // Don't copy the folder handle, user must select it again for the new profile
-        forgetHandle(newProfile.id);
+        newProfile.jsProjectFolderNames = [];
+        forgetAllHandlesForProfile(newProfile.id);
 
         const originalIndex = profiles.findIndex(p => p.id === id);
         profiles.splice(originalIndex !== -1 ? originalIndex + 1 : profiles.length, 0, newProfile);

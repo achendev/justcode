@@ -2,17 +2,31 @@ import { defaultCriticalInstructions, hereDocValue } from '../default_instructio
 
 /**
  * Builds the content string with cat commands from a list of file paths.
- * @param {FileSystemDirectoryHandle} rootHandle
+ * @param {Array<FileSystemDirectoryHandle>} handles
  * @param {string[]} paths
  * @returns {Promise<string>}
  */
-export async function buildFileContentString(rootHandle, paths) {
+export async function buildFileContentString(handles, paths) {
     let contentString = '';
+    const isMultiProject = handles.length > 1;
+
     for (const path of paths) {
         try {
-            const pathParts = path.split('/');
+            let handle = handles[0];
+            let relativePath = path;
+
+            if (isMultiProject) {
+                const match = path.match(/^(\d+)\/(.*)$/s);
+                if (!match) continue;
+                const index = parseInt(match[1], 10);
+                if (index >= handles.length) continue;
+                handle = handles[index];
+                relativePath = match[2];
+            }
+
+            const pathParts = relativePath.split('/');
             const fileName = pathParts.pop();
-            let currentDir = rootHandle;
+            let currentDir = handle;
             for (const part of pathParts) {
                 currentDir = await currentDir.getDirectoryHandle(part);
             }

@@ -1,12 +1,36 @@
 /**
+ * Resolves a potentially prefixed path to the correct file system handle and relative path.
+ * @param {Array<FileSystemDirectoryHandle>} handles - Array of root handles.
+ * @param {string} rawPath - The path from the script (e.g., './file.txt' or './0/file.txt').
+ * @returns {{handle: FileSystemDirectoryHandle, relativePath: string}}
+ */
+function resolveHandleAndPath(handles, rawPath) {
+    const path = rawPath.replace(/^\.\//, '');
+    if (handles.length > 1) {
+        const match = path.match(/^(\d+)\/(.*)$/s);
+        if (!match) throw new Error(`Invalid path for multi-project JS mode: '${rawPath}'.`);
+        
+        const index = parseInt(match[1], 10);
+        const relativePath = match[2];
+
+        if (index >= handles.length || !handles[index]) throw new Error(`Path index ${index} is invalid or handle not found.`);
+        return { handle: handles[index], relativePath: relativePath };
+    } else {
+        return { handle: handles[0], relativePath: path };
+    }
+}
+
+
+/**
  * Helper to get the content of a file if it exists.
- * @param {FileSystemDirectoryHandle} handle The root directory handle.
+ * @param {Array<FileSystemDirectoryHandle>} handles The root directory handles.
  * @param {string} path The relative path to the file.
  * @returns {Promise<string|null>} The file content or null if it doesn't exist.
  */
-export async function getFileContent(handle, path) {
+export async function getFileContent(handles, path) {
     try {
-        const pathParts = path.split('/');
+        const { handle, relativePath } = resolveHandleAndPath(handles, path);
+        const pathParts = relativePath.split('/');
         const fileName = pathParts.pop();
         let currentDir = handle;
         for (const part of pathParts) {
@@ -24,32 +48,32 @@ export async function getFileContent(handle, path) {
 
 /**
  * Helper to check if a file or directory exists.
- * @param {FileSystemDirectoryHandle} handle The root directory handle.
+ * @param {Array<FileSystemDirectoryHandle>} handles The root directory handles.
  * @param {string} path The relative path.
  * @returns {Promise<boolean>} True if it exists.
  */
-export async function entryExists(handle, path) {
+export async function entryExists(handles, path) {
     try {
-        const pathParts = path.split('/');
+        const { handle, relativePath } = resolveHandleAndPath(handles, path);
+        const pathParts = relativePath.split('/');
         const entryName = pathParts.pop();
         let currentDir = handle;
         for (const part of pathParts) {
             if (part) currentDir = await currentDir.getDirectoryHandle(part, { create: false });
         }
-        // This will throw if the entry doesn't exist. We don't care if it's a file or directory.
         await currentDir.getDirectoryHandle(entryName, { create: false });
         return true;
     } catch (e) {
         try {
-            // Maybe it's a file?
-             const pathParts = path.split('/');
-             const entryName = pathParts.pop();
-             let currentDir = handle;
-             for (const part of pathParts) {
+            const { handle, relativePath } = resolveHandleAndPath(handles, path);
+            const pathParts = relativePath.split('/');
+            const entryName = pathParts.pop();
+            let currentDir = handle;
+            for (const part of pathParts) {
                 if(part) currentDir = await currentDir.getDirectoryHandle(part, { create: false });
-             }
-             await currentDir.getFileHandle(entryName, { create: false });
-             return true;
+            }
+            await currentDir.getFileHandle(entryName, { create: false });
+            return true;
         } catch (e2) {
              return false;
         }

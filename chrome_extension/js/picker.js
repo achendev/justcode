@@ -1,8 +1,6 @@
 import { saveHandle, requestPermission } from './file_system_manager.js';
 
 // This script runs in the dedicated picker.html window.
-// It now waits for a second user click before showing the picker.
-
 document.addEventListener('DOMContentLoaded', () => {
     // --- THEME LOGIC ---
     const applyPickerTheme = (theme) => {
@@ -15,11 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Step 1: Apply system theme immediately to prevent flashing.
     const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     applyPickerTheme(systemTheme);
 
-    // Step 2: Load and apply user-saved theme, overriding the system theme if it exists.
     chrome.storage.local.get('theme', (data) => {
         if (data.theme) {
             applyPickerTheme(data.theme);
@@ -29,34 +25,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const urlParams = new URLSearchParams(window.location.search);
     const profileId = parseInt(urlParams.get('profileId'));
+    const index = parseInt(urlParams.get('index'));
     
     const messageDiv = document.getElementById('message');
-    const subMessageP = document.querySelector('.sub-message'); // Gets the first one
+    const subMessageP = document.querySelector('.sub-message');
     const permissionTipP = document.getElementById('permission-tip');
     const selectFolderBtn = document.getElementById('selectFolderBtn');
 
-    if (!profileId) {
-        messageDiv.textContent = 'Error: No profile ID specified.';
+    if (isNaN(profileId) || isNaN(index)) {
+        messageDiv.textContent = 'Error: Missing profile or index information.';
         messageDiv.className = 'error';
         subMessageP.textContent = 'Please close this window and try again.';
-        selectFolderBtn.style.display = 'none'; // Hide the button
+        selectFolderBtn.style.display = 'none';
         return;
     }
 
-    // This is the key change: The picker logic is now inside a click listener.
     selectFolderBtn.addEventListener('click', async () => {
-        // Update the UI to show we're in progress
         selectFolderBtn.style.display = 'none';
         messageDiv.textContent = 'Opening folder selection dialog...';
         subMessageP.textContent = 'Please choose a folder in the window that appeared.';
 
         try {
-            // This call is now correctly triggered by a direct user gesture.
             const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
             const permissionGranted = await requestPermission(handle);
             
             if (permissionGranted) {
-                await saveHandle(profileId, handle);
+                await saveHandle(profileId, index, handle);
                 
                 messageDiv.textContent = `Folder '${handle.name}' selected successfully!`;
                 messageDiv.className = 'success';
@@ -64,6 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 chrome.runtime.sendMessage({
                     type: "folderSelected", 
                     profileId: profileId,
+                    index: index,
                     folderName: handle.name
                 }).catch(e => console.log("Could not send message, probably because the popup closed. This is expected."));
 
@@ -74,13 +69,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 let countdown = 7;
                 subMessageP.textContent = `This window will close automatically in ${countdown} seconds...`;
-
-                const countdownInterval = setInterval(() => {
+                const interval = setInterval(() => {
                     countdown--;
-                    if (countdown > 0) {
-                        subMessageP.textContent = `This window will close automatically in ${countdown} seconds...`;
-                    } else {
-                        clearInterval(countdownInterval);
+                    subMessageP.textContent = `This window will close automatically in ${countdown} seconds...`;
+                    if (countdown <= 0) {
+                        clearInterval(interval);
                         window.close();
                     }
                 }, 1000);
@@ -90,7 +83,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 messageDiv.className = 'error';
                 subMessageP.textContent = 'Please close this window and try again, allowing access when prompted.';
             }
-
         } catch (error) {
             if (error.name === 'AbortError') {
                 messageDiv.textContent = 'Folder selection was cancelled.';

@@ -3,12 +3,11 @@ import { getFileContent, entryExists } from './fs_helpers.js';
 
 /**
  * Generates an undo script by inspecting the filesystem before changes are made.
- * @param {FileSystemDirectoryHandle} rootHandle The project's root handle.
+ * @param {Array<FileSystemDirectoryHandle>} handles The project's root handles.
  * @param {string} deployScript The deployment script to be executed.
  * @returns {Promise<string>} The generated undo script.
  */
-export async function generateUndoScript(rootHandle, deployScript) {
-    // Normalize line endings to prevent issues on Windows
+export async function generateUndoScript(handles, deployScript) {
     const lines = deployScript.replace(/\r\n/g, '\n').split('\n');
     const rollbackCmds = [];
     let i = 0;
@@ -21,23 +20,21 @@ export async function generateUndoScript(rootHandle, deployScript) {
         try {
             if (line.startsWith('cat >')) {
                 const match = line.match(/^cat >\s+((?:'.*?'|".*?"|[^\s'"]+))\s+<<\s+'EOPROJECTFILE'/);
-                if (!match) continue; // Skip malformed lines
+                if (!match) continue;
 
                 let filePath = match[1].startsWith("'") ? match[1].slice(1, -1) : match[1];
-                filePath = filePath.replace('./', '');
                 
-                const originalContent = await getFileContent(rootHandle, filePath);
+                const originalContent = await getFileContent(handles, filePath);
                 if (originalContent !== null) {
-                    const escapedContent = originalContent;
-                    rollbackCmds.unshift(`cat > ./${filePath} << '${hereDocValue}'\n${escapedContent}\n${hereDocValue}`);
+                    rollbackCmds.unshift(`cat > ${filePath} << '${hereDocValue}'\n${originalContent}\n${hereDocValue}`);
                 } else {
-                    rollbackCmds.unshift(`rm -f ./${filePath}`);
+                    rollbackCmds.unshift(`rm -f ${filePath}`);
                 }
 
-                while (i < lines.length && lines[i] !== hereDocValue) {
+                while (i < lines.length && !lines[i].startsWith(hereDocValue)) {
                     i++;
                 }
-                if (i < lines.length) i++; // Skip the delimiter line
+                if (i < lines.length) i++;
                 continue;
             }
 
@@ -45,27 +42,27 @@ export async function generateUndoScript(rootHandle, deployScript) {
             if (parts.length === 0) continue;
             
             const command = parts[0];
-            const args = parts.slice(1).map(arg => arg.replace(/^['"]|['"]$/g, ''));
+            const args = parts.slice(1);
 
             if (command === 'mkdir') {
-                const dirPath = args.find(a => !a.startsWith('-')).replace('./', '');
-                if (!(await entryExists(rootHandle, dirPath))) {
-                    rollbackCmds.unshift(`rmdir ./${dirPath}`);
+                const dirPath = args.find(a => !a.startsWith('-'));
+                if (!(await entryExists(handles, dirPath))) {
+                    rollbackCmds.unshift(`rmdir ${dirPath}`);
                 }
             } else if (command === 'rm') {
-                const filePath = args.find(a => !a.startsWith('-')).replace('./', '');
-                const originalContent = await getFileContent(rootHandle, filePath);
+                const filePath = args.find(a => !a.startsWith('-'));
+                const originalContent = await getFileContent(handles, filePath);
                 if (originalContent !== null) {
-                     rollbackCmds.unshift(`cat > ./${filePath} << '${hereDocValue}'\n${originalContent}\n${hereDocValue}`);
+                     rollbackCmds.unshift(`cat > ${filePath} << '${hereDocValue}'\n${originalContent}\n${hereDocValue}`);
                 }
             } else if (command === 'rmdir') {
-                 const dirPath = args[0].replace('./', '');
-                 rollbackCmds.unshift(`mkdir ./${dirPath}`);
+                 const dirPath = args[0];
+                 rollbackCmds.unshift(`mkdir ${dirPath}`);
             } else if (command === 'mv') {
                 if (args.length === 2) {
-                    const src = args[0].replace('./', '');
-                    const dest = args[1].replace('./', '');
-                    rollbackCmds.unshift(`mv ./${dest} ./${src}`);
+                    const src = args[0];
+                    const dest = args[1];
+                    rollbackCmds.unshift(`mv ${dest} ${src}`);
                 }
             }
         } catch (e) {

@@ -2,22 +2,39 @@ import { hereDocValue } from '../default_instructions.js';
 
 /**
  * Parses and executes a bash-like script using the File System Access API.
- * @param {FileSystemDirectoryHandle} rootHandle The root directory handle for the project.
+ * @param {Array<FileSystemDirectoryHandle>} handles The root directory handles for the project(s).
  * @param {string} script The script to execute.
  * @param {boolean} tolerateErrors If true, continues execution on error.
  * @returns {Promise<{log: string[], errors: string[]}>} A list of log messages and error messages encountered.
  */
-export async function executeFileSystemScript(rootHandle, script, tolerateErrors) {
+export async function executeFileSystemScript(handles, script, tolerateErrors) {
     const lines = script.replace(/\r\n/g, '\n').split('\n');
     let i = 0;
     const errors = [];
     const log = [];
+    const isMultiProject = handles.length > 1;
+
+    const resolveHandleAndPath = (rawPath) => {
+        const path = rawPath.replace(/^\.\//, '');
+        if (isMultiProject) {
+            const match = path.match(/^(\d+)\/(.*)$/s);
+            if (!match) throw new Error(`Invalid path for multi-project JS mode: '${rawPath}'. Expected './<index>/...'`);
+            
+            const index = parseInt(match[1], 10);
+            const relativePath = match[2];
+            if (index >= handles.length || !handles[index]) throw new Error(`Path index ${index} is invalid or handle not found.`);
+            
+            return { handle: handles[index], relativePath: relativePath };
+        } else {
+            return { handle: handles[0], relativePath: path };
+        }
+    };
 
     while (i < lines.length) {
         const line = lines[i].trim();
         const originalLineForError = lines[i];
         const lineNumForError = i + 1;
-        i++; // Move to the next line immediately
+        i++;
 
         if (!line || line.startsWith('#')) continue;
         
@@ -26,12 +43,8 @@ export async function executeFileSystemScript(rootHandle, script, tolerateErrors
                 const match = line.match(/^cat >\s+((?:'.*?'|".*?"|[^\s'"]+))\s+<<\s+'EOPROJECTFILE'/);
                 if (!match) throw new Error(`Invalid cat command format: ${line}`);
                 
-                let rawPath = match[1];
-                let filePath = ((rawPath.startsWith("'") && rawPath.endsWith("'")) || (rawPath.startsWith('"') && rawPath.endsWith('"')))
-                    ? rawPath.slice(1, -1)
-                    : rawPath;
-                filePath = filePath.replace('./', '');
-
+                let rawPath = match[1].replace(/^['"]|['"]$/g, '');
+                
                 let content = '';
                 let contentEnded = false;
                 while (i < lines.length) {
@@ -46,10 +59,11 @@ export async function executeFileSystemScript(rootHandle, script, tolerateErrors
 
                 if (!contentEnded) throw new Error(`Script parsing error: EOF while looking for '${hereDocValue}'`);
                 if (content.endsWith('\n')) content = content.slice(0, -1);
-
-                const pathParts = filePath.split('/');
+                
+                const { handle, relativePath } = resolveHandleAndPath(rawPath);
+                const pathParts = relativePath.split('/');
                 const fileName = pathParts.pop();
-                let currentDir = rootHandle;
+                let currentDir = handle;
                 for (const part of pathParts) {
                     if (part) currentDir = await currentDir.getDirectoryHandle(part, { create: true });
                 }
@@ -57,7 +71,7 @@ export async function executeFileSystemScript(rootHandle, script, tolerateErrors
                 const writable = await fileHandle.createWritable();
                 await writable.write(content);
                 await writable.close();
-                log.push(`Wrote file: ${filePath}`);
+                log.push(`Wrote file: ${rawPath}`);
                 continue;
             }
 
@@ -70,88 +84,89 @@ export async function executeFileSystemScript(rootHandle, script, tolerateErrors
             if (command === 'mkdir') {
                 const pFlag = args.includes('-p');
                 const dirPaths = args.filter(arg => arg !== '-p');
-                for (let dirPath of dirPaths) {
-                    dirPath = dirPath.replace(/^['"]|['"]$/g, '').replace('./', '');
-                    const pathParts = dirPath.split('/').filter(Boolean);
+                for (let rawPath of dirPaths) {
+                    rawPath = rawPath.replace(/^['"]|['"]$/g, '');
+                    const { handle, relativePath } = resolveHandleAndPath(rawPath);
+                    const pathParts = relativePath.split('/').filter(Boolean);
                     
                     if (pFlag) {
-                        let currentDir = rootHandle;
+                        let currentDir = handle;
                         for (const part of pathParts) {
                             currentDir = await currentDir.getDirectoryHandle(part, { create: true });
                         }
                     } else {
                         if (pathParts.length === 0) continue;
                         const dirNameToCreate = pathParts.pop();
-                        let parentDir = rootHandle;
+                        let parentDir = handle;
                         for (const part of pathParts) {
                             parentDir = await parentDir.getDirectoryHandle(part, { create: false });
                         }
                         await parentDir.getDirectoryHandle(dirNameToCreate, { create: true });
                     }
-                    log.push(`Created directory: ${dirPath}`);
+                    log.push(`Created directory: ${rawPath}`);
                 }
             } else if (command === 'rm') {
                 const fFlag = args.includes('-f');
                 const filePaths = args.filter(p => !p.startsWith('-'));
-                for (let filePath of filePaths) {
-                    filePath = filePath.replace(/^['"]|['"]$/g, '').replace('./', '');
-                    if (!filePath) continue;
+                for (let rawPath of filePaths) {
+                    rawPath = rawPath.replace(/^['"]|['"]$/g, '');
+                    if (!rawPath) continue;
 
-                    const pathParts = filePath.split('/');
+                    const { handle, relativePath } = resolveHandleAndPath(rawPath);
+                    const pathParts = relativePath.split('/');
                     const fileName = pathParts.pop();
-                    let parentDir = rootHandle;
+                    let parentDir = handle;
                     for (const part of pathParts) {
                         if (part) parentDir = await parentDir.getDirectoryHandle(part);
                     }
                     try {
                         await parentDir.removeEntry(fileName, { recursive: false });
-                        log.push(`Removed file: ${filePath}`);
+                        log.push(`Removed file: ${rawPath}`);
                     } catch (e) {
                         if ((fFlag || tolerateErrors) && e.name === 'NotFoundError') {
-                            log.push(`Skipped removal (not found): ${filePath}`);
-                        } else {
-                            throw e; // Let the outer catch handle it.
-                        }
+                            log.push(`Skipped removal (not found): ${rawPath}`);
+                        } else { throw e; }
                     }
                 }
             } else if (command === 'rmdir') {
-                 const dirPaths = args;
-                 for (let dirPath of dirPaths) {
-                    dirPath = dirPath.replace(/^['"]|['"]$/g, '').replace('./', '');
-                    const pathParts = dirPath.split('/');
+                 for (let rawPath of args) {
+                    rawPath = rawPath.replace(/^['"]|['"]$/g, '');
+                    const { handle, relativePath } = resolveHandleAndPath(rawPath);
+                    const pathParts = relativePath.split('/');
                     const dirName = pathParts.pop();
-                    let parentDir = rootHandle;
+                    let parentDir = handle;
                     for (const part of pathParts) {
                         if(part) parentDir = await parentDir.getDirectoryHandle(part);
                     }
                     try {
                         await parentDir.removeEntry(dirName, { recursive: false });
-                        log.push(`Removed directory: ${dirPath}`);
+                        log.push(`Removed directory: ${rawPath}`);
                     } catch (e) {
                         if (tolerateErrors && (e.name === 'NotFoundError' || e.name === 'InvalidModificationError')) {
-                             log.push(`Skipped rmdir for '${dirPath}', ignoring error: ${e.message}`);
-                        } else {
-                            throw e;
-                        }
+                             log.push(`Skipped rmdir for '${rawPath}', ignoring error: ${e.message}`);
+                        } else { throw e; }
                     }
                  }
             } else if (command === 'mv') {
                 if (args.length !== 2) throw new Error("mv requires exactly two arguments.");
-                const sourcePath = args[0].replace(/^['"]|['"]$/g, '').replace('./', '');
-                const destPath = args[1].replace(/^['"]|['"]$/g, '').replace('./', '');
+                const sourceRawPath = args[0].replace(/^['"]|['"]$/g, '');
+                const destRawPath = args[1].replace(/^['"]|['"]$/g, '');
 
-                const sourceParts = sourcePath.split('/');
+                const { handle: sourceHandle, relativePath: sourceRelativePath } = resolveHandleAndPath(sourceRawPath);
+                const sourceParts = sourceRelativePath.split('/');
                 const sourceName = sourceParts.pop();
-                let sourceParentHandle = rootHandle;
-                 for (const part of sourceParts) {
+                let sourceParentHandle = sourceHandle;
+                for (const part of sourceParts) {
                     if(part) sourceParentHandle = await sourceParentHandle.getDirectoryHandle(part);
                 }
-                const sourceHandle = await sourceParentHandle.getFileHandle(sourceName);
-                const sourceContent = await (await sourceHandle.getFile()).arrayBuffer();
 
-                const destParts = destPath.split('/');
+                const fileToMoveHandle = await sourceParentHandle.getFileHandle(sourceName);
+                const sourceContent = await (await fileToMoveHandle.getFile()).arrayBuffer();
+
+                const { handle: destHandle, relativePath: destRelativePath } = resolveHandleAndPath(destRawPath);
+                const destParts = destRelativePath.split('/');
                 const destName = destParts.pop();
-                let destParentHandle = rootHandle;
+                let destParentHandle = destHandle;
                 for (const part of destParts) {
                     if (part) destParentHandle = await destParentHandle.getDirectoryHandle(part, { create: true });
                 }
@@ -161,8 +176,7 @@ export async function executeFileSystemScript(rootHandle, script, tolerateErrors
                 await writable.close();
 
                 await sourceParentHandle.removeEntry(sourceName);
-                log.push(`Moved: ${sourcePath} to ${destPath}`);
-
+                log.push(`Moved: ${sourceRawPath} to ${destRawPath}`);
             } else if (command === 'chmod' || command === 'touch') {
                 log.push(`Ignoring safe command: ${line}`);
             } else {

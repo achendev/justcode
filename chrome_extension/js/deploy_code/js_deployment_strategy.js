@@ -1,5 +1,5 @@
 import { updateTemporaryMessage } from '../ui_handlers/message.js';
-import { getHandle, verifyPermission } from '../file_system_manager.js';
+import { getHandles, verifyPermission } from '../file_system_manager.js';
 import { extractCodeWithFallback } from './robust_fallback.js';
 import { generateUndoScript } from './undo_generator.js';
 import { executeFileSystemScript } from './script_executor.js';
@@ -12,12 +12,17 @@ import { executeFileSystemScript } from './script_executor.js';
  * @returns {Promise<string>} A status message upon completion.
  */
 export async function handleJsDeployment(profile, fromShortcut = false, hostname = null) {
-    const handle = await getHandle(profile.id);
-    if (!handle) {
+    const folderCount = (profile.jsProjectFolderNames || []).length || 1;
+    const handles = await getHandles(profile.id, folderCount);
+    const validHandles = handles.filter(Boolean);
+
+    if (validHandles.length === 0) {
         throw new Error('Please select a project folder first to deploy code.');
     }
-     if (!(await verifyPermission(handle))) {
-        throw new Error('Permission to folder lost. Please select it again.');
+    for (const handle of validHandles) {
+        if (!(await verifyPermission(handle))) {
+            throw new Error(`Permission to folder '${handle.name}' lost. Please select it again.`);
+        }
     }
 
     const { codeToDeploy, usedFallback } = await extractCodeWithFallback(profile, fromShortcut, hostname);
@@ -27,10 +32,10 @@ export async function handleJsDeployment(profile, fromShortcut = false, hostname
     }
     
     if (!fromShortcut) updateTemporaryMessage(profile.id, 'Generating undo script...');
-    const undoScript = await generateUndoScript(handle, codeToDeploy);
+    const undoScript = await generateUndoScript(validHandles, codeToDeploy);
 
     if (!fromShortcut) updateTemporaryMessage(profile.id, 'Deploying code locally...');
-    const { errors, log } = await executeFileSystemScript(handle, codeToDeploy, profile.tolerateErrors !== false);
+    const { errors, log } = await executeFileSystemScript(validHandles, codeToDeploy, profile.tolerateErrors !== false);
     
     const undoKey = `undo_stack_${profile.id}`;
     const redoKey = `redo_stack_${profile.id}`;

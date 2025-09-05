@@ -1,6 +1,6 @@
 import { loadData, saveData } from '../../storage.js';
 import { updateAndSaveMessage } from '../message.js';
-import { forgetHandle } from '../../file_system_manager.js';
+import { forgetAllHandlesForProfile } from '../../file_system_manager.js';
 
 export function handleArchiveProfile(event, reRenderCallback) {
     const id = parseInt(event.currentTarget.dataset.id);
@@ -33,13 +33,13 @@ export function handleDirectPermanentDeleteProfile(event, reRenderCallback) {
         const profileToDeleteIndex = profiles.findIndex(p => p.id === id);
         if (profileToDeleteIndex === -1) return;
 
-        forgetHandle(id); // Clean up IndexedDB
+        forgetAllHandlesForProfile(id); // Clean up IndexedDB
         const updatedProfiles = profiles.filter(p => p.id !== id);
         
         let newActiveProfileId = activeProfileId;
         if (activeProfileId === id) {
             const newIndex = Math.max(0, profileToDeleteIndex - 1);
-            newActiveProfileId = updatedProfiles[newIndex].id;
+            newActiveProfileId = updatedProfiles.length > 0 ? updatedProfiles[newIndex].id : null;
         }
         
         saveData(updatedProfiles, newActiveProfileId, archivedProfiles);
@@ -66,7 +66,7 @@ export function handleRestoreProfile(event, reRenderCallback) {
 export function handlePermanentDeleteProfile(event, reRenderCallback) {
     const id = parseInt(event.currentTarget.dataset.id);
     loadData((profiles, activeProfileId, archivedProfiles) => {
-        forgetHandle(id); // Clean up IndexedDB
+        forgetAllHandlesForProfile(id); // Clean up IndexedDB
         const updatedArchivedProfiles = archivedProfiles.filter(p => p.id !== id);
         saveData(profiles, activeProfileId, updatedArchivedProfiles);
         reRenderCallback(profiles, activeProfileId, archivedProfiles);

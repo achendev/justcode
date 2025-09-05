@@ -1,5 +1,5 @@
 import { updateAndSaveMessage, updateTemporaryMessage } from './ui_handlers/message.js';
-import { getHandle, verifyPermission } from './file_system_manager.js';
+import { getHandles, verifyPermission } from './file_system_manager.js';
 import { executeFileSystemScript } from './deploy_code/script_executor.js';
 import { refreshUndoRedoCounts } from './ui.js';
 import { handleServerError } from './ui_handlers/server_error_handler.js';
@@ -30,13 +30,22 @@ async function moveBetweenStacks(profileId, fromStackType, toStackType) {
 
 // --- Strategy-Specific Handlers ---
 async function handleJsStackAction(profile, fromShortcut, action) {
-    const handle = await getHandle(profile.id);
+    const folderCount = (profile.jsProjectFolderNames || []).length || 1;
+    const handles = await getHandles(profile.id, folderCount);
+    const validHandles = handles.filter(Boolean);
     const actionName = action.name.charAt(0).toUpperCase() + action.name.slice(1);
 
-    if (!handle || !(await verifyPermission(handle))) {
+    if (validHandles.length === 0) {
         const msg = { text: `Error: Project folder access is required for ${actionName}.`, type: 'error' };
         if (!fromShortcut) updateAndSaveMessage(profile.id, msg.text, msg.type);
         return msg;
+    }
+    for (const handle of validHandles) {
+        if (!(await verifyPermission(handle))) {
+            const msg = { text: `Error: Permission to folder '${handle.name}' lost.`, type: 'error' };
+            if (!fromShortcut) updateAndSaveMessage(profile.id, msg.text, msg.type);
+            return msg;
+        }
     }
 
     try {
@@ -50,7 +59,7 @@ async function handleJsStackAction(profile, fromShortcut, action) {
         }
 
         const scriptToRun = action.name === 'undo' ? item.undoScript : item.redoScript;
-        await executeFileSystemScript(handle, scriptToRun, profile.tolerateErrors !== false);
+        await executeFileSystemScript(validHandles, scriptToRun, profile.tolerateErrors !== false);
         
         const msg = { text: action.successMessage, type: 'success' };
         if (!fromShortcut) updateAndSaveMessage(profile.id, msg.text, msg.type);

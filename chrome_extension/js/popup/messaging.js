@@ -1,5 +1,6 @@
 import { updateFolderName } from '../ui.js';
 import { updateAndSaveMessage } from '../ui_handlers/message.js';
+import { loadData, saveData } from '../storage.js';
 
 export function initializeMessaging(reRender) {
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -8,7 +9,14 @@ export function initializeMessaging(reRender) {
 
         switch (message.type) {
             case "folderSelected":
-                updateFolderName(message.profileId, message.folderName);
+                loadData((profiles, activeProfileId, archivedProfiles) => {
+                    const profile = profiles.find(p => p.id === message.profileId);
+                    if (profile && profile.jsProjectFolderNames[message.index] !== undefined) {
+                        profile.jsProjectFolderNames[message.index] = message.folderName;
+                        saveData(profiles, activeProfileId, archivedProfiles);
+                    }
+                });
+                updateFolderName(message.profileId, message.index, message.folderName);
                 updateAndSaveMessage(message.profileId, `Folder '${message.folderName}' access granted.`, 'success');
                 break;
             

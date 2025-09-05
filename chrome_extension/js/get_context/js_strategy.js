@@ -1,4 +1,4 @@
-import { getHandle, verifyPermission } from '../file_system_manager.js';
+import { getHandles, verifyPermission } from '../file_system_manager.js';
 import { scanDirectory } from '../context_builder/file_scanner.js';
 import { buildTree, buildTreeWithCounts } from '../context_builder/tree_builder.js';
 import { pasteIntoLLM, uploadContextAsFile, uploadInstructionsAsFile } from '../context_builder/llm_interface.js';
@@ -6,23 +6,38 @@ import { formatContextPrompt, buildFileContentString, getInstructionsBlock } fro
 import { formatExclusionPrompt } from '../exclusion_prompt.js';
 import { writeToClipboard } from '../utils/clipboard.js';
 
-export async function getContextFromJS(profile, fromShortcut, hostname) {
-    const handle = await getHandle(profile.id);
-    if (!handle) {
-        return { text: 'Error: Please select a project folder first.', type: 'error' };
+async function getVerifiedHandles(profile) {
+    const folderCount = (profile.jsProjectFolderNames || []).length || 1;
+    const allHandles = await getHandles(profile.id, folderCount);
+    const verifiedHandles = [];
+    for (const handle of allHandles) {
+        if (handle && await verifyPermission(handle)) {
+            verifiedHandles.push(handle);
+        }
     }
-    if (!(await verifyPermission(handle))) {
-        return { text: 'Error: Permission to folder lost. Please select it again.', type: 'error' };
+    return verifiedHandles;
+}
+
+export async function getContextFromJS(profile, fromShortcut, hostname) {
+    const handles = await getVerifiedHandles(profile);
+    if (handles.length === 0) {
+        return { text: 'Error: Please select a project folder with granted permissions.', type: 'error' };
     }
 
     try {
+        const isMultiProject = handles.length > 1;
         const excludePatterns = (profile.excludePatterns || '').split(',').map(p => p.trim()).filter(Boolean);
         const includePatterns = (profile.includePatterns || '').split(',').map(p => p.trim()).filter(Boolean);
         const contextSizeLimit = profile.contextSizeLimit || 3000000;
 
-        const allFileStats = await scanDirectory(handle, { excludePatterns, includePatterns });
+        const scanResults = await Promise.all(handles.map(h => scanDirectory(h, { excludePatterns, includePatterns })));
         
-        // Removed check for allFileStats.length === 0 to allow empty project contexts.
+        const allFileStats = scanResults.flatMap((stats, index) => 
+            stats.map(s => ({
+                ...s,
+                path: isMultiProject ? `${index}/${s.path}` : s.path
+            }))
+        );
 
         const totalChars = allFileStats.reduce((acc, f) => acc + f.chars, 0);
 
@@ -33,7 +48,7 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
 
         const filePaths = allFileStats.map(s => s.path);
         const treeString = buildTree(filePaths);
-        const contentString = await buildFileContentString(handle, filePaths);
+        const contentString = await buildFileContentString(handles, filePaths);
         
         const finalPrompt = formatContextPrompt(treeString, contentString, profile);
         const { instructionsBlock, codeBlockDelimiter } = getInstructionsBlock(profile);
@@ -45,13 +60,11 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
             return { text: 'Context copied to clipboard!', type: 'success' };
         }
     
-        // If context is pasted as text, separation logic does not apply. Paste everything.
         if (!profile.contextAsFile) {
             await pasteIntoLLM(finalPrompt, {}, hostname);
             return { text: 'Context loaded successfully!', type: 'success' };
         }
     
-        // Context is being sent as a file. Handle instruction separation.
         switch (profile.separateInstructions) {
             case 'include':
                 await uploadContextAsFile(finalPrompt, hostname);
@@ -82,15 +95,23 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
 }
 
 export async function getExclusionSuggestionFromJS(profile, fromShortcut = false, hostname = null) {
-    const handle = await getHandle(profile.id);
-    if (!handle || !(await verifyPermission(handle))) {
+    const handles = await getVerifiedHandles(profile);
+    if (handles.length === 0) {
         return { text: 'Error: Folder not selected or permission lost.', type: 'error' };
     }
     
+    const isMultiProject = handles.length > 1;
     const excludePatterns = (profile.excludePatterns || '').split(',').map(p => p.trim()).filter(Boolean);
     const includePatterns = (profile.includePatterns || '').split(',').map(p => p.trim()).filter(Boolean);
 
-    const allFileStats = await scanDirectory(handle, { excludePatterns, includePatterns });
+    const scanResults = await Promise.all(handles.map(h => scanDirectory(h, { excludePatterns, includePatterns })));
+    const allFileStats = scanResults.flatMap((stats, index) => 
+        stats.map(s => ({
+            ...s,
+            path: isMultiProject ? `${index}/${s.path}` : s.path
+        }))
+    );
+
     const { treeString, totalChars } = buildTreeWithCounts(allFileStats);
     
     const prompt = formatExclusionPrompt({ treeString, totalChars, profile });
