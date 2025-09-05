@@ -13,7 +13,7 @@
     font-size: 0.875rem;
     transition: background-color 0.3s, color 0.3s, border-color 0.2s;
     white-space: nowrap;
-    cursor: grab;
+    cursor: pointer;
 }
 .nav-link.active {
     border-bottom: none;
