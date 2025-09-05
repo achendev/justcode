@@ -1,4 +1,5 @@
 import { extractCodeWithFallback } from './robust_fallback.js';
+import { applyReplacements } from '../utils/two_way_sync.js';
 
 /**
  * Handles the deployment process for the server backend.
@@ -13,10 +14,14 @@ export async function handleServerDeployment(profile, fromShortcut = false, host
         throw new Error('Please enter at least one project path.');
     }
     
-    const { codeToDeploy, usedFallback } = await extractCodeWithFallback(profile, fromShortcut, hostname);
+    let { codeToDeploy, usedFallback } = await extractCodeWithFallback(profile, fromShortcut, hostname);
 
     if (!codeToDeploy) {
         throw new Error('No valid deploy script found on page or in clipboard.');
+    }
+
+    if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
+        codeToDeploy = applyReplacements(codeToDeploy, profile.twoWaySyncRules, 'incoming');
     }
 
     const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;

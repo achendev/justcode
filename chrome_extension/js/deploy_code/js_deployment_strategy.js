@@ -3,6 +3,7 @@ import { getHandles, verifyPermission } from '../file_system_manager.js';
 import { extractCodeWithFallback } from './robust_fallback.js';
 import { generateUndoScript } from './undo_generator.js';
 import { executeFileSystemScript } from './script_executor.js';
+import { applyReplacements } from '../utils/two_way_sync.js';
 
 /**
  * Handles the deployment process for the JS (File System Access API) backend.
@@ -32,10 +33,14 @@ export async function handleJsDeployment(profile, fromShortcut = false, hostname
         }
     }
 
-    const { codeToDeploy, usedFallback } = await extractCodeWithFallback(profile, fromShortcut, hostname);
+    let { codeToDeploy, usedFallback } = await extractCodeWithFallback(profile, fromShortcut, hostname);
 
     if (!codeToDeploy) {
         throw new Error('No valid deploy script found on page or in clipboard.');
+    }
+    
+    if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
+        codeToDeploy = applyReplacements(codeToDeploy, profile.twoWaySyncRules, 'incoming');
     }
     
     if (!fromShortcut) updateTemporaryMessage(profile.id, 'Generating undo script...');

@@ -103,3 +103,22 @@ export function handleBackendToggle(event, reRenderCallback) {
         }
     });
 }
+
+export function handleTwoWaySyncToggle(event) {
+    const id = parseInt(event.target.dataset.id);
+    const isChecked = event.target.checked;
+    
+    const profileCard = document.getElementById(`profile-${id}`);
+    const textarea = profileCard.querySelector('.two-way-sync-rules');
+    if (textarea) {
+        textarea.disabled = !isChecked;
+    }
+
+    loadData((profiles, activeProfileId, archivedProfiles) => {
+        const profile = profiles.find(p => p.id === id);
+        if (profile) {
+            profile.isTwoWaySyncEnabled = isChecked;
+            saveData(profiles, activeProfileId, archivedProfiles);
+        }
+    });
+}

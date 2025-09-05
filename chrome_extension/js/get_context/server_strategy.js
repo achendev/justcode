@@ -4,6 +4,7 @@ import { getInstructionsBlock } from '../context_builder/prompt_formatter.js';
 import { formatExclusionPrompt } from '../exclusion_prompt.js';
 import { handleServerError } from '../ui_handlers/server_error_handler.js';
 import { writeToClipboard } from '../utils/clipboard.js';
+import { applyReplacements } from '../utils/two_way_sync.js';
 
 export async function getContextFromServer(profile, fromShortcut, hostname) {
     const paths = profile.projectPaths;
@@ -52,36 +53,43 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
         const fileContextBlock = `This is current state of project files:\n${codeBlockDelimiter}bash\n${fileContextPayload}${codeBlockDelimiter}`;
         const finalPrompt = `${fileContextBlock}\n\n\n${instructionsBlock}\n\n\n \n`;
 
+        const process = (text) => {
+            if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
+                return applyReplacements(text, profile.twoWaySyncRules, 'outgoing');
+            }
+            return text;
+        };
+
         if (profile.getContextTarget === 'clipboard') {
-            await writeToClipboard(finalPrompt);
+            await writeToClipboard(process(finalPrompt));
             return { text: 'Context copied to clipboard!', type: 'success' };
         }
         
         if (!profile.contextAsFile) {
-            await pasteIntoLLM(finalPrompt, {}, hostname);
+            await pasteIntoLLM(process(finalPrompt), {}, hostname);
             return { text: 'Context loaded successfully!', type: 'success' };
         }
     
         switch (profile.separateInstructions) {
             case 'include':
-                await uploadContextAsFile(finalPrompt, hostname);
+                await uploadContextAsFile(process(finalPrompt), hostname);
                 return { text: 'Context uploaded as file!', type: 'success' };
             
             case 'text':
                 const promptForPasting = `The project context is in the attached file \`context.txt\`. Please use it to fulfill the task described below.\n\n${instructionsBlock}\n\n\n \n`;
-                await uploadContextAsFile(fileContextBlock, hostname);
-                await pasteIntoLLM(promptForPasting, { isInstruction: true }, hostname);
+                await uploadContextAsFile(process(fileContextBlock), hostname);
+                await pasteIntoLLM(process(promptForPasting), { isInstruction: true }, hostname);
                 return { text: 'Context uploaded as file, instructions pasted!', type: 'success' };
                 
             case 'file':
                 const chaperonePrompt = `The project context is in the attached file \`context.txt\`.\nThe critical instructions for how to respond are in the attached file \`instructions.txt\`.\nYou MUST follow these instructions to fulfill the task described below.\n\n\n \n`;
-                await uploadContextAsFile(fileContextBlock, hostname);
-                await uploadInstructionsAsFile(instructionsBlock, hostname);
-                await pasteIntoLLM(chaperonePrompt, { isInstruction: true }, hostname);
+                await uploadContextAsFile(process(fileContextBlock), hostname);
+                await uploadInstructionsAsFile(process(instructionsBlock), hostname);
+                await pasteIntoLLM(process(chaperonePrompt), { isInstruction: true }, hostname);
                 return { text: 'Context & instructions uploaded as files!', type: 'success' };
     
             default: // Fallback to 'include'
-                await uploadContextAsFile(finalPrompt, hostname);
+                await uploadContextAsFile(process(finalPrompt), hostname);
                 return { text: 'Context uploaded as file!', type: 'success' };
         }
 
@@ -124,12 +132,16 @@ export async function getExclusionSuggestionFromServer(profile, fromShortcut = f
         }
         
         const data = await response.json();
-        const prompt = formatExclusionPrompt({
+        let prompt = formatExclusionPrompt({
             treeString: data.treeString,
             totalChars: data.totalChars,
             profile: profile
         });
         
+        if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
+            prompt = applyReplacements(prompt, profile.twoWaySyncRules, 'outgoing');
+        }
+
         if (profile.getContextTarget === 'clipboard') {
             await writeToClipboard(prompt);
             return { text: 'Exclusion suggestion prompt copied!', type: 'success' };

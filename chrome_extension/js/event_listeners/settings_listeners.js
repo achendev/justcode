@@ -63,4 +63,12 @@ export function attachSettingsEventListeners(reRenderCallback) {
     document.querySelectorAll('.post-deploy-script').forEach(textarea => {
         textarea.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'postDeployScript'));
     });
+
+    // --- Two-way sync settings ---
+    document.querySelectorAll('.two-way-sync-enabled').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => settingsHandlers.handleTwoWaySyncToggle(e));
+    });
+    document.querySelectorAll('.two-way-sync-rules').forEach(textarea => {
+        textarea.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'twoWaySyncRules'));
+    });
 }
