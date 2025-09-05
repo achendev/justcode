@@ -70,6 +70,7 @@
         "*://*.x.com/*",
         "*://*.perplexity.ai/*",
         "*://*.gemini.google.com/*",
-        "*://*.chatgpt.com/*"
+        "*://*.chatgpt.com/*",
+        "*://*.claude.ai/*"
     ]
 }

@@ -2,6 +2,7 @@ import { pasteAsFile } from './paste_handlers/file_uploader.js';
 import { pasteChatGPT, pasteAsFileChatGPT } from './paste_handlers/chatgpt.js';
 import { pasteGemini } from './paste_handlers/gemini.js';
 import { pastePerplexity } from './paste_handlers/perplexity.js';
+import { pasteClaude } from './paste_handlers/claude.js';
 import { pasteFallback } from './paste_handlers/fallback.js';
 
 // Internal helper to avoid duplication
@@ -64,6 +65,8 @@ export async function pasteIntoLLM(text, options = {}, hostname = null) {
         pasteFunc = pasteGemini;
     } else if (hostname.includes('perplexity.ai')) {
         pasteFunc = pastePerplexity;
+    } else if (hostname.includes('claude.ai')) {
+        pasteFunc = pasteClaude;
     } else {
         pasteFunc = pasteFallback;
     }
