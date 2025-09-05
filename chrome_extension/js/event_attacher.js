@@ -10,8 +10,10 @@ export function attachAllEventListeners(reRenderCallback) {
     attachArchiveEventListeners(reRenderCallback);
     attachSettingsEventListeners(reRenderCallback); // Contains the backend-toggle which needs re-render
 
+    // Listeners that may require a re-render
+    attachInputEventListeners(reRenderCallback);
+    
     // Listeners that don't require a re-render
-    attachInputEventListeners();
     attachActionEventListeners();
     attachMessageEventListeners();
 }

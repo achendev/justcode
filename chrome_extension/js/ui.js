@@ -38,15 +38,16 @@ async function refreshUndoRedoCountsServer(profile) {
     const undoBtn = document.querySelector(`.undo-code[data-id='${profile.id}']`);
     const redoBtn = document.querySelector(`.redo-code[data-id='${profile.id}']`);
 
-    if (!profile.projectPath) {
+    if (!profile.projectPaths || !profile.projectPaths.some(p => p && p.trim())) {
         if (undoBtn) undoBtn.disabled = true;
         if (redoBtn) redoBtn.disabled = true;
         return;
     }
     
+    const pathParams = profile.projectPaths.map(p => `path=${encodeURIComponent(p)}`).join('&');
     const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
-    const undoEndpoint = `${serverUrl}/undo?path=${encodeURIComponent(profile.projectPath)}`;
-    const redoEndpoint = `${serverUrl}/redo?path=${encodeURIComponent(profile.projectPath)}`;
+    const undoEndpoint = `${serverUrl}/undo?${pathParams}`;
+    const redoEndpoint = `${serverUrl}/redo?${pathParams}`;
     
     let undoCount = 0;
     let redoCount = 0;

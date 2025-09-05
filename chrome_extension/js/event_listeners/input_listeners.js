@@ -1,7 +1,7 @@
 import * as inputHandlers from '../ui_handlers/inputs.js';
 import * as folderHandlers from '../ui_handlers/folder.js';
 
-export function attachInputEventListeners() {
+export function attachInputEventListeners(reRenderCallback) {
     // --- JS Mode ---
     document.querySelectorAll('.select-project-folder').forEach(button => {
         button.addEventListener('click', folderHandlers.handleSelectFolder);
@@ -12,7 +12,13 @@ export function attachInputEventListeners() {
 
     // --- Server Mode ---
      document.querySelectorAll('.project-path').forEach(input => {
-        input.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'projectPath'));
+        input.addEventListener('change', (e) => inputHandlers.handleProjectPathChange(e));
+    });
+    document.querySelectorAll('.add-project-path').forEach(button => {
+        button.addEventListener('click', (e) => inputHandlers.handleAddProjectPath(e, reRenderCallback));
+    });
+    document.querySelectorAll('.remove-project-path').forEach(button => {
+        button.addEventListener('click', (e) => inputHandlers.handleRemoveProjectPath(e, reRenderCallback));
     });
 
     // --- Common ---

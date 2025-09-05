@@ -68,7 +68,8 @@ async function handleJsStackAction(profile, fromShortcut, action) {
 async function handleServerStackAction(profile, fromShortcut, action) {
     const actionName = action.name.charAt(0).toUpperCase() + action.name.slice(1);
 
-    if (!profile.projectPath) {
+    const paths = profile.projectPaths;
+    if (!paths || paths.length === 0 || !paths.some(p => p && p.trim())) {
         const msg = { text: `Error: Project path is required for ${actionName}.`, type: 'error' };
         if (!fromShortcut) updateAndSaveMessage(profile.id, msg.text, msg.type);
         return msg;
@@ -79,7 +80,8 @@ async function handleServerStackAction(profile, fromShortcut, action) {
         
         const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
         const tolerateErrors = profile.tolerateErrors !== false;
-        const endpoint = `${serverUrl}/${action.name}?path=${encodeURIComponent(profile.projectPath)}&tolerateErrors=${tolerateErrors}`;
+        const pathParams = paths.map(p => `path=${encodeURIComponent(p)}`).join('&');
+        const endpoint = `${serverUrl}/${action.name}?${pathParams}&tolerateErrors=${tolerateErrors}`;
 
         const headers = { 'Content-Type': 'text/plain' };
         if (profile.isAuthEnabled && profile.username) {

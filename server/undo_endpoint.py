@@ -6,15 +6,16 @@ from .tools.history_manager import get_sorted_stack_timestamps, get_history_dir
 from .tools.script_executor import execute_script
 
 def undo(): # This is the UNDO action
-    path = request.args.get('path')
-    if not path or not path.strip():
+    paths = request.args.getlist('path')
+    if not paths or not any(p.strip() for p in paths):
         return Response("Error: 'path' parameter is missing.", status=400, mimetype='text/plain')
     
-    project_path = os.path.abspath(path.strip())
-    if not os.path.isdir(project_path):
-        return Response(f"Error: Provided path '{project_path}' is not a valid directory.", status=400, mimetype='text/plain')
+    project_paths = [os.path.abspath(p.strip()) for p in paths if p.strip()]
+    for p_path in project_paths:
+        if not os.path.isdir(p_path):
+            return Response(f"Error: Provided path '{p_path}' is not a valid directory.", status=400, mimetype='text/plain')
 
-    all_undo_timestamps = get_sorted_stack_timestamps(project_path, 'undo')
+    all_undo_timestamps = get_sorted_stack_timestamps(project_paths, 'undo')
 
     if request.method == 'GET':
         return Response(str(len(all_undo_timestamps)), mimetype='text/plain')
@@ -26,8 +27,8 @@ def undo(): # This is the UNDO action
 
         latest_timestamp = all_undo_timestamps[-1]
         
-        undo_stack_dir = get_history_dir(project_path, 'undo')
-        redo_stack_dir = get_history_dir(project_path, 'redo')
+        undo_stack_dir = get_history_dir(project_paths, 'undo')
+        redo_stack_dir = get_history_dir(project_paths, 'redo')
 
         undo_script_path = os.path.join(undo_stack_dir, f"{latest_timestamp}.sh")
         redo_script_path = os.path.join(undo_stack_dir, f"{latest_timestamp}.redo")
@@ -39,7 +40,7 @@ def undo(): # This is the UNDO action
             script_content = f.read()
         
         try:
-            output_log, error_log = execute_script(script_content, project_path, tolerate_errors)
+            output_log, error_log = execute_script(script_content, project_paths, tolerate_errors)
             
             # Move the script pair to the redo stack
             shutil.move(undo_script_path, os.path.join(redo_stack_dir, f"{latest_timestamp}.sh"))

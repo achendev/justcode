@@ -8,9 +8,9 @@ import { extractCodeWithFallback } from './robust_fallback.js';
  * @returns {Promise<string>} A status message upon completion.
  */
 export async function handleServerDeployment(profile, fromShortcut = false, hostname = null) {
-    const path = profile.projectPath;
-    if (!path) {
-        throw new Error('Please enter a project path.');
+    const paths = profile.projectPaths;
+    if (!paths || paths.length === 0 || !paths.some(p => p && p.trim())) {
+        throw new Error('Please enter at least one project path.');
     }
     
     const { codeToDeploy, usedFallback } = await extractCodeWithFallback(profile, fromShortcut, hostname);
@@ -24,7 +24,8 @@ export async function handleServerDeployment(profile, fromShortcut = false, host
     
     const settings = await chrome.storage.local.get({ showVerboseDeployLog: true, hideErrorsOnSuccess: true });
     
-    let endpoint = `${serverUrl}/deploycode?path=${encodeURIComponent(path)}&tolerateErrors=${tolerateErrors}&verbose=${settings.showVerboseDeployLog}&hideErrorsOnSuccess=${settings.hideErrorsOnSuccess}`;
+    const pathParams = paths.map(p => `path=${encodeURIComponent(p)}`).join('&');
+    let endpoint = `${serverUrl}/deploycode?${pathParams}&tolerateErrors=${tolerateErrors}&verbose=${settings.showVerboseDeployLog}&hideErrorsOnSuccess=${settings.hideErrorsOnSuccess}`;
     
     if (profile.runScriptOnDeploy && profile.postDeployScript) {
         endpoint += `&runScript=true&scriptToRun=${encodeURIComponent(profile.postDeployScript)}`;

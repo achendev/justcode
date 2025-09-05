@@ -30,7 +30,7 @@ export function loadData(callback) {
                 // Mode toggle
                 useServerBackend: false,
                 // Server-specific fields
-                projectPath: '',
+                projectPaths: [''],
                 serverUrl: defaultServerUrl,
                 isAuthEnabled: false,
                 username: '',
@@ -63,6 +63,13 @@ export function loadData(callback) {
                 needsSave = true;
             }
 
+            // Migration from projectPath to projectPaths
+            if (profile.projectPath !== undefined) {
+                profile.projectPaths = Array.isArray(profile.projectPath) ? profile.projectPath : [profile.projectPath];
+                delete profile.projectPath;
+                needsSave = true;
+            }
+
             // Remove obsolete fields
             if (profile.duplicateInstructions !== undefined) {
                 delete profile.duplicateInstructions;
@@ -74,7 +81,7 @@ export function loadData(callback) {
             if (profile.deployCodeSource === undefined) { profile.deployCodeSource = 'ui'; needsSave = true; }
             if (profile.deployFromFullAnswer === undefined) { profile.deployFromFullAnswer = false; needsSave = true; }
             if (profile.useServerBackend === undefined) { profile.useServerBackend = true; needsSave = true; }
-            if (profile.projectPath === undefined) { profile.projectPath = ''; needsSave = true; }
+            if (profile.projectPaths === undefined) { profile.projectPaths = ['']; needsSave = true; }
             if (profile.serverUrl === undefined) { profile.serverUrl = defaultServerUrl; needsSave = true; }
             if (profile.isAuthEnabled === undefined) { profile.isAuthEnabled = false; needsSave = true; }
             if (profile.username === undefined) { profile.username = ''; needsSave = true; }

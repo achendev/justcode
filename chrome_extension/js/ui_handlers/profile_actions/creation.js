@@ -23,7 +23,7 @@ export function handleAddProfile(reRenderCallback) {
             // Mode toggle
             useServerBackend: false,
             // Server-specific fields
-            projectPath: '',
+            projectPaths: [''],
             serverUrl: 'http://127.0.0.1:5010',
             isAuthEnabled: false,
             username: '',

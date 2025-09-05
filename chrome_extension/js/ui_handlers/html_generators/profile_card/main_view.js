@@ -20,7 +20,7 @@ export function getMainViewHTML(profile) {
 
         <!-- Project Path/Folder Selection -->
         <div class="mb-2">
-            <label class="form-label">Project Location:</label>
+            <label class="form-label">Project Location(s):</label>
             <div class="d-flex gap-2">
                 <!-- JS Mode -->
                 <div class="input-group input-group-sm js-mode-item flex-grow-1">
@@ -31,9 +31,21 @@ export function getMainViewHTML(profile) {
                     <button class="btn btn-outline-secondary forget-project-folder" id="forgetProjectFolder-${profile.id}" data-id="${profile.id}" title="Forget this folder" style="display: none;"><i class="bi bi-x-lg"></i></button>
                 </div>
                 <!-- Server Mode -->
-                <div class="input-group input-group-sm server-mode-item flex-grow-1">
-                    <button class="btn btn-outline-secondary copy-profile" type="button" data-id="${profile.id}" title="Copy Profile"><i class="bi bi-copy"></i></button>
-                    <input type="text" class="form-control project-path" id="projectPath-${profile.id}" placeholder="/path/to/project" value="${profile.projectPath}">
+                <div class="server-mode-item flex-grow-1">
+                    <div id="projectPathsContainer-${profile.id}" class="d-flex flex-column gap-1">
+                        ${(profile.projectPaths || ['']).map((path, index) => `
+                            <div class="input-group input-group-sm">
+                                ${index === 0 ? `
+                                    <button class="btn btn-outline-secondary copy-profile" type="button" data-id="${profile.id}" title="Copy Profile"><i class="bi bi-copy"></i></button>
+                                    <button class="btn btn-outline-success add-project-path" type="button" data-id="${profile.id}" title="Add another project path"><i class="bi bi-plus-lg"></i></button>
+                                ` : `<span class="input-group-text">${index}</span>`}
+                                <input type="text" class="form-control project-path" data-id="${profile.id}" data-index="${index}" placeholder="/path/to/project" value="${path}">
+                                ${profile.projectPaths.length > 1 ? `
+                                    <button class="btn btn-outline-danger remove-project-path" type="button" data-id="${profile.id}" data-index="${index}" title="Remove Path"><i class="bi bi-dash-lg"></i></button>
+                                ` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
                 </div>
                 <!-- Backend Toggle Button -->
                 <button class="btn btn-outline-secondary btn-sm backend-toggle-btn" type="button" data-id="${profile.id}" title="Switch to ${profile.useServerBackend ? 'Browser (JS) Backend' : 'Server Backend'}">

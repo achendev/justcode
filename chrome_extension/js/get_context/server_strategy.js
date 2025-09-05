@@ -6,9 +6,9 @@ import { handleServerError } from '../ui_handlers/server_error_handler.js';
 import { writeToClipboard } from '../utils/clipboard.js';
 
 export async function getContextFromServer(profile, fromShortcut, hostname) {
-    const path = profile.projectPath;
-    if (!path) {
-        return { text: 'Error: Please enter a project path.', type: 'error' };
+    const paths = profile.projectPaths;
+    if (!paths || paths.length === 0 || !paths.some(p => p && p.trim())) {
+        return { text: 'Error: Please enter at least one project path.', type: 'error' };
     }
 
     const excludePatterns = profile.excludePatterns || '';
@@ -16,7 +16,9 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
     const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
     const contextSizeLimit = profile.contextSizeLimit || 3000000;
     
-    let endpoint = `${serverUrl}/getcontext?path=${encodeURIComponent(path)}&exclude=${encodeURIComponent(excludePatterns)}&limit=${contextSizeLimit}`;
+    const pathParams = paths.map(p => `path=${encodeURIComponent(p)}`).join('&');
+    let endpoint = `${serverUrl}/getcontext?${pathParams}&exclude=${encodeURIComponent(excludePatterns)}&limit=${contextSizeLimit}`;
+    
     if (includePatterns) {
         endpoint += `&include=${encodeURIComponent(includePatterns)}`;
     }
@@ -88,15 +90,17 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
 }
 
 export async function getExclusionSuggestionFromServer(profile, fromShortcut = false, hostname = null) {
-    const path = profile.projectPath;
-    if (!path) {
-        return { text: 'Error: Please enter a project path.', type: 'error' };
+    const paths = profile.projectPaths;
+    if (!paths || paths.length === 0 || !paths.some(p => p && p.trim())) {
+        return { text: 'Error: Please enter at least one project path.', type: 'error' };
     }
     
     const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
     const excludePatterns = profile.excludePatterns || '';
     const includePatterns = profile.includePatterns || '';
-    let endpoint = `${serverUrl}/getcontext?path=${encodeURIComponent(path)}&exclude=${encodeURIComponent(excludePatterns)}&suggest_exclusions=true`;
+    
+    const pathParams = paths.map(p => `path=${encodeURIComponent(p)}`).join('&');
+    let endpoint = `${serverUrl}/getcontext?${pathParams}&exclude=${encodeURIComponent(excludePatterns)}&suggest_exclusions=true`;
     if (includePatterns) {
         endpoint += `&include=${encodeURIComponent(includePatterns)}`;
     }

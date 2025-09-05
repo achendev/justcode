@@ -15,7 +15,7 @@ def is_binary(file_path):
     except OSError:
         return True # Cannot read, treat as binary/inaccessible
 
-def generate_context_from_path(project_path, include_patterns, exclude_patterns):
+def generate_context_from_path(project_path, include_patterns, exclude_patterns, path_prefix=None):
     """
     Generates a project context string including a file tree and file contents,
     all implemented in pure Python to avoid shell command dependencies.
@@ -64,7 +64,8 @@ def generate_context_from_path(project_path, include_patterns, exclude_patterns)
             d = d.setdefault(part, {})
         d[parts[-1]] = None
 
-    tree_lines = ["."]
+    root_label = path_prefix if path_prefix else "."
+    tree_lines = [root_label]
     def build_tree_str(d, prefix=""):
         # Sort items: directories first, then alphabetically by name
         items = sorted(d.keys(), key=lambda k: (d[k] is None, k))
@@ -88,7 +89,12 @@ def generate_context_from_path(project_path, include_patterns, exclude_patterns)
             with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
             
-            quoted_path = shlex.quote('./' + rel_path)
+            if path_prefix:
+                final_path_in_script = f"{path_prefix}/{rel_path}"
+            else:
+                final_path_in_script = './' + rel_path
+
+            quoted_path = shlex.quote(final_path_in_script)
             output_parts.append(f"cat > {quoted_path} << '{here_doc_value}'\n")
             output_parts.append(content)
             output_parts.append(f"\n{here_doc_value}\n\n") # Added extra newline for spacing
@@ -100,7 +106,7 @@ def generate_context_from_path(project_path, include_patterns, exclude_patterns)
     return "".join(output_parts).strip()
 
 
-def generate_tree_with_char_counts(project_path, include_patterns, exclude_patterns):
+def generate_tree_with_char_counts(project_path, include_patterns, exclude_patterns, path_prefix=None):
     """
     Generates a file tree string with character and line counts for each file and directory.
     Returns the formatted tree string and the total character count.
@@ -171,7 +177,8 @@ def generate_tree_with_char_counts(project_path, include_patterns, exclude_patte
     def format_stats(s_chars, s_lines):
         return f"({s_chars:,} chars, {s_lines:,} lines)"
     
-    tree_lines = [f". {format_stats(total_chars, total_lines)}"]
+    root_label = path_prefix if path_prefix else "."
+    tree_lines = [f"{root_label} {format_stats(total_chars, total_lines)}"]
 
     def build_tree_str(d, current_dir_path="", prefix=""):
         items = sorted(d.keys(), key=lambda k: (d[k] is None, k))
