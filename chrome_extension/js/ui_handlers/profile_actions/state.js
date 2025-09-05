@@ -17,8 +17,9 @@ export function handleArchiveProfile(event, reRenderCallback) {
 
         const newActiveProfileId = activeProfileId === id ? updatedProfiles[0].id : activeProfileId;
         
-        saveData(updatedProfiles, newActiveProfileId, updatedArchivedProfiles);
-        reRenderCallback(updatedProfiles, newActiveProfileId, updatedArchivedProfiles);
+        saveData(updatedProfiles, newActiveProfileId, updatedArchivedProfiles, () => {
+             reRenderCallback(updatedProfiles, newActiveProfileId, updatedArchivedProfiles);
+        });
     });
 }
 
@@ -42,8 +43,9 @@ export function handleDirectPermanentDeleteProfile(event, reRenderCallback) {
             newActiveProfileId = updatedProfiles.length > 0 ? updatedProfiles[newIndex].id : null;
         }
         
-        saveData(updatedProfiles, newActiveProfileId, archivedProfiles);
-        reRenderCallback(updatedProfiles, newActiveProfileId, archivedProfiles);
+        saveData(updatedProfiles, newActiveProfileId, archivedProfiles, () => {
+            reRenderCallback(updatedProfiles, newActiveProfileId, archivedProfiles);
+        });
     });
 }
 
@@ -58,8 +60,9 @@ export function handleRestoreProfile(event, reRenderCallback) {
         
         const newActiveProfileId = profileToRestore.id;
 
-        saveData(updatedProfiles, newActiveProfileId, updatedArchivedProfiles);
-        reRenderCallback(updatedProfiles, newActiveProfileId, updatedArchivedProfiles);
+        saveData(updatedProfiles, newActiveProfileId, updatedArchivedProfiles, () => {
+            reRenderCallback(updatedProfiles, newActiveProfileId, updatedArchivedProfiles);
+        });
     });
 }
 
@@ -68,7 +71,8 @@ export function handlePermanentDeleteProfile(event, reRenderCallback) {
     loadData((profiles, activeProfileId, archivedProfiles) => {
         forgetAllHandlesForProfile(id); // Clean up IndexedDB
         const updatedArchivedProfiles = archivedProfiles.filter(p => p.id !== id);
-        saveData(profiles, activeProfileId, updatedArchivedProfiles);
-        reRenderCallback(profiles, activeProfileId, archivedProfiles);
+        saveData(profiles, activeProfileId, updatedArchivedProfiles, () => {
+             reRenderCallback(profiles, activeProfileId, updatedArchivedProfiles);
+        });
     });
 }

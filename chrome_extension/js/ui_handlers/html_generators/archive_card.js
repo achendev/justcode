@@ -1,6 +1,14 @@
 export function getArchivedProfileHTML(profile) {
-    const location = profile.useServerBackend ? profile.projectPath : 'Local JS Mode';
-    const locationDisplay = location || 'No location set';
+    let locationDisplay = 'No location set';
+    if (profile.useServerBackend) {
+        // Use the first non-empty path for display
+        locationDisplay = (profile.projectPaths && profile.projectPaths.find(p => p)) || 'No path set';
+    } else {
+        // Use the first non-empty folder name for display
+        const folderName = (profile.jsProjectFolderNames && profile.jsProjectFolderNames.find(name => name));
+        locationDisplay = folderName ? `JS: ${folderName}` : 'JS: No folder selected';
+    }
+    
     return `
     <div class="archived-profile-card">
         <button class="btn btn-outline-success btn-sm restore-profile" data-id="${profile.id}" title="Restore Profile"><i class="bi bi-upload"></i></button>

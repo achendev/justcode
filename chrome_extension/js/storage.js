@@ -1,25 +1,83 @@
 import { defaultCriticalInstructions } from './default_instructions.js';
 
+function migrateProfile(profile) {
+    const defaultExcludePatterns = '.git/,venv/,.env,log/,*logs/,tmp/,node_modules/';
+    const defaultServerUrl = 'http://127.0.0.1:5010';
+    const defaultPostDeployScript = 'set -x\necho Deploy completed';
+    const defaultAdditionalContextScript = 'echo "Example: Get current git branch"\ngit rev-parse --abbrev-ref HEAD';
+    let changed = false;
+
+    // Migration from old boolean flags to new radio button values
+    if (profile.copyToClipboard !== undefined) {
+        profile.getContextTarget = profile.copyToClipboard ? 'clipboard' : 'ui';
+        delete profile.copyToClipboard;
+        changed = true;
+    }
+    if (profile.deployFromClipboard !== undefined) {
+        profile.deployCodeSource = profile.deployFromClipboard ? 'clipboard' : 'ui';
+        delete profile.deployFromClipboard;
+        changed = true;
+    }
+    if (profile.separateInstructionsAsFile !== undefined) {
+        profile.separateInstructions = profile.separateInstructionsAsFile ? 'file' : 'include';
+        delete profile.separateInstructionsAsFile;
+        changed = true;
+    }
+    if (profile.projectPath !== undefined) {
+        profile.projectPaths = Array.isArray(profile.projectPath) ? profile.projectPath : [profile.projectPath];
+        delete profile.projectPath;
+        changed = true;
+    }
+    if (profile.duplicateInstructions !== undefined) {
+        delete profile.duplicateInstructions;
+        changed = true;
+    }
+
+    // Standard field existence checks
+    if (profile.getContextTarget === undefined) { profile.getContextTarget = 'ui'; changed = true; }
+    if (profile.deployCodeSource === undefined) { profile.deployCodeSource = 'ui'; changed = true; }
+    if (profile.deployFromFullAnswer === undefined) { profile.deployFromFullAnswer = false; changed = true; }
+    if (profile.useServerBackend === undefined) { profile.useServerBackend = false; changed = true; }
+    if (profile.jsProjectFolderNames === undefined) { profile.jsProjectFolderNames = []; changed = true; }
+    if (profile.projectPaths === undefined) { profile.projectPaths = ['']; changed = true; }
+    if (profile.serverUrl === undefined) { profile.serverUrl = defaultServerUrl; changed = true; }
+    if (profile.isAuthEnabled === undefined) { profile.isAuthEnabled = false; changed = true; }
+    if (profile.username === undefined) { profile.username = ''; changed = true; }
+    if (profile.password === undefined) { profile.password = ''; changed = true; }
+    if (profile.excludePatterns === undefined) { profile.excludePatterns = defaultExcludePatterns; changed = true; }
+    if (profile.includePatterns === undefined) { profile.includePatterns = ''; changed = true; }
+    if (profile.contextSizeLimit === undefined) { profile.contextSizeLimit = 3000000; changed = true; }
+    if (profile.lastMessage === undefined) { profile.lastMessage = { text: '', type: 'info' }; changed = true; }
+    if (profile.criticalInstructions === undefined) { profile.criticalInstructions = defaultCriticalInstructions; changed = true; }
+    if (profile.isCriticalInstructionsEnabled === undefined) { profile.isCriticalInstructionsEnabled = false; changed = true; }
+    if (profile.codeBlockDelimiter === undefined) { profile.codeBlockDelimiter = '```'; changed = true; }
+    if (profile.tolerateErrors === undefined) { profile.tolerateErrors = true; changed = true; }
+    if (profile.contextAsFile === undefined) { profile.contextAsFile = false; changed = true; }
+    if (profile.separateInstructions === undefined) { profile.separateInstructions = 'file'; changed = true; }
+    if (profile.runScriptOnDeploy === undefined) { profile.runScriptOnDeploy = false; changed = true; }
+    if (profile.postDeployScript === undefined) { profile.postDeployScript = defaultPostDeployScript; changed = true; }
+    if (profile.gatherAdditionalContext === undefined) { profile.gatherAdditionalContext = false; changed = true; }
+    if (profile.additionalContextScript === undefined) { profile.additionalContextScript = defaultAdditionalContextScript; changed = true; }
+    
+    return changed;
+}
+
 export function loadData(callback) {
     chrome.storage.local.get(['profiles', 'activeProfileId', 'archivedProfiles'], (data) => {
-        const defaultExcludePatterns = '.git/,venv/,.env,log/,*logs/,tmp/,node_modules/';
-        const defaultServerUrl = 'http://127.0.0.1:5010';
-        const defaultPostDeployScript = 'set -x\necho Deploy completed';
-        const defaultAdditionalContextScript = 'echo "Example: Get current git branch"\ngit rev-parse --abbrev-ref HEAD';
         let profiles = data.profiles;
+        let archivedProfiles = data.archivedProfiles || [];
         let needsSave = false;
 
         if (!profiles || profiles.length === 0) {
             profiles = [{
                 id: Date.now(),
                 name: 'Default',
-                // Universal fields
-                getContextTarget: 'ui', // 'ui' or 'clipboard'
-                deployCodeSource: 'ui', // 'ui' or 'clipboard'
+                getContextTarget: 'ui',
+                deployCodeSource: 'ui',
                 deployFromFullAnswer: false,
                 contextAsFile: true,
                 separateInstructions: 'file',
-                excludePatterns: defaultExcludePatterns,
+                excludePatterns: '.git/,venv/,.env,log/,*logs/,tmp/,node_modules/',
                 includePatterns: '',
                 contextSizeLimit: 3000000,
                 isCriticalInstructionsEnabled: false,
@@ -27,82 +85,34 @@ export function loadData(callback) {
                 codeBlockDelimiter: '```',
                 tolerateErrors: true,
                 lastMessage: { text: '', type: 'info' },
-                // Mode toggle
                 useServerBackend: false,
-                // JS-specific fields
-                jsProjectFolderNames: [], // Array of folder names for display
-                // Server-specific fields
+                jsProjectFolderNames: [],
                 projectPaths: [''],
-                serverUrl: defaultServerUrl,
+                serverUrl: 'http://127.0.0.1:5010',
                 isAuthEnabled: false,
                 username: '',
                 password: '',
                 gatherAdditionalContext: false,
-                additionalContextScript: defaultAdditionalContextScript,
+                additionalContextScript: 'echo "Example: Get current git branch"\ngit rev-parse --abbrev-ref HEAD',
                 runScriptOnDeploy: false,
-                postDeployScript: defaultPostDeployScript,
+                postDeployScript: 'set -x\necho Deploy completed',
             }];
             needsSave = true;
         }
 
-        // Ensure all profiles have the latest fields
+        // Ensure all profiles, active and archived, have the latest fields
         profiles.forEach(profile => {
-            // Migration from old boolean flags to new radio button values
-            if (profile.copyToClipboard !== undefined) {
-                profile.getContextTarget = profile.copyToClipboard ? 'clipboard' : 'ui';
-                delete profile.copyToClipboard;
+            if (migrateProfile(profile)) {
                 needsSave = true;
             }
-            if (profile.deployFromClipboard !== undefined) {
-                profile.deployCodeSource = profile.deployFromClipboard ? 'clipboard' : 'ui';
-                delete profile.deployFromClipboard;
+        });
+        archivedProfiles.forEach(profile => {
+            if (migrateProfile(profile)) {
                 needsSave = true;
             }
-            if (profile.separateInstructionsAsFile !== undefined) {
-                profile.separateInstructions = profile.separateInstructionsAsFile ? 'file' : 'include';
-                delete profile.separateInstructionsAsFile;
-                needsSave = true;
-            }
-            if (profile.projectPath !== undefined) {
-                profile.projectPaths = Array.isArray(profile.projectPath) ? profile.projectPath : [profile.projectPath];
-                delete profile.projectPath;
-                needsSave = true;
-            }
-            if (profile.duplicateInstructions !== undefined) {
-                delete profile.duplicateInstructions;
-                needsSave = true;
-            }
-
-            // Standard field existence checks
-            if (profile.getContextTarget === undefined) { profile.getContextTarget = 'ui'; needsSave = true; }
-            if (profile.deployCodeSource === undefined) { profile.deployCodeSource = 'ui'; needsSave = true; }
-            if (profile.deployFromFullAnswer === undefined) { profile.deployFromFullAnswer = false; needsSave = true; }
-            if (profile.useServerBackend === undefined) { profile.useServerBackend = false; needsSave = true; }
-            if (profile.jsProjectFolderNames === undefined) { profile.jsProjectFolderNames = []; needsSave = true; }
-            if (profile.projectPaths === undefined) { profile.projectPaths = ['']; needsSave = true; }
-            if (profile.serverUrl === undefined) { profile.serverUrl = defaultServerUrl; needsSave = true; }
-            if (profile.isAuthEnabled === undefined) { profile.isAuthEnabled = false; needsSave = true; }
-            if (profile.username === undefined) { profile.username = ''; needsSave = true; }
-            if (profile.password === undefined) { profile.password = ''; needsSave = true; }
-            if (profile.excludePatterns === undefined) { profile.excludePatterns = defaultExcludePatterns; needsSave = true; }
-            if (profile.includePatterns === undefined) { profile.includePatterns = ''; needsSave = true; }
-            if (profile.contextSizeLimit === undefined) { profile.contextSizeLimit = 3000000; needsSave = true; }
-            if (profile.lastMessage === undefined) { profile.lastMessage = { text: '', type: 'info' }; needsSave = true; }
-            if (profile.criticalInstructions === undefined) { profile.criticalInstructions = defaultCriticalInstructions; needsSave = true; }
-            if (profile.isCriticalInstructionsEnabled === undefined) { profile.isCriticalInstructionsEnabled = false; needsSave = true; }
-            if (profile.codeBlockDelimiter === undefined) { profile.codeBlockDelimiter = '```'; needsSave = true; }
-            if (profile.tolerateErrors === undefined) { profile.tolerateErrors = true; needsSave = true; }
-            if (profile.contextAsFile === undefined) { profile.contextAsFile = false; needsSave = true; }
-            if (profile.separateInstructions === undefined) { profile.separateInstructions = 'file'; needsSave = true; }
-            if (profile.runScriptOnDeploy === undefined) { profile.runScriptOnDeploy = false; needsSave = true; }
-            if (profile.postDeployScript === undefined) { profile.postDeployScript = defaultPostDeployScript; needsSave = true; }
-            if (profile.gatherAdditionalContext === undefined) { profile.gatherAdditionalContext = false; needsSave = true; }
-            if (profile.additionalContextScript === undefined) { profile.additionalContextScript = defaultAdditionalContextScript; needsSave = true; }
         });
 
         let activeProfileId = data.activeProfileId;
-        const archivedProfiles = data.archivedProfiles || [];
-
         if (!activeProfileId || !profiles.some(p => p.id === activeProfileId)) {
             activeProfileId = profiles.length > 0 ? profiles[0].id : null;
             needsSave = true;
