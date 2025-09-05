@@ -24,20 +24,29 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
         return { text: 'Error: Please select a project folder with granted permissions.', type: 'error' };
     }
 
+    const isMultiProject = handles.length > 1;
+    if (isMultiProject && !profile.useNumericPrefixesForMultiProject) {
+        const handleNames = handles.map(h => h.name);
+        if (new Set(handleNames).size !== handleNames.length) {
+            return { text: 'Error: Multiple project folders have the same name. Please enable "Name by order number" in profile settings to resolve ambiguity.', type: 'error' };
+        }
+    }
+
     try {
-        const isMultiProject = handles.length > 1;
         const excludePatterns = (profile.excludePatterns || '').split(',').map(p => p.trim()).filter(Boolean);
         const includePatterns = (profile.includePatterns || '').split(',').map(p => p.trim()).filter(Boolean);
         const contextSizeLimit = profile.contextSizeLimit || 3000000;
 
         const scanResults = await Promise.all(handles.map(h => scanDirectory(h, { excludePatterns, includePatterns })));
         
-        const allFileStats = scanResults.flatMap((stats, index) => 
-            stats.map(s => ({
+        const allFileStats = scanResults.flatMap((stats, index) => {
+            if (!isMultiProject) return stats;
+            const prefix = profile.useNumericPrefixesForMultiProject ? index : handles[index].name;
+            return stats.map(s => ({
                 ...s,
-                path: isMultiProject ? `${index}/${s.path}` : s.path
-            }))
-        );
+                path: `${prefix}/${s.path}`
+            }));
+        });
 
         const totalChars = allFileStats.reduce((acc, f) => acc + f.chars, 0);
 
@@ -48,7 +57,7 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
 
         const filePaths = allFileStats.map(s => s.path);
         const treeString = buildTree(filePaths);
-        const contentString = await buildFileContentString(handles, filePaths);
+        const contentString = await buildFileContentString(handles, filePaths, profile);
         
         const finalPrompt = formatContextPrompt(treeString, contentString, profile);
         const { instructionsBlock, codeBlockDelimiter } = getInstructionsBlock(profile);
@@ -101,16 +110,25 @@ export async function getExclusionSuggestionFromJS(profile, fromShortcut = false
     }
     
     const isMultiProject = handles.length > 1;
+    if (isMultiProject && !profile.useNumericPrefixesForMultiProject) {
+        const handleNames = handles.map(h => h.name);
+        if (new Set(handleNames).size !== handleNames.length) {
+            return { text: 'Error: Multiple project folders have the same name. Enable "Name by order number" in profile settings.', type: 'error' };
+        }
+    }
+
     const excludePatterns = (profile.excludePatterns || '').split(',').map(p => p.trim()).filter(Boolean);
     const includePatterns = (profile.includePatterns || '').split(',').map(p => p.trim()).filter(Boolean);
 
     const scanResults = await Promise.all(handles.map(h => scanDirectory(h, { excludePatterns, includePatterns })));
-    const allFileStats = scanResults.flatMap((stats, index) => 
-        stats.map(s => ({
+    const allFileStats = scanResults.flatMap((stats, index) => {
+        if (!isMultiProject) return stats;
+        const prefix = profile.useNumericPrefixesForMultiProject ? index : handles[index].name;
+        return stats.map(s => ({
             ...s,
-            path: isMultiProject ? `${index}/${s.path}` : s.path
-        }))
-    );
+            path: `${prefix}/${s.path}`
+        }));
+    });
 
     const { treeString, totalChars } = buildTreeWithCounts(allFileStats);
     

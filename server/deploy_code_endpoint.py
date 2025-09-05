@@ -17,11 +17,18 @@ def deploy_code():
     post_deploy_script = request.args.get('scriptToRun', '')
     verbose_log = request.args.get('verbose', 'true').lower() == 'true'
     hide_errors_on_success = request.args.get('hideErrorsOnSuccess', 'false').lower() == 'true'
+    use_numeric_prefixes = request.args.get('useNumericPrefixes', 'false').lower() == 'true'
 
     if not paths or not any(p.strip() for p in paths):
         return Response("Error: 'path' parameter is missing.", status=400, mimetype='text/plain')
     
     project_paths = [os.path.abspath(p.strip()) for p in paths if p.strip()]
+
+    if not use_numeric_prefixes and len(project_paths) > 1:
+        project_names = [os.path.basename(p) for p in project_paths]
+        if len(project_names) != len(set(project_names)):
+            return Response("Error: Multiple project paths have the same directory name. Please enable 'Name by order number' in profile settings to resolve ambiguity.", status=400)
+
     for p_path in project_paths:
         if not os.path.isdir(p_path):
             return Response(f"Error: Provided path '{p_path}' is not a valid directory.", status=400, mimetype='text/plain')
@@ -45,7 +52,7 @@ def deploy_code():
                 if not match: raise ValueError(f"Invalid 'cat' format: {line}")
                 
                 raw_path = match.group('path').strip("'\"")
-                project_path, relative_path = resolve_path(raw_path, project_paths)
+                project_path, relative_path = resolve_path(raw_path, project_paths, use_numeric_prefixes)
                 if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                 
                 full_path = os.path.join(project_path, relative_path.replace('/', os.sep))
@@ -79,13 +86,13 @@ def deploy_code():
             if command == 'mkdir':
                 paths_to_create = [arg for arg in args if arg != '-p']
                 for arg in paths_to_create:
-                    project_path, relative_path = resolve_path(arg, project_paths)
+                    project_path, relative_path = resolve_path(arg, project_paths, use_numeric_prefixes)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                     if not os.path.isdir(os.path.join(project_path, relative_path.replace('/', os.sep))):
                         rollback_commands.insert(0, f"rmdir {shlex.quote(arg)}")
             elif command == 'touch':
                 for arg in args:
-                    project_path, relative_path = resolve_path(arg, project_paths)
+                    project_path, relative_path = resolve_path(arg, project_paths, use_numeric_prefixes)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                     if not os.path.exists(os.path.join(project_path, relative_path.replace('/', os.sep))):
                         rollback_commands.insert(0, f"rm -f {shlex.quote(arg)}")
@@ -95,7 +102,7 @@ def deploy_code():
                 file_paths = [arg for arg in args if not arg.startswith('-')]
                 if not file_paths: raise ValueError("'rm' command requires a file path.")
                 for relative_path_arg in file_paths:
-                    project_path, relative_path = resolve_path(relative_path_arg, project_paths)
+                    project_path, relative_path = resolve_path(relative_path_arg, project_paths, use_numeric_prefixes)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                     full_path = os.path.join(project_path, relative_path.replace('/', os.sep))
                     if os.path.isfile(full_path):
@@ -105,7 +112,7 @@ def deploy_code():
                         rollback_commands.insert(0, rollback_cmd)
             elif command == 'rmdir':
                 for arg in args:
-                    project_path, relative_path = resolve_path(arg, project_paths)
+                    project_path, relative_path = resolve_path(arg, project_paths, use_numeric_prefixes)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                     if os.path.isdir(os.path.join(project_path, relative_path.replace('/', os.sep))):
                         rollback_commands.insert(0, f"mkdir {shlex.quote(arg)}")
@@ -116,7 +123,7 @@ def deploy_code():
             elif command == 'chmod':
                 file_args = args[1:]
                 for arg in file_args:
-                    project_path, relative_path = resolve_path(arg, project_paths)
+                    project_path, relative_path = resolve_path(arg, project_paths, use_numeric_prefixes)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                     full_path = os.path.join(project_path, relative_path.replace('/', os.sep))
                     if os.path.exists(full_path) and not os.path.isdir(full_path):
@@ -158,7 +165,7 @@ def deploy_code():
     
     # --- Pass 2: Execute Deployment Script ---
     try:
-        output_log, error_log = execute_script(script_content, project_paths, tolerate_errors)
+        output_log, error_log = execute_script(script_content, project_paths, tolerate_errors, use_numeric_prefixes)
         
         deployment_message = ""
         if error_log:

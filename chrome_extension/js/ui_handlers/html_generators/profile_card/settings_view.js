@@ -64,6 +64,10 @@ export function getSettingsViewHTML(profile) {
             <input type="checkbox" class="form-check-input tolerate-errors" id="tolerateErrors-${profile.id}" data-id="${profile.id}" ${profile.tolerateErrors ? 'checked' : ''}>
             <label class="form-check-label" for="tolerateErrors-${profile.id}">Tolerate script execution errors</label>
         </div>
+        <div class="form-check mb-2">
+            <input type="checkbox" class="form-check-input use-numeric-prefixes-for-multi-project" id="useNumericPrefixesForMultiProject-${profile.id}" data-id="${profile.id}" ${profile.useNumericPrefixesForMultiProject ? 'checked' : ''}>
+            <label class="form-check-label" for="useNumericPrefixesForMultiProject-${profile.id}">Name multiproject directories by order number</label>
+        </div>
         <hr>
         
         <!-- Instructions Settings -->

@@ -4,7 +4,7 @@ import shlex
 import stat
 from .utils import is_safe_path, here_doc_value
 
-def resolve_path(raw_path, project_paths):
+def resolve_path(raw_path, project_paths, use_numeric_prefixes=False):
     """
     Resolves a path from a script, which may be prefixed for multi-root projects.
     Returns the correct base project path and the relative path within it.
@@ -15,20 +15,33 @@ def resolve_path(raw_path, project_paths):
         return project_paths[0], path
 
     # Multi-path logic
-    match = re.match(r'(\d+)[\\/](.*)', path)
-    if not match:
-        raise ValueError(f"Invalid path format for multi-project workspace: '{raw_path}'. Expected './<index>/...'")
+    separator_match = re.match(r'([^\\/]+)[\\/](.*)', path, re.S)
+    if not separator_match:
+        raise ValueError(f"Invalid path format for multi-project workspace: '{raw_path}'. Expected './<prefix>/...'")
     
-    index = int(match.group(1))
-    relative_path = match.group(2)
+    prefix = separator_match.group(1)
+    relative_path = separator_match.group(2)
     
-    if index >= len(project_paths):
-        raise ValueError(f"Path index {index} is out of bounds for the {len(project_paths)} provided project paths.")
+    index = -1
+    if use_numeric_prefixes:
+        try:
+            index = int(prefix)
+        except ValueError:
+             raise ValueError(f"Expected numeric prefix, but got '{prefix}' in path '{raw_path}'.")
+    else:
+        project_names = [os.path.basename(p) for p in project_paths]
+        try:
+            index = project_names.index(prefix)
+        except ValueError:
+            raise ValueError(f"Project with name '{prefix}' not found in path '{raw_path}'. Known names: {project_names}")
+
+    if not (0 <= index < len(project_paths)):
+        raise ValueError(f"Path index/prefix '{prefix}' is out of bounds for the {len(project_paths)} provided project paths.")
         
     return project_paths[index], relative_path
 
 
-def execute_script(script_content, project_paths, tolerate_errors=False):
+def execute_script(script_content, project_paths, tolerate_errors=False, use_numeric_prefixes=False):
     """Parses and executes a deployment script, returning logs and errors."""
     lines = script_content.replace('\r\n', '\n').split('\n')
     i = 0
@@ -53,7 +66,7 @@ def execute_script(script_content, project_paths, tolerate_errors=False):
                 if not match: raise ValueError(f"Invalid 'cat' command format")
                 
                 raw_path = match.group('path').strip("'\"")
-                project_path, relative_path = resolve_path(raw_path, project_paths)
+                project_path, relative_path = resolve_path(raw_path, project_paths, use_numeric_prefixes)
                 
                 if not is_safe_path(project_path, relative_path): raise PermissionError(f"Path traversal attempt detected: {relative_path}")
                 
@@ -97,7 +110,7 @@ def execute_script(script_content, project_paths, tolerate_errors=False):
                 use_p_flag = '-p' in args
                 paths_to_create = [arg for arg in args if arg != '-p']
                 for arg in paths_to_create:
-                    project_path, relative_path = resolve_path(arg, project_paths)
+                    project_path, relative_path = resolve_path(arg, project_paths, use_numeric_prefixes)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                     full_path = os.path.join(project_path, relative_path.replace('/', os.sep))
                     if use_p_flag:
@@ -111,7 +124,7 @@ def execute_script(script_content, project_paths, tolerate_errors=False):
                 file_paths = [p for p in args if not p.startswith('-')]
                 if any(p.startswith('-') and p != '-f' for p in args): raise ValueError("Unsupported flag for rm")
                 for path in file_paths:
-                    project_path, relative_path = resolve_path(path, project_paths)
+                    project_path, relative_path = resolve_path(path, project_paths, use_numeric_prefixes)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                     full_path = os.path.join(project_path, relative_path.replace('/', os.sep))
                     try:
@@ -123,7 +136,7 @@ def execute_script(script_content, project_paths, tolerate_errors=False):
                         else: raise
             elif command == 'rmdir':
                  for arg in args:
-                    project_path, relative_path = resolve_path(arg, project_paths)
+                    project_path, relative_path = resolve_path(arg, project_paths, use_numeric_prefixes)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                     full_path = os.path.join(project_path, relative_path.replace('/', os.sep))
                     try:
@@ -135,8 +148,8 @@ def execute_script(script_content, project_paths, tolerate_errors=False):
             elif command == 'mv':
                 if len(args) != 2: raise ValueError("'mv' requires two arguments.")
                 
-                src_project_path, src_relative_path = resolve_path(args[0], project_paths)
-                dest_project_path, dest_relative_path = resolve_path(args[1], project_paths)
+                src_project_path, src_relative_path = resolve_path(args[0], project_paths, use_numeric_prefixes)
+                dest_project_path, dest_relative_path = resolve_path(args[1], project_paths, use_numeric_prefixes)
 
                 if not is_safe_path(src_project_path, src_relative_path): raise PermissionError(f"Traversal: {args[0]}")
                 if not is_safe_path(dest_project_path, dest_relative_path): raise PermissionError(f"Traversal: {args[1]}")
@@ -149,7 +162,7 @@ def execute_script(script_content, project_paths, tolerate_errors=False):
                 output_log.append(f"Moved: {args[0]} to {args[1]}")
             elif command == 'touch':
                 for arg in args:
-                    project_path, relative_path = resolve_path(arg, project_paths)
+                    project_path, relative_path = resolve_path(arg, project_paths, use_numeric_prefixes)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                     full_path = os.path.join(project_path, relative_path.replace('/', os.sep))
                     os.makedirs(os.path.dirname(full_path), exist_ok=True)
@@ -159,7 +172,7 @@ def execute_script(script_content, project_paths, tolerate_errors=False):
                 if len(args) < 2: raise ValueError("'chmod' requires a mode and at least one file.")
                 mode_str, file_paths = args[0], args[1:]
                 for relative_path_arg in file_paths:
-                    project_path, relative_path = resolve_path(relative_path_arg, project_paths)
+                    project_path, relative_path = resolve_path(relative_path_arg, project_paths, use_numeric_prefixes)
                     if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
                     full_path = os.path.join(project_path, relative_path.replace('/', os.sep))
                     if not os.path.exists(full_path): raise FileNotFoundError(f"chmod: cannot access '{relative_path_arg}': No such file or directory")

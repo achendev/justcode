@@ -27,6 +27,9 @@ export async function handleServerDeployment(profile, fromShortcut = false, host
     const pathParams = paths.map(p => `path=${encodeURIComponent(p)}`).join('&');
     let endpoint = `${serverUrl}/deploycode?${pathParams}&tolerateErrors=${tolerateErrors}&verbose=${settings.showVerboseDeployLog}&hideErrorsOnSuccess=${settings.hideErrorsOnSuccess}`;
     
+    if (profile.useNumericPrefixesForMultiProject) {
+        endpoint += `&useNumericPrefixes=true`;
+    }
     if (profile.runScriptOnDeploy && profile.postDeployScript) {
         endpoint += `&runScript=true&scriptToRun=${encodeURIComponent(profile.postDeployScript)}`;
     }

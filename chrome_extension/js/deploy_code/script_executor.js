@@ -1,34 +1,19 @@
 import { hereDocValue } from '../default_instructions.js';
+import { resolveHandleAndPath } from './fs_helpers.js';
 
 /**
  * Parses and executes a bash-like script using the File System Access API.
  * @param {Array<FileSystemDirectoryHandle>} handles The root directory handles for the project(s).
  * @param {string} script The script to execute.
- * @param {boolean} tolerateErrors If true, continues execution on error.
+ * @param {object} profile The active user profile.
  * @returns {Promise<{log: string[], errors: string[]}>} A list of log messages and error messages encountered.
  */
-export async function executeFileSystemScript(handles, script, tolerateErrors) {
+export async function executeFileSystemScript(handles, script, profile) {
+    const tolerateErrors = profile.tolerateErrors !== false;
     const lines = script.replace(/\r\n/g, '\n').split('\n');
     let i = 0;
     const errors = [];
     const log = [];
-    const isMultiProject = handles.length > 1;
-
-    const resolveHandleAndPath = (rawPath) => {
-        const path = rawPath.replace(/^\.\//, '');
-        if (isMultiProject) {
-            const match = path.match(/^(\d+)\/(.*)$/s);
-            if (!match) throw new Error(`Invalid path for multi-project JS mode: '${rawPath}'. Expected './<index>/...'`);
-            
-            const index = parseInt(match[1], 10);
-            const relativePath = match[2];
-            if (index >= handles.length || !handles[index]) throw new Error(`Path index ${index} is invalid or handle not found.`);
-            
-            return { handle: handles[index], relativePath: relativePath };
-        } else {
-            return { handle: handles[0], relativePath: path };
-        }
-    };
 
     while (i < lines.length) {
         const line = lines[i].trim();
@@ -60,7 +45,7 @@ export async function executeFileSystemScript(handles, script, tolerateErrors) {
                 if (!contentEnded) throw new Error(`Script parsing error: EOF while looking for '${hereDocValue}'`);
                 if (content.endsWith('\n')) content = content.slice(0, -1);
                 
-                const { handle, relativePath } = resolveHandleAndPath(rawPath);
+                const { handle, relativePath } = resolveHandleAndPath(handles, rawPath, profile);
                 const pathParts = relativePath.split('/');
                 const fileName = pathParts.pop();
                 let currentDir = handle;
@@ -86,7 +71,7 @@ export async function executeFileSystemScript(handles, script, tolerateErrors) {
                 const dirPaths = args.filter(arg => arg !== '-p');
                 for (let rawPath of dirPaths) {
                     rawPath = rawPath.replace(/^['"]|['"]$/g, '');
-                    const { handle, relativePath } = resolveHandleAndPath(rawPath);
+                    const { handle, relativePath } = resolveHandleAndPath(handles, rawPath, profile);
                     const pathParts = relativePath.split('/').filter(Boolean);
                     
                     if (pFlag) {
@@ -112,7 +97,7 @@ export async function executeFileSystemScript(handles, script, tolerateErrors) {
                     rawPath = rawPath.replace(/^['"]|['"]$/g, '');
                     if (!rawPath) continue;
 
-                    const { handle, relativePath } = resolveHandleAndPath(rawPath);
+                    const { handle, relativePath } = resolveHandleAndPath(handles, rawPath, profile);
                     const pathParts = relativePath.split('/');
                     const fileName = pathParts.pop();
                     let parentDir = handle;
@@ -131,7 +116,7 @@ export async function executeFileSystemScript(handles, script, tolerateErrors) {
             } else if (command === 'rmdir') {
                  for (let rawPath of args) {
                     rawPath = rawPath.replace(/^['"]|['"]$/g, '');
-                    const { handle, relativePath } = resolveHandleAndPath(rawPath);
+                    const { handle, relativePath } = resolveHandleAndPath(handles, rawPath, profile);
                     const pathParts = relativePath.split('/');
                     const dirName = pathParts.pop();
                     let parentDir = handle;
@@ -152,7 +137,7 @@ export async function executeFileSystemScript(handles, script, tolerateErrors) {
                 const sourceRawPath = args[0].replace(/^['"]|['"]$/g, '');
                 const destRawPath = args[1].replace(/^['"]|['"]$/g, '');
 
-                const { handle: sourceHandle, relativePath: sourceRelativePath } = resolveHandleAndPath(sourceRawPath);
+                const { handle: sourceHandle, relativePath: sourceRelativePath } = resolveHandleAndPath(handles, sourceRawPath, profile);
                 const sourceParts = sourceRelativePath.split('/');
                 const sourceName = sourceParts.pop();
                 let sourceParentHandle = sourceHandle;
@@ -163,7 +148,7 @@ export async function executeFileSystemScript(handles, script, tolerateErrors) {
                 const fileToMoveHandle = await sourceParentHandle.getFileHandle(sourceName);
                 const sourceContent = await (await fileToMoveHandle.getFile()).arrayBuffer();
 
-                const { handle: destHandle, relativePath: destRelativePath } = resolveHandleAndPath(destRawPath);
+                const { handle: destHandle, relativePath: destRelativePath } = resolveHandleAndPath(handles, destRawPath, profile);
                 const destParts = destRelativePath.split('/');
                 const destName = destParts.pop();
                 let destParentHandle = destHandle;

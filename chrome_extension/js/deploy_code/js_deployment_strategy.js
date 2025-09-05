@@ -19,6 +19,13 @@ export async function handleJsDeployment(profile, fromShortcut = false, hostname
     if (validHandles.length === 0) {
         throw new Error('Please select a project folder first to deploy code.');
     }
+    if (validHandles.length > 1 && !profile.useNumericPrefixesForMultiProject) {
+        const handleNames = validHandles.map(h => h.name);
+        if (new Set(handleNames).size !== handleNames.length) {
+            throw new Error('Multiple project folders have the same name. Enable "Name by order number" in profile settings to resolve ambiguity.');
+        }
+    }
+
     for (const handle of validHandles) {
         if (!(await verifyPermission(handle))) {
             throw new Error(`Permission to folder '${handle.name}' lost. Please select it again.`);
@@ -32,10 +39,10 @@ export async function handleJsDeployment(profile, fromShortcut = false, hostname
     }
     
     if (!fromShortcut) updateTemporaryMessage(profile.id, 'Generating undo script...');
-    const undoScript = await generateUndoScript(validHandles, codeToDeploy);
+    const undoScript = await generateUndoScript(validHandles, codeToDeploy, profile);
 
     if (!fromShortcut) updateTemporaryMessage(profile.id, 'Deploying code locally...');
-    const { errors, log } = await executeFileSystemScript(validHandles, codeToDeploy, profile.tolerateErrors !== false);
+    const { errors, log } = await executeFileSystemScript(validHandles, codeToDeploy, profile);
     
     const undoKey = `undo_stack_${profile.id}`;
     const redoKey = `redo_stack_${profile.id}`;

@@ -5,9 +5,10 @@ import { getFileContent, entryExists } from './fs_helpers.js';
  * Generates an undo script by inspecting the filesystem before changes are made.
  * @param {Array<FileSystemDirectoryHandle>} handles The project's root handles.
  * @param {string} deployScript The deployment script to be executed.
+ * @param {object} profile The active user profile.
  * @returns {Promise<string>} The generated undo script.
  */
-export async function generateUndoScript(handles, deployScript) {
+export async function generateUndoScript(handles, deployScript, profile) {
     const lines = deployScript.replace(/\r\n/g, '\n').split('\n');
     const rollbackCmds = [];
     let i = 0;
@@ -24,7 +25,7 @@ export async function generateUndoScript(handles, deployScript) {
 
                 let filePath = match[1].startsWith("'") ? match[1].slice(1, -1) : match[1];
                 
-                const originalContent = await getFileContent(handles, filePath);
+                const originalContent = await getFileContent(handles, filePath, profile);
                 if (originalContent !== null) {
                     rollbackCmds.unshift(`cat > ${filePath} << '${hereDocValue}'\n${originalContent}\n${hereDocValue}`);
                 } else {
@@ -46,12 +47,12 @@ export async function generateUndoScript(handles, deployScript) {
 
             if (command === 'mkdir') {
                 const dirPath = args.find(a => !a.startsWith('-'));
-                if (!(await entryExists(handles, dirPath))) {
+                if (!(await entryExists(handles, dirPath, profile))) {
                     rollbackCmds.unshift(`rmdir ${dirPath}`);
                 }
             } else if (command === 'rm') {
                 const filePath = args.find(a => !a.startsWith('-'));
-                const originalContent = await getFileContent(handles, filePath);
+                const originalContent = await getFileContent(handles, filePath, profile);
                 if (originalContent !== null) {
                      rollbackCmds.unshift(`cat > ${filePath} << '${hereDocValue}'\n${originalContent}\n${hereDocValue}`);
                 }

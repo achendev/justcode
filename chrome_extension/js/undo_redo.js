@@ -40,6 +40,15 @@ async function handleJsStackAction(profile, fromShortcut, action) {
         if (!fromShortcut) updateAndSaveMessage(profile.id, msg.text, msg.type);
         return msg;
     }
+    if (validHandles.length > 1 && !profile.useNumericPrefixesForMultiProject) {
+        const handleNames = validHandles.map(h => h.name);
+        if (new Set(handleNames).size !== handleNames.length) {
+            const msg = { text: 'Error: Multiple project folders have the same name. Enable "Name by order number" in profile settings.', type: 'error' };
+            if (!fromShortcut) updateAndSaveMessage(profile.id, msg.text, msg.type);
+            return msg;
+        }
+    }
+
     for (const handle of validHandles) {
         if (!(await verifyPermission(handle))) {
             const msg = { text: `Error: Permission to folder '${handle.name}' lost.`, type: 'error' };
@@ -59,7 +68,7 @@ async function handleJsStackAction(profile, fromShortcut, action) {
         }
 
         const scriptToRun = action.name === 'undo' ? item.undoScript : item.redoScript;
-        await executeFileSystemScript(validHandles, scriptToRun, profile.tolerateErrors !== false);
+        await executeFileSystemScript(validHandles, scriptToRun, profile);
         
         const msg = { text: action.successMessage, type: 'success' };
         if (!fromShortcut) updateAndSaveMessage(profile.id, msg.text, msg.type);
@@ -90,7 +99,11 @@ async function handleServerStackAction(profile, fromShortcut, action) {
         const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
         const tolerateErrors = profile.tolerateErrors !== false;
         const pathParams = paths.map(p => `path=${encodeURIComponent(p)}`).join('&');
-        const endpoint = `${serverUrl}/${action.name}?${pathParams}&tolerateErrors=${tolerateErrors}`;
+        let endpoint = `${serverUrl}/${action.name}?${pathParams}&tolerateErrors=${tolerateErrors}`;
+
+        if (profile.useNumericPrefixesForMultiProject) {
+            endpoint += `&useNumericPrefixes=true`;
+        }
 
         const headers = { 'Content-Type': 'text/plain' };
         if (profile.isAuthEnabled && profile.username) {

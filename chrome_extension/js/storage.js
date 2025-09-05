@@ -58,6 +58,7 @@ function migrateProfile(profile) {
     if (profile.postDeployScript === undefined) { profile.postDeployScript = defaultPostDeployScript; changed = true; }
     if (profile.gatherAdditionalContext === undefined) { profile.gatherAdditionalContext = false; changed = true; }
     if (profile.additionalContextScript === undefined) { profile.additionalContextScript = defaultAdditionalContextScript; changed = true; }
+    if (profile.useNumericPrefixesForMultiProject === undefined) { profile.useNumericPrefixesForMultiProject = false; changed = true; }
     
     return changed;
 }
@@ -96,6 +97,7 @@ export function loadData(callback) {
                 additionalContextScript: 'echo "Example: Get current git branch"\ngit rev-parse --abbrev-ref HEAD',
                 runScriptOnDeploy: false,
                 postDeployScript: 'set -x\necho Deploy completed',
+                useNumericPrefixesForMultiProject: false
             }];
             needsSave = true;
         }

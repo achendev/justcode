@@ -2,19 +2,29 @@
  * Resolves a potentially prefixed path to the correct file system handle and relative path.
  * @param {Array<FileSystemDirectoryHandle>} handles - Array of root handles.
  * @param {string} rawPath - The path from the script (e.g., './file.txt' or './0/file.txt').
+ * @param {object} profile - The active user profile.
  * @returns {{handle: FileSystemDirectoryHandle, relativePath: string}}
  */
-function resolveHandleAndPath(handles, rawPath) {
+export function resolveHandleAndPath(handles, rawPath, profile) {
     const path = rawPath.replace(/^\.\//, '');
     if (handles.length > 1) {
-        const match = path.match(/^(\d+)\/(.*)$/s);
-        if (!match) throw new Error(`Invalid path for multi-project JS mode: '${rawPath}'.`);
+        const useNumericPrefixes = profile?.useNumericPrefixesForMultiProject;
+        const separatorIndex = path.indexOf('/');
+        if (separatorIndex === -1) throw new Error(`Invalid path for multi-project JS mode: '${rawPath}'.`);
         
-        const index = parseInt(match[1], 10);
-        const relativePath = match[2];
+        const prefix = path.substring(0, separatorIndex);
+        const relativePath = path.substring(separatorIndex + 1);
 
-        if (index >= handles.length || !handles[index]) throw new Error(`Path index ${index} is invalid or handle not found.`);
-        return { handle: handles[index], relativePath: relativePath };
+        let handle;
+        if (useNumericPrefixes) {
+            const index = parseInt(prefix, 10);
+            if (isNaN(index) || index >= handles.length || !handles[index]) throw new Error(`Path index ${index} is invalid or handle not found.`);
+            handle = handles[index];
+        } else {
+            handle = handles.find(h => h.name === prefix);
+            if (!handle) throw new Error(`Project handle with name '${prefix}' not found.`);
+        }
+        return { handle, relativePath };
     } else {
         return { handle: handles[0], relativePath: path };
     }
@@ -25,11 +35,12 @@ function resolveHandleAndPath(handles, rawPath) {
  * Helper to get the content of a file if it exists.
  * @param {Array<FileSystemDirectoryHandle>} handles The root directory handles.
  * @param {string} path The relative path to the file.
+ * @param {object} profile The active user profile.
  * @returns {Promise<string|null>} The file content or null if it doesn't exist.
  */
-export async function getFileContent(handles, path) {
+export async function getFileContent(handles, path, profile) {
     try {
-        const { handle, relativePath } = resolveHandleAndPath(handles, path);
+        const { handle, relativePath } = resolveHandleAndPath(handles, path, profile);
         const pathParts = relativePath.split('/');
         const fileName = pathParts.pop();
         let currentDir = handle;
@@ -50,11 +61,12 @@ export async function getFileContent(handles, path) {
  * Helper to check if a file or directory exists.
  * @param {Array<FileSystemDirectoryHandle>} handles The root directory handles.
  * @param {string} path The relative path.
+ * @param {object} profile The active user profile.
  * @returns {Promise<boolean>} True if it exists.
  */
-export async function entryExists(handles, path) {
+export async function entryExists(handles, path, profile) {
     try {
-        const { handle, relativePath } = resolveHandleAndPath(handles, path);
+        const { handle, relativePath } = resolveHandleAndPath(handles, path, profile);
         const pathParts = relativePath.split('/');
         const entryName = pathParts.pop();
         let currentDir = handle;
@@ -65,7 +77,7 @@ export async function entryExists(handles, path) {
         return true;
     } catch (e) {
         try {
-            const { handle, relativePath } = resolveHandleAndPath(handles, path);
+            const { handle, relativePath } = resolveHandleAndPath(handles, path, profile);
             const pathParts = relativePath.split('/');
             const entryName = pathParts.pop();
             let currentDir = handle;

@@ -25,6 +25,9 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
     if (profile.gatherAdditionalContext && profile.additionalContextScript) {
         endpoint += `&gather_context=true&context_script=${encodeURIComponent(profile.additionalContextScript)}`;
     }
+    if (profile.useNumericPrefixesForMultiProject) {
+        endpoint += `&useNumericPrefixes=true`;
+    }
     
     try {
         const headers = {};
@@ -103,6 +106,9 @@ export async function getExclusionSuggestionFromServer(profile, fromShortcut = f
     let endpoint = `${serverUrl}/getcontext?${pathParams}&exclude=${encodeURIComponent(excludePatterns)}&suggest_exclusions=true`;
     if (includePatterns) {
         endpoint += `&include=${encodeURIComponent(includePatterns)}`;
+    }
+    if (profile.useNumericPrefixesForMultiProject) {
+        endpoint += `&useNumericPrefixes=true`;
     }
     
     try {

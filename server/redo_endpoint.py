@@ -22,6 +22,7 @@ def redo():
     
     if request.method == 'POST':
         tolerate_errors = request.args.get('tolerateErrors', 'true').lower() == 'true'
+        use_numeric_prefixes = request.args.get('useNumericPrefixes', 'false').lower() == 'true'
         if not all_redo_timestamps:
             return Response("No actions to redo.", status=404, mimetype='text/plain')
 
@@ -40,7 +41,7 @@ def redo():
             script_content = f.read() # This is the original deploy script
         
         try:
-            output_log, error_log = execute_script(script_content, project_paths, tolerate_errors)
+            output_log, error_log = execute_script(script_content, project_paths, tolerate_errors, use_numeric_prefixes)
             
             # Move the script pair back to the undo stack
             shutil.move(undo_script_path_in_redo, os.path.join(undo_stack_dir, f"{latest_timestamp}.sh"))

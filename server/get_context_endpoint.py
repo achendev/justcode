@@ -13,11 +13,18 @@ def get_context():
     suggest_exclusions = request.args.get('suggest_exclusions', 'false').lower() == 'true'
     gather_context = request.args.get('gather_context', 'false').lower() == 'true'
     context_script = request.args.get('context_script', '')
+    use_numeric_prefixes = request.args.get('useNumericPrefixes', 'false').lower() == 'true'
 
     if not paths or not any(p.strip() for p in paths):
         return Response("Error: 'path' parameter is missing.", status=400, mimetype='text/plain')
 
     project_paths = [os.path.abspath(p.strip()) for p in paths if p.strip()]
+    is_single_project = len(project_paths) == 1
+
+    if not use_numeric_prefixes and not is_single_project:
+        project_names = [os.path.basename(p) for p in project_paths]
+        if len(project_names) != len(set(project_names)):
+            return Response("Error: Multiple project paths have the same directory name. Please enable 'Name by order number' in profile settings to resolve ambiguity.", status=400, mimetype='text/plain')
 
     for p_path in project_paths:
         if not os.path.isdir(p_path):
@@ -31,10 +38,11 @@ def get_context():
         # --- Generate Tree and Check Size ---
         all_trees = []
         total_size = 0
-        is_single_project = len(project_paths) == 1
         
         for i, p_path in enumerate(project_paths):
-            prefix = None if is_single_project else f"./{i}"
+            prefix = None
+            if not is_single_project:
+                prefix = f"./{i}" if use_numeric_prefixes else f"./{os.path.basename(p_path)}"
             tree, size = generate_tree_with_char_counts(p_path, include_patterns, exclude_patterns, path_prefix=prefix)
             all_trees.append(tree)
             total_size += size
@@ -57,7 +65,9 @@ def get_context():
         # --- Generate File Contents ---
         all_contents = []
         for i, p_path in enumerate(project_paths):
-            prefix = None if is_single_project else f"./{i}"
+            prefix = None
+            if not is_single_project:
+                prefix = f"./{i}" if use_numeric_prefixes else f"./{os.path.basename(p_path)}"
             content = generate_context_from_path(p_path, include_patterns, exclude_patterns, path_prefix=prefix)
             all_contents.append(content)
 

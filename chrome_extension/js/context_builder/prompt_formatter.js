@@ -4,9 +4,10 @@ import { defaultCriticalInstructions, hereDocValue } from '../default_instructio
  * Builds the content string with cat commands from a list of file paths.
  * @param {Array<FileSystemDirectoryHandle>} handles
  * @param {string[]} paths
+ * @param {object} profile
  * @returns {Promise<string>}
  */
-export async function buildFileContentString(handles, paths) {
+export async function buildFileContentString(handles, paths, profile) {
     let contentString = '';
     const isMultiProject = handles.length > 1;
 
@@ -16,12 +17,21 @@ export async function buildFileContentString(handles, paths) {
             let relativePath = path;
 
             if (isMultiProject) {
-                const match = path.match(/^(\d+)\/(.*)$/s);
-                if (!match) continue;
-                const index = parseInt(match[1], 10);
-                if (index >= handles.length) continue;
-                handle = handles[index];
-                relativePath = match[2];
+                const separatorIndex = path.indexOf('/');
+                if (separatorIndex === -1) continue;
+                
+                const prefix = path.substring(0, separatorIndex);
+                const actualPath = path.substring(separatorIndex + 1);
+
+                if (profile.useNumericPrefixesForMultiProject) {
+                    const index = parseInt(prefix, 10);
+                    if (isNaN(index) || index >= handles.length) continue;
+                    handle = handles[index];
+                } else {
+                    handle = handles.find(h => h.name === prefix);
+                    if (!handle) continue;
+                }
+                relativePath = actualPath;
             }
 
             const pathParts = relativePath.split('/');
