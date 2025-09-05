@@ -7,6 +7,7 @@ export function getMainViewHTML(profile) {
         <div class="profile-header">
             <div class="input-group flex-grow-1">
                 <button class="btn btn-outline-secondary btn-sm settings-button" type="button" data-id="${profile.id}" title="Profile Settings"><i class="bi bi-gear-wide-connected"></i></button>
+                <button class="btn btn-outline-secondary btn-sm copy-profile" type="button" data-id="${profile.id}" title="Copy Profile"><i class="bi bi-copy"></i></button>
                 <input type="text" class="form-control form-control-sm profile-name-input" value="${profile.name}" data-id="${profile.id}">
                 <button class="btn btn-outline-secondary btn-sm update-app-button server-mode-item" type="button" data-id="${profile.id}" title="Update JustCode Server"><i class="bi bi-download"></i></button>
             </div>
@@ -24,7 +25,6 @@ export function getMainViewHTML(profile) {
             <div class="d-flex gap-2">
                 <!-- JS Mode -->
                 <div class="input-group input-group-sm js-mode-item flex-grow-1">
-                     <button class="btn btn-outline-secondary copy-profile" type="button" data-id="${profile.id}" title="Copy Profile"><i class="bi bi-copy"></i></button>
                      <button class="btn btn-outline-primary flex-grow-1 select-project-folder" id="selectProjectFolder-${profile.id}" data-id="${profile.id}" title="Select Project Folder">
                         <span class="folder-name" id="selectedProjectName-${profile.id}">No Folder Selected</span>
                     </button>
@@ -36,8 +36,7 @@ export function getMainViewHTML(profile) {
                         ${(profile.projectPaths || ['']).map((path, index) => `
                             <div class="input-group input-group-sm">
                                 ${index === 0 ? `
-                                    <button class="btn btn-outline-secondary copy-profile" type="button" data-id="${profile.id}" title="Copy Profile"><i class="bi bi-copy"></i></button>
-                                    <button class="btn btn-outline-success add-project-path" type="button" data-id="${profile.id}" title="Add another project path"><i class="bi bi-plus-lg"></i></button>
+                                    <button class="btn btn-outline-secondary add-project-path" type="button" data-id="${profile.id}" title="Add another project path"><i class="bi bi-plus-lg"></i></button>
                                 ` : `<span class="input-group-text">${index}</span>`}
                                 <input type="text" class="form-control project-path" data-id="${profile.id}" data-index="${index}" placeholder="/path/to/project" value="${path}">
                                 ${profile.projectPaths.length > 1 ? `
