@@ -7,9 +7,9 @@ export function getMainViewHTML(profile) {
         <div class="profile-header">
             <div class="input-group flex-grow-1">
                 <button class="btn btn-outline-secondary btn-sm settings-button" type="button" data-id="${profile.id}" title="Profile Settings"><i class="bi bi-gear-wide-connected"></i></button>
-                <button class="btn btn-outline-secondary btn-sm copy-profile" type="button" data-id="${profile.id}" title="Copy Profile"><i class="bi bi-copy"></i></button>
                 <input type="text" class="form-control form-control-sm profile-name-input" value="${profile.name}" data-id="${profile.id}">
                 <button class="btn btn-outline-secondary btn-sm update-app-button server-mode-item" type="button" data-id="${profile.id}" title="Update JustCode Server"><i class="bi bi-download"></i></button>
+                <button class="btn btn-outline-secondary btn-sm copy-profile" type="button" data-id="${profile.id}" title="Copy Profile"><i class="bi bi-copy"></i></button>
             </div>
             <div class="btn-group" role="group">
                 <button class="btn btn-outline-secondary btn-sm move-profile-left" data-id="${profile.id}" title="Move Left"><i class="bi bi-arrow-bar-left"></i></button>
@@ -22,51 +22,55 @@ export function getMainViewHTML(profile) {
         <!-- Project Path/Folder Selection -->
         <div class="mb-2">
             <label class="form-label">Project Location(s):</label>
-            <div class="d-flex gap-2">
-                <!-- JS Mode -->
-                <div class="js-mode-item flex-grow-1">
-                    <div id="jsProjectFoldersContainer-${profile.id}" class="d-flex flex-column gap-1">
-                        ${(profile.jsProjectFolderNames && profile.jsProjectFolderNames.length > 0 ? profile.jsProjectFolderNames : ['']).map((folderName, index) => `
-                            <div class="input-group input-group-sm">
-                                ${index === 0 ? `
-                                    <button class="btn btn-outline-secondary add-js-project-folder" type="button" data-id="${profile.id}" title="Add another project folder"><i class="bi bi-plus-lg"></i></button>
-                                ` : `<span class="input-group-text">${index}</span>`}
-                                
-                                <button class="btn btn-outline-primary flex-grow-1 select-project-folder" id="selectProjectFolder-${profile.id}-${index}" data-id="${profile.id}" data-index="${index}" title="Select Project Folder">
-                                    <span class="folder-name" id="selectedProjectName-${profile.id}-${index}">${folderName || 'No Folder Selected'}</span>
+            <!-- JS Mode -->
+            <div class="js-mode-item">
+                <div id="jsProjectFoldersContainer-${profile.id}" class="d-flex flex-column gap-1">
+                    ${(profile.jsProjectFolderNames && profile.jsProjectFolderNames.length > 0 ? profile.jsProjectFolderNames : ['']).map((folderName, index) => `
+                        <div class="input-group input-group-sm">
+                            ${index === 0 ? `
+                                <button class="btn btn-outline-secondary add-js-project-folder" type="button" data-id="${profile.id}" title="Add another project folder"><i class="bi bi-plus-lg"></i></button>
+                            ` : `<span class="input-group-text">${index}</span>`}
+                            
+                            <button class="btn btn-outline-primary flex-grow-1 select-project-folder" id="selectProjectFolder-${profile.id}-${index}" data-id="${profile.id}" data-index="${index}" title="Select Project Folder">
+                                <span class="folder-name" id="selectedProjectName-${profile.id}-${index}">${folderName || 'No Folder Selected'}</span>
+                            </button>
+                            
+                            <button class="btn btn-outline-secondary forget-project-folder" id="forgetProjectFolder-${profile.id}-${index}" data-id="${profile.id}" data-index="${index}" title="Forget this folder" style="${folderName ? 'display: inline-block;' : 'display: none;'}"><i class="bi bi-x-lg"></i></button>
+                            
+                            ${(profile.jsProjectFolderNames || []).length > 1 ? `
+                                <button class="btn btn-outline-secondary remove-js-project-folder" type="button" data-id="${profile.id}" data-index="${index}" title="Remove Folder"><i class="bi bi-dash-lg"></i></button>
+                            ` : ''}
+
+                            ${index === 0 ? `
+                                <button class="btn btn-outline-secondary btn-sm backend-toggle-btn" type="button" data-id="${profile.id}" title="Switch to Server Backend">
+                                    <i class="bi bi-hdd-stack"></i>
                                 </button>
-                                
-                                <button class="btn btn-outline-secondary forget-project-folder" id="forgetProjectFolder-${profile.id}-${index}" data-id="${profile.id}" data-index="${index}" title="Forget this folder" style="${folderName ? 'display: inline-block;' : 'display: none;'}"><i class="bi bi-x-lg"></i></button>
-                                
-                                ${(profile.jsProjectFolderNames || []).length > 1 ? `
-                                    <button class="btn btn-outline-secondary remove-js-project-folder" type="button" data-id="${profile.id}" data-index="${index}" title="Remove Folder"><i class="bi bi-dash-lg"></i></button>
-                                ` : ''}
-                            </div>
-                        `).join('')}
-                    </div>
+                            ` : ''}
+                        </div>
+                    `).join('')}
                 </div>
-                <!-- Server Mode -->
-                <div class="server-mode-item flex-grow-1">
-                    <div id="projectPathsContainer-${profile.id}" class="d-flex flex-column gap-1">
-                        ${(profile.projectPaths || ['']).map((path, index) => `
-                            <div class="input-group input-group-sm">
-                                ${index === 0 ? `
-                                    <button class="btn btn-outline-secondary add-project-path" type="button" data-id="${profile.id}" title="Add another project path"><i class="bi bi-plus-lg"></i></button>
-                                ` : `<span class="input-group-text">${index}</span>`}
-                                <input type="text" class="form-control project-path" data-id="${profile.id}" data-index="${index}" placeholder="/path/to/project" value="${path}">
-                                ${profile.projectPaths.length > 1 ? `
-                                    <button class="btn btn-outline-secondary remove-project-path" type="button" data-id="${profile.id}" data-index="${index}" title="Remove Path"><i class="bi bi-dash-lg"></i></button>
-                                ` : ''}
-                            </div>
-                        `).join('')}
-                    </div>
+            </div>
+            <!-- Server Mode -->
+            <div class="server-mode-item">
+                <div id="projectPathsContainer-${profile.id}" class="d-flex flex-column gap-1">
+                    ${(profile.projectPaths || ['']).map((path, index) => `
+                        <div class="input-group input-group-sm">
+                            ${index === 0 ? `
+                                <button class="btn btn-outline-secondary add-project-path" type="button" data-id="${profile.id}" title="Add another project path"><i class="bi bi-plus-lg"></i></button>
+                            ` : `<span class="input-group-text">${index}</span>`}
+                            <input type="text" class="form-control project-path" data-id="${profile.id}" data-index="${index}" placeholder="/path/to/project" value="${path}">
+                            ${profile.projectPaths.length > 1 ? `
+                                <button class="btn btn-outline-secondary remove-project-path" type="button" data-id="${profile.id}" data-index="${index}" title="Remove Path"><i class="bi bi-dash-lg"></i></button>
+                            ` : ''}
+                            
+                            ${index === 0 ? `
+                                <button class="btn btn-outline-secondary btn-sm backend-toggle-btn" type="button" data-id="${profile.id}" title="Switch to Browser (JS) Backend">
+                                    <i class="bi bi-browser-chrome"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    `).join('')}
                 </div>
-                <!-- Backend Toggle Button -->
-                <button class="btn btn-outline-secondary btn-sm backend-toggle-btn" type="button" data-id="${profile.id}" title="Switch to ${profile.useServerBackend ? 'Browser (JS) Backend' : 'Server Backend'}">
-                    ${profile.useServerBackend 
-                        ? '<i class="bi bi-hdd-stack"></i>' 
-                        : '<i class="bi bi-browser-chrome"></i>'}
-                </button>
             </div>
         </div>
         

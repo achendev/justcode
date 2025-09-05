@@ -31,22 +31,14 @@
     text-overflow: ellipsis;
 }
 
-/* Minimal, focused fix for Profile Name row only */
-.profile-card .profile-header .input-group .form-control.profile-name-input {
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-}
-.profile-card.js-mode .profile-header .input-group .form-control.profile-name-input {
-    border-top-right-radius: 0.25rem;
-    border-bottom-right-radius: 0.25rem;
-}
-.profile-card.server-mode .profile-header .input-group .update-app-button.server-mode-item {
-    border-top-right-radius: 0.25rem;
-    border-bottom-right-radius: 0.25rem;
+/* Fix for profile header buttons border-radius after reordering */
+.profile-card.js-mode .profile-header .input-group .copy-profile {
+    border-top-right-radius: var(--bs-border-radius-sm);
+    border-bottom-right-radius: var(--bs-border-radius-sm);
 }
 
-/* Fix for JS Mode folder select button when "forget" button is hidden */
+/* Fix for JS Mode folder select button to have sharp corners when another button follows a hidden one */
 .js-mode-item .select-project-folder:has(+ .forget-project-folder[style*="display: none"]) {
-    border-top-right-radius: var(--bs-border-radius-sm) !important;
-    border-bottom-right-radius: var(--bs-border-radius-sm) !important;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
 }
