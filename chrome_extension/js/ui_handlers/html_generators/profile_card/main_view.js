@@ -39,7 +39,7 @@ export function getMainViewHTML(profile) {
                                 <button class="btn btn-outline-secondary forget-project-folder" id="forgetProjectFolder-${profile.id}-${index}" data-id="${profile.id}" data-index="${index}" title="Forget this folder" style="${folderName ? 'display: inline-block;' : 'display: none;'}"><i class="bi bi-x-lg"></i></button>
                                 
                                 ${(profile.jsProjectFolderNames || []).length > 1 ? `
-                                    <button class="btn btn-outline-danger remove-js-project-folder" type="button" data-id="${profile.id}" data-index="${index}" title="Remove Folder"><i class="bi bi-dash-lg"></i></button>
+                                    <button class="btn btn-outline-secondary remove-js-project-folder" type="button" data-id="${profile.id}" data-index="${index}" title="Remove Folder"><i class="bi bi-dash-lg"></i></button>
                                 ` : ''}
                             </div>
                         `).join('')}
@@ -55,7 +55,7 @@ export function getMainViewHTML(profile) {
                                 ` : `<span class="input-group-text">${index}</span>`}
                                 <input type="text" class="form-control project-path" data-id="${profile.id}" data-index="${index}" placeholder="/path/to/project" value="${path}">
                                 ${profile.projectPaths.length > 1 ? `
-                                    <button class="btn btn-outline-danger remove-project-path" type="button" data-id="${profile.id}" data-index="${index}" title="Remove Path"><i class="bi bi-dash-lg"></i></button>
+                                    <button class="btn btn-outline-secondary remove-project-path" type="button" data-id="${profile.id}" data-index="${index}" title="Remove Path"><i class="bi bi-dash-lg"></i></button>
                                 ` : ''}
                             </div>
                         `).join('')}
