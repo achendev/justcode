@@ -68,6 +68,18 @@ export function getSettingsViewHTML(profile) {
             <input type="checkbox" class="form-check-input use-numeric-prefixes-for-multi-project" id="useNumericPrefixesForMultiProject-${profile.id}" data-id="${profile.id}" ${profile.useNumericPrefixesForMultiProject ? 'checked' : ''}>
             <label class="form-check-label" for="useNumericPrefixesForMultiProject-${profile.id}">Name multiproject directories by order number</label>
         </div>
+
+        <!-- Two-Way Sync Settings -->
+        <hr>
+        <div class="form-check mb-2">
+            <input type="checkbox" class="form-check-input two-way-sync-enabled" id="twoWaySyncEnabled-${profile.id}" data-id="${profile.id}" ${profile.isTwoWaySyncEnabled ? 'checked' : ''}>
+            <label class="form-check-label" for="twoWaySyncEnabled-${profile.id}">Enable Two-Way Replacements</label>
+        </div>
+        <div class="mb-3">
+            <label for="twoWaySyncRules-${profile.id}" class="form-label">Replacement Rules (local_value|placeholder):</label>
+            <textarea class="form-control form-control-sm two-way-sync-rules" id="twoWaySyncRules-${profile.id}" rows="4" data-id="${profile.id}" ${!profile.isTwoWaySyncEnabled ? 'disabled' : ''}>${profile.twoWaySyncRules}</textarea>
+            <small class="form-text text-muted">Replaces local values with placeholders before "Get Context", and vice-versa before "Deploy Code".</small>
+        </div>
         <hr>
         
         <!-- Instructions Settings -->
@@ -87,18 +99,6 @@ export function getSettingsViewHTML(profile) {
             <label for="criticalInstructions-${profile.id}" class="form-label">Critical Instructions Prompt:</label>
             <textarea class="form-control form-control-sm critical-instructions" id="criticalInstructions-${profile.id}" rows="8" data-id="${profile.id}" ${!profile.isCriticalInstructionsEnabled ? 'disabled' : ''}>${profile.criticalInstructions}</textarea>
             <small class="form-text text-muted">Use <code>{{DELIMITER}}</code> for your chosen delimiter.</small>
-        </div>
-
-        <!-- Two-Way Sync Settings -->
-        <hr>
-        <div class="form-check mb-2">
-            <input type="checkbox" class="form-check-input two-way-sync-enabled" id="twoWaySyncEnabled-${profile.id}" data-id="${profile.id}" ${profile.isTwoWaySyncEnabled ? 'checked' : ''}>
-            <label class="form-check-label" for="twoWaySyncEnabled-${profile.id}">Enable Two-Way Replacements</label>
-        </div>
-        <div class="mb-3">
-            <label for="twoWaySyncRules-${profile.id}" class="form-label">Replacement Rules (local_value|placeholder):</label>
-            <textarea class="form-control form-control-sm two-way-sync-rules" id="twoWaySyncRules-${profile.id}" rows="4" data-id="${profile.id}" ${!profile.isTwoWaySyncEnabled ? 'disabled' : ''}>${profile.twoWaySyncRules}</textarea>
-            <small class="form-text text-muted">Replaces local values with placeholders before "Get Context", and vice-versa before "Deploy Code".</small>
         </div>
     </div>
     `;
