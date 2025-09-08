@@ -10,6 +10,24 @@ function switchProfileTab(direction, reRender) {
         const newIndex = (currentIndex + direction + profiles.length) % profiles.length;
         const newActiveProfileId = profiles[newIndex].id;
         
+        // Asynchronously update the tab-profile map, same as in handleTabSwitch.
+        (async () => {
+            try {
+                const settings = await chrome.storage.local.get({ rememberTabProfile: true });
+                if (settings.rememberTabProfile) {
+                    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                    if (tab && tab.id) {
+                        const mapData = await chrome.storage.local.get({ tabProfileMap: {} });
+                        const tabProfileMap = mapData.tabProfileMap || {};
+                        tabProfileMap[tab.id] = newActiveProfileId;
+                        await chrome.storage.local.set({ tabProfileMap });
+                    }
+                }
+            } catch (e) {
+                console.error("JustCode: Error updating tab-profile association on shortcut switch.", e);
+            }
+        })();
+
         saveData(profiles, newActiveProfileId, archivedProfiles);
         reRender(); // Re-render with the new active profile
     });

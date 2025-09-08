@@ -35,6 +35,25 @@ export function handleProfileReorder(draggedId, targetId, reRenderCallback) {
 export function handleTabSwitch(event, reRenderCallback) {
     event.preventDefault();
     const id = parseInt(event.target.dataset.id);
+
+    // Asynchronously update the tab-profile map when the user switches tabs.
+    (async () => {
+        try {
+            const settings = await chrome.storage.local.get({ rememberTabProfile: true });
+            if (settings.rememberTabProfile) {
+                const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                if (tab && tab.id) {
+                    const mapData = await chrome.storage.local.get({ tabProfileMap: {} });
+                    const tabProfileMap = mapData.tabProfileMap || {};
+                    tabProfileMap[tab.id] = id;
+                    await chrome.storage.local.set({ tabProfileMap });
+                }
+            }
+        } catch (e) {
+            console.error("JustCode: Error updating tab-profile association on switch.", e);
+        }
+    })();
+
     loadData((profiles, activeProfileId, archivedProfiles) => {
         saveData(profiles, id, archivedProfiles);
         reRenderCallback(profiles, id, archivedProfiles);
