@@ -4,28 +4,7 @@ import { extractFallbackAnswer } from './answer_extractors/fallback.js';
 import { extractGeminiAnswer } from './answer_extractors/gemini.js';
 import { extractGrokAnswer } from './answer_extractors/grok.js';
 import { extractGrokAnswerX } from './answer_extractors/x_grok.js';
-
-async function readClipboardFromBackground() {
-    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-    if (!tab) {
-        console.error("JustCode: No active tab found to read clipboard from.");
-        return null;
-    }
-    try {
-        const results = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: () => navigator.clipboard.readText(),
-        });
-        if (chrome.runtime.lastError) {
-            console.error("JustCode: Error reading clipboard:", chrome.runtime.lastError.message);
-            return null;
-        }
-        return results[0]?.result || null;
-    } catch (e) {
-        console.error("JustCode: Exception while trying to read from clipboard.", e);
-        return null;
-    }
-}
+import { readFromClipboard } from '../utils/clipboard.js';
 
 /**
  * Extracts the deployment script from either the clipboard or the active LLM page.
@@ -39,11 +18,7 @@ export async function extractCodeToDeploy(profile, fromShortcut = false, hostnam
     const isDetached = isDocumentContext && new URLSearchParams(window.location.search).get('view') === 'window';
 
     if (profile.deployCodeSource === 'clipboard' || isDetached) {
-        if (isDocumentContext) {
-            return await navigator.clipboard.readText();
-        } else {
-            return await readClipboardFromBackground();
-        }
+        return await readFromClipboard();
     }
     
     const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });

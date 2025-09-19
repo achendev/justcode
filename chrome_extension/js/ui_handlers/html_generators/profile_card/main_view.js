@@ -73,10 +73,9 @@ export function getMainViewHTML(profile) {
                 </div>
             </div>
         </div>
-        
+        <label for="excludePatterns-${profile.id}" class="form-label">Exclude Patterns (comma-separated):</label>
         <div class="d-flex align-items-end gap-2 mb-2">
             <div class="flex-grow-1">
-                 <label for="excludePatterns-${profile.id}" class="form-label">Exclude Patterns (comma-separated):</label>
                 <div class="input-group input-group-sm">
                     <input type="text" class="form-control exclude-patterns" id="excludePatterns-${profile.id}" placeholder=".git/,venv/,.env,log/" value="${profile.excludePatterns || ''}">
                     <button class="btn btn-outline-secondary get-exclusion-prompt" type="button" data-id="${profile.id}" title="Get AI-suggestion for exclude patterns"><i class="bi bi-funnel"></i></button>
@@ -86,6 +85,7 @@ export function getMainViewHTML(profile) {
                 <button class="btn btn-outline-secondary undo-code" data-id="${profile.id}" title="Undo (ALT + <) or (⌥<)" disabled><i class="bi bi-arrow-90deg-left"></i></button>
                 <button class="btn btn-outline-secondary redo-code" data-id="${profile.id}" title="Redo (ALT + >) or (⌥>)" disabled><i class="bi bi-arrow-90deg-right"></i></button>
             </div>
+            <button class="btn btn-outline-secondary btn-sm apply-replacements ${!profile.isTwoWaySyncEnabled ? 'd-none' : ''}" data-id="${profile.id}" title="Apply Replacements to Clipboard & Paste (Alt+V)"><i class="bi bi-magic"></i></button>
         </div>
         
         <div class="mb-2 include-patterns-container collapsed" id="includeContainer-${profile.id}">

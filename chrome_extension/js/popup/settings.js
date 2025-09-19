@@ -14,6 +14,7 @@ export function initializeAppSettings(reRender) {
     const deployCodeShortcutCheckbox = document.getElementById('isDeployCodeShortcutEnabled');
     const undoShortcutCheckbox = document.getElementById('isUndoShortcutEnabled');
     const redoShortcutCheckbox = document.getElementById('isRedoShortcutEnabled');
+    const applyReplacementsShortcutCheckbox = document.getElementById('isApplyReplacementsShortcutEnabled');
     const showProgressBarCheckbox = document.getElementById('showNotificationProgressBar');
 
     const shortcutDomainsTextarea = document.getElementById('shortcutDomainsTextarea');
@@ -36,6 +37,7 @@ export function initializeAppSettings(reRender) {
         'isDeployCodeShortcutEnabled',
         'isUndoShortcutEnabled',
         'isRedoShortcutEnabled',
+        'isApplyReplacementsShortcutEnabled',
         'showNotificationProgressBar'
     ], (data) => {
         closeOnGetContextCheckbox.checked = data.closeOnGetContext === true;
@@ -52,6 +54,7 @@ export function initializeAppSettings(reRender) {
         deployCodeShortcutCheckbox.checked = data.isDeployCodeShortcutEnabled !== false;
         undoShortcutCheckbox.checked = data.isUndoShortcutEnabled !== false;
         redoShortcutCheckbox.checked = data.isRedoShortcutEnabled !== false;
+        applyReplacementsShortcutCheckbox.checked = data.isApplyReplacementsShortcutEnabled !== false;
         showProgressBarCheckbox.checked = data.showNotificationProgressBar !== false;
     });
     
@@ -96,6 +99,7 @@ export function initializeAppSettings(reRender) {
     createShortcutChangeListener('isDeployCodeShortcutEnabled', 'isDeployCodeShortcutEnabled');
     createShortcutChangeListener('isUndoShortcutEnabled', 'isUndoShortcutEnabled');
     createShortcutChangeListener('isRedoShortcutEnabled', 'isRedoShortcutEnabled');
+    createShortcutChangeListener('isApplyReplacementsShortcutEnabled', 'isApplyReplacementsShortcutEnabled');
     createShortcutChangeListener('showNotificationProgressBar', 'showNotificationProgressBar');
 
     notificationPositionSelector.addEventListener('change', (event) => {

@@ -2,6 +2,7 @@ import { saveData } from './storage.js';
 import { getContext } from './get_context.js';
 import { deployCode } from './deploy_code.js';
 import { undoCode, redoCode } from './undo_redo.js';
+import { applyReplacementsAndPaste } from './apply_replacements.js';
 
 // --- Default settings are now managed here as a single source of truth ---
 const AppSettings = {
@@ -13,6 +14,7 @@ const AppSettings = {
     isDeployCodeShortcutEnabled: true,
     isUndoShortcutEnabled: true,
     isRedoShortcutEnabled: true,
+    isApplyReplacementsShortcutEnabled: true,
     rememberTabProfile: true
 };
 
@@ -83,6 +85,9 @@ function injectShortcutListener(tabId, settings) {
                 case 'Period':
                      if (settings.isRedoShortcutEnabled) command = 'redo-code-shortcut';
                      break;
+                case 'KeyV':
+                    if (settings.isApplyReplacementsShortcutEnabled) command = 'apply-replacements-shortcut';
+                    break;
             }
 
             if (command) {
@@ -165,6 +170,7 @@ async function executeCommand(command, hostname) {
         case "deploy-code-shortcut": actionFunc = deployCode; progressText = 'Deploying code...'; break;
         case "undo-code-shortcut": actionFunc = undoCode; progressText = 'Undoing last action...'; break;
         case "redo-code-shortcut": actionFunc = redoCode; progressText = 'Redoing last undo...'; break;
+        case "apply-replacements-shortcut": actionFunc = applyReplacementsAndPaste; progressText = 'Applying replacements...'; break;
         default: return;
     }
 

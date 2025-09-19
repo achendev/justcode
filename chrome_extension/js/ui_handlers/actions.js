@@ -1,10 +1,13 @@
 import { getContext, getExclusionSuggestion } from '../get_context.js';
 import { deployCode } from '../deploy_code.js';
 import { undoCode, redoCode } from '../undo_redo.js';
+import { applyReplacementsAndPaste } from '../apply_replacements.js';
 import { loadData, saveData } from '../storage.js';
 import { updateAndSaveMessage, updateTemporaryMessage } from './message.js';
 import { refreshUndoRedoCounts } from '../ui.js';
 import { handleServerError } from './server_error_handler.js';
+import { applyReplacements } from '../utils/two_way_sync.js';
+import { pasteIntoLLM } from '../context_builder/llm_interface.js';
 
 // --- Start of New Code ---
 const GET_CONTEXT_HINT_KEY = 'getContextButtonUsageCount';
@@ -187,4 +190,8 @@ export function handleUpdateAppClick(event) {
             button.innerHTML = originalButtonHTML;
         }
     });
+}
+
+export function handleApplyReplacementsClick(event) {
+    performAction(event, applyReplacementsAndPaste, false);
 }

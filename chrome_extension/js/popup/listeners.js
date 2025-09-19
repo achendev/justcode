@@ -1,4 +1,4 @@
-import { handleGetContextClick, handleDeployCodeClick, handleUndoCodeClick, handleRedoCodeClick } from '../ui_handlers/actions.js';
+import { handleGetContextClick, handleDeployCodeClick, handleUndoCodeClick, handleRedoCodeClick, handleApplyReplacementsClick } from '../ui_handlers/actions.js';
 import { loadData, saveData } from '../storage.js';
 import { renderUI } from '../ui.js';
 
@@ -60,7 +60,8 @@ export function initializeListeners(reRender) {
 
             const clickButton = (selector, handler) => {
                 const btn = activeCard.querySelector(selector);
-                if (btn && !btn.disabled) {
+                // Check for disabled state and visibility (d-none class)
+                if (btn && !btn.disabled && !btn.classList.contains('d-none')) {
                     const mockEvent = { currentTarget: btn };
                     handler(mockEvent);
                     return true;
@@ -91,6 +92,9 @@ export function initializeListeners(reRender) {
                 case 'KeyS':
                     switchProfileTab(1, reRender);
                     actionTaken = true;
+                    break;
+                case 'KeyV':
+                    actionTaken = clickButton('.apply-replacements', handleApplyReplacementsClick);
                     break;
             }
 

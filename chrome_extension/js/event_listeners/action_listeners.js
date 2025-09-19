@@ -22,4 +22,7 @@ export function attachActionEventListeners() {
     document.querySelectorAll('.update-app-button').forEach(button => {
         button.addEventListener('click', (e) => actionHandlers.handleUpdateAppClick(e));
     });
+    document.querySelectorAll('.apply-replacements').forEach(button => {
+        button.addEventListener('click', (e) => actionHandlers.handleApplyReplacementsClick(e));
+    });
 }

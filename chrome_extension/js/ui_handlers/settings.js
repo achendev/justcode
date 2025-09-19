@@ -114,6 +114,11 @@ export function handleTwoWaySyncToggle(event) {
         textarea.disabled = !isChecked;
     }
 
+    const applyBtn = profileCard.querySelector('.apply-replacements');
+    if (applyBtn) {
+        applyBtn.classList.toggle('d-none', !isChecked);
+    }
+
     loadData((profiles, activeProfileId, archivedProfiles) => {
         const profile = profiles.find(p => p.id === id);
         if (profile) {
