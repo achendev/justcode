@@ -103,7 +103,7 @@ def generate_context_from_path(project_path, include_patterns, exclude_patterns,
             print(f"Warning: Could not read file '{full_path}': {e}")
             continue
             
-    return "".join(output_parts).strip()
+    return "".join(output_parts)
 
 
 def generate_tree_with_char_counts(project_path, include_patterns, exclude_patterns, path_prefix=None):

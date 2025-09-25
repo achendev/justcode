@@ -71,7 +71,7 @@ def get_context():
             content = generate_context_from_path(p_path, include_patterns, exclude_patterns, path_prefix=prefix)
             all_contents.append(content)
 
-        file_contents = "\n\n".join(all_contents).strip()
+        file_contents = "\n\n".join(all_contents)
         
         # --- Gather Additional Context (if enabled and only for the first project path) ---
         if gather_context and context_script:
