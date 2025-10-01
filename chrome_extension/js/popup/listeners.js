@@ -36,17 +36,19 @@ function switchProfileTab(direction, reRender) {
 export function initializeListeners(reRender) {
     // --- Key Listeners for profile state ---
     document.addEventListener('keydown', (e) => {
-        // Show delete button when shift is held down
+        // Show delete button and activate copy-as-json when shift is held down
         if (e.key === 'Shift') {
             document.querySelectorAll('.profile-card.active .archive-profile').forEach(btn => btn.style.display = 'none');
             document.querySelectorAll('.profile-card.active .permanent-delete-direct').forEach(btn => btn.style.display = 'inline-block');
+            document.querySelectorAll('.profile-card.active .copy-profile').forEach(btn => btn.classList.add('shift-pressed'));
         }
     });
     document.addEventListener('keyup', (e) => {
-        // Hide delete button when shift is released
+        // Hide delete button and deactivate copy-as-json when shift is released
         if (e.key === 'Shift') {
             document.querySelectorAll('.profile-card.active .archive-profile').forEach(btn => btn.style.display = 'inline-block');
             document.querySelectorAll('.profile-card.active .permanent-delete-direct').forEach(btn => btn.style.display = 'none');
+            document.querySelectorAll('.profile-card.active .copy-profile').forEach(btn => btn.classList.remove('shift-pressed'));
         }
     });
 

@@ -88,3 +88,22 @@ body.dark-theme::-webkit-scrollbar-thumb:hover,
 body.dark-theme .message-text::-webkit-scrollbar-thumb:hover {
     background-color: rgba(248, 249, 250, 0.4);
 }
+/* Style for shift-key press on copy button */
+.copy-profile.btn-outline-secondary.shift-pressed {
+    border-color: #dc3545; /* Bootstrap danger color */
+    background-color: rgba(220, 53, 69, 0.1); /* Light red background */
+    color: #dc3545;
+}
+body.dark-theme .copy-profile.btn-outline-secondary.shift-pressed {
+    border-color: #ff6b6b;
+    background-color: rgba(255, 107, 107, 0.15);
+    color: #ff6b6b;
+}
+.copy-profile.btn-outline-secondary.shift-pressed:hover {
+    background-color: #dc3545;
+    color: white;
+}
+body.dark-theme .copy-profile.btn-outline-secondary.shift-pressed:hover {
+    background-color: #ff6b6b;
+    color: #212529;
+}

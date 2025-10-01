@@ -1,8 +1,52 @@
 import { loadData, saveData } from '../../storage.js';
 import { defaultCriticalInstructions } from '../../default_instructions.js';
 import { forgetAllHandlesForProfile } from '../../file_system_manager.js';
+import { readFromClipboard } from '../../utils/clipboard.js';
+import { writeToClipboard } from '../../utils/clipboard.js';
+import { updateAndSaveMessage } from '../message.js';
 
-export function handleAddProfile(reRenderCallback) {
+// Helper function to validate the pasted object
+function isProfileLike(obj) {
+    if (!obj || typeof obj !== 'object') return false;
+    // Check for a few key properties that all profiles should have
+    return 'id' in obj && 'name' in obj && 'useServerBackend' in obj && 'excludePatterns' in obj;
+}
+
+export async function handleAddProfile(reRenderCallback) {
+    // Try to paste from clipboard first
+    try {
+        const clipboardText = await readFromClipboard();
+        if (clipboardText) {
+            const potentialProfile = JSON.parse(clipboardText);
+
+            if (isProfileLike(potentialProfile)) {
+                loadData((profiles, activeProfileId, archivedProfiles) => {
+                    const newProfile = potentialProfile; // Start with the pasted data
+                    
+                    // Sanitize and update the pasted profile
+                    newProfile.id = Date.now();
+                    newProfile.name = `${newProfile.name} (Pasted)`;
+                    newProfile.lastMessage = { text: 'Pasted from clipboard.', type: 'info' }; 
+                    
+                    // IMPORTANT: For security and functionality, reset file system access.
+                    // The user MUST re-select the folder for this new profile.
+                    newProfile.jsProjectFolderNames = [];
+                    forgetAllHandlesForProfile(newProfile.id);
+
+                    profiles.push(newProfile);
+                    const newActiveProfileId = newProfile.id;
+                    saveData(profiles, newActiveProfileId, archivedProfiles);
+                    reRenderCallback(profiles, newActiveProfileId, archivedProfiles);
+                });
+                return; // Exit after successful paste
+            }
+        }
+    } catch (e) {
+        // This is expected if clipboard doesn't contain valid JSON.
+        // Silently fall through to the default behavior.
+    }
+
+    // Default behavior: create a new empty profile
     loadData((profiles, activeProfileId, archivedProfiles) => {
         const newProfile = {
             id: Date.now(),
@@ -26,7 +70,7 @@ export function handleAddProfile(reRenderCallback) {
             jsProjectFolderNames: [],
             // Server-specific fields
             projectPaths: [''],
-            serverUrl: 'http://127.0.0.1:5010',
+            serverUrl: 'http://1227.0.0.1:5010',
             isAuthEnabled: false,
             username: '',
             password: '',
@@ -52,6 +96,29 @@ export function handleProfileNameChange(event, reRenderCallback) {
 
 export function handleCopyProfile(event, reRenderCallback) {
     const id = parseInt(event.currentTarget.dataset.id);
+
+    // If shift is held, copy profile as JSON to clipboard
+    if (event.shiftKey) {
+        loadData(async (profiles) => {
+            const profileToCopy = profiles.find(p => p.id === id);
+            if (!profileToCopy) return;
+
+            // Create a clean copy without runtime state
+            const profileJson = { ...profileToCopy };
+            delete profileJson.lastMessage; // Don't copy transient messages
+
+            try {
+                await writeToClipboard(JSON.stringify(profileJson));
+                updateAndSaveMessage(id, 'Profile JSON copied to clipboard!', 'success');
+            } catch (err) {
+                console.error("Failed to copy profile JSON:", err);
+                updateAndSaveMessage(id, 'Failed to copy profile JSON.', 'error');
+            }
+        });
+        return; // Stop execution here
+    }
+
+    // Original functionality: duplicate the profile in the UI
     loadData((profiles, activeProfileId, archivedProfiles) => {
         const profileToCopy = profiles.find(p => p.id === id);
         if (!profileToCopy) return;
