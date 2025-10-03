@@ -46,8 +46,14 @@ async function refreshUndoRedoCountsServer(profile) {
     
     const pathParams = profile.projectPaths.map(p => `path=${encodeURIComponent(p)}`).join('&');
     const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
-    const undoEndpoint = `${serverUrl}/undo?${pathParams}`;
-    const redoEndpoint = `${serverUrl}/redo?${pathParams}`;
+    
+    let undoEndpoint = `${serverUrl}/undo?${pathParams}`;
+    let redoEndpoint = `${serverUrl}/redo?${pathParams}`;
+
+    if (profile.useNumericPrefixesForMultiProject) {
+        undoEndpoint += `&useNumericPrefixes=true`;
+        redoEndpoint += `&useNumericPrefixes=true`;
+    }
     
     let undoCount = 0;
     let redoCount = 0;

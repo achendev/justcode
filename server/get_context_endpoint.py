@@ -2,8 +2,10 @@ import os
 import traceback
 import json
 import subprocess
+import shlex
 from flask import request, Response
-from .tools.context_generator import generate_context_from_path, generate_tree_with_char_counts
+from .tools.context_generator import generate_context_from_path, generate_tree_with_char_counts, get_file_stats
+from .tools.utils import here_doc_value
 
 def get_context():
     paths = request.args.getlist('path')
@@ -19,61 +21,87 @@ def get_context():
         return Response("Error: 'path' parameter is missing.", status=400, mimetype='text/plain')
 
     project_paths = [os.path.abspath(p.strip()) for p in paths if p.strip()]
-    is_single_project = len(project_paths) == 1
+    is_single_path = len(project_paths) == 1
 
-    if not use_numeric_prefixes and not is_single_project:
-        project_names = [os.path.basename(p) for p in project_paths]
-        if len(project_names) != len(set(project_names)):
-            return Response("Error: Multiple project paths have the same directory name. Please enable 'Name by order number' in profile settings to resolve ambiguity.", status=400, mimetype='text/plain')
+    if not use_numeric_prefixes and not is_single_path:
+        # Check for unique basenames for directories, and unique "parent/file" for files
+        names_to_check = []
+        for p in project_paths:
+            if os.path.isdir(p):
+                names_to_check.append(os.path.basename(p))
+            elif os.path.isfile(p):
+                parent_dir_name = os.path.basename(os.path.dirname(p))
+                file_name = os.path.basename(p)
+                names_to_check.append(f"{parent_dir_name}/{file_name}")
 
-    for p_path in project_paths:
-        if not os.path.isdir(p_path):
-            return Response(f"Error: Provided path '{p_path}' is not a valid directory.", status=400, mimetype='text/plain')
-        print(f"Using project path: {p_path}")
+        if len(names_to_check) != len(set(names_to_check)):
+            return Response("Error: Multiple project paths result in the same name in the context. Please enable 'Name by order number' in profile settings to resolve ambiguity.", status=400)
 
     exclude_patterns = [p.strip() for p in exclude_str.split(',') if p.strip()]
     include_patterns = [p.strip() for p in include_str.split(',') if p.strip()]
 
     try:
-        # --- Generate Tree and Check Size ---
-        all_trees = []
+        all_trees_with_counts = []
+        all_contents_for_script = []
         total_size = 0
-        
+
         for i, p_path in enumerate(project_paths):
-            prefix = None
-            if not is_single_project:
-                prefix = f"./{i}" if use_numeric_prefixes else f"./{os.path.basename(p_path)}"
-            tree, size = generate_tree_with_char_counts(p_path, include_patterns, exclude_patterns, path_prefix=prefix)
-            all_trees.append(tree)
-            total_size += size
+            if os.path.isdir(p_path):
+                prefix = None
+                if not is_single_path:
+                    prefix = f"./{i}" if use_numeric_prefixes else f"./{os.path.basename(p_path)}"
+                
+                tree, size = generate_tree_with_char_counts(p_path, include_patterns, exclude_patterns, path_prefix=prefix)
+                all_trees_with_counts.append(tree)
+                total_size += size
+                
+                content_for_script = generate_context_from_path(p_path, include_patterns, exclude_patterns, path_prefix=prefix)
+                all_contents_for_script.append(content_for_script)
+
+            elif os.path.isfile(p_path):
+                content, size, lines = get_file_stats(p_path)
+                if content is None:
+                    continue
+                
+                total_size += size
+                filename = os.path.basename(p_path)
+
+                def format_stats(s_chars, s_lines):
+                    return f"({s_chars:,} chars, {s_lines:,} lines)"
+                
+                if is_single_path:
+                    tree_line = f"./{filename} {format_stats(size, lines)}"
+                    path_in_script = f"./{filename}"
+                else:
+                    if use_numeric_prefixes:
+                        prefix_part = str(i)
+                    else:
+                        prefix_part = os.path.basename(os.path.dirname(p_path))
+                    
+                    tree_line = f"./{prefix_part}/{filename} {format_stats(size, lines)}"
+                    path_in_script = f"./{prefix_part}/{filename}"
+                
+                all_trees_with_counts.append(tree_line)
+                
+                quoted_path = shlex.quote(path_in_script)
+                content_string = f"cat > {quoted_path} << '{here_doc_value}'\n{content}\n{here_doc_value}\n\n"
+                all_contents_for_script.append(content_string)
+
+            else:
+                 return Response(f"Error: Provided path '{p_path}' is not a valid directory or file.", status=400, mimetype='text/plain')
         
-        tree_with_counts = "\n\n".join(all_trees)
+        tree_with_counts = "\n\n".join(all_trees_with_counts)
 
         if suggest_exclusions:
-            print("Exclusion suggestion data requested. Returning tree and size.")
-            response_data = {
-                "treeString": tree_with_counts,
-                "totalChars": total_size
-            }
+            response_data = {"treeString": tree_with_counts, "totalChars": total_size}
             return Response(json.dumps(response_data), mimetype='application/json')
 
         if total_size > context_size_limit:
-            print(f"Context size ({total_size}) exceeds limit ({context_size_limit}). Returning error.")
             error_message = f"Context size (~{total_size:,}) exceeds limit ({context_size_limit:,})."
             return Response(error_message, status=413, mimetype='text/plain')
         
-        # --- Generate File Contents ---
-        all_contents = []
-        for i, p_path in enumerate(project_paths):
-            prefix = None
-            if not is_single_project:
-                prefix = f"./{i}" if use_numeric_prefixes else f"./{os.path.basename(p_path)}"
-            content = generate_context_from_path(p_path, include_patterns, exclude_patterns, path_prefix=prefix)
-            all_contents.append(content)
-
-        file_contents = "\n\n".join(all_contents)
+        file_contents = "".join(all_contents_for_script)
         
-        # --- Gather Additional Context (if enabled and only for the first project path) ---
         if gather_context and context_script:
             main_project_path = project_paths[0]
             try:

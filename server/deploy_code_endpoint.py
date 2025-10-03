@@ -25,20 +25,23 @@ def deploy_code():
     project_paths = [os.path.abspath(p.strip()) for p in paths if p.strip()]
 
     if not use_numeric_prefixes and len(project_paths) > 1:
-        project_names = [os.path.basename(p) for p in project_paths]
-        if len(project_names) != len(set(project_names)):
+        names_to_check = []
+        for p in project_paths:
+            if os.path.isdir(p): names_to_check.append(os.path.basename(p))
+            elif os.path.isfile(p): names_to_check.append(f"{os.path.basename(os.path.dirname(p))}/{os.path.basename(p)}")
+        if len(names_to_check) != len(set(names_to_check)):
             return Response("Error: Multiple project paths have the same directory name. Please enable 'Name by order number' in profile settings to resolve ambiguity.", status=400)
 
     for p_path in project_paths:
-        if not os.path.isdir(p_path):
-            return Response(f"Error: Provided path '{p_path}' is not a valid directory.", status=400, mimetype='text/plain')
+        if not os.path.exists(p_path):
+            return Response(f"Error: Provided path '{p_path}' is not a valid directory or file.", status=400, mimetype='text/plain')
     
     script_content = request.get_data(as_text=True)
     if not script_content:
         return Response("Error: No deploy script provided in the request body.", status=400, mimetype='text/plain')
     
     # --- Pass 1: Generate Undo Script ---
-    rollback_commands = [] # This is the content of the "undo" script
+    rollback_commands = []
     lines = script_content.splitlines()
     i = 0
     try:
@@ -47,15 +50,20 @@ def deploy_code():
             i += 1
             if not line: continue
 
+            def check_safety_and_get_path(raw_path):
+                full_path, owning_path = resolve_path(raw_path, project_paths, use_numeric_prefixes)
+                base_dir = os.path.dirname(owning_path) if os.path.isfile(owning_path) else owning_path
+                if not os.path.abspath(full_path).startswith(os.path.abspath(base_dir)):
+                    raise PermissionError(f"Path traversal attempt detected: {raw_path}")
+                return full_path
+
             if line.startswith('cat >'):
                 match = re.match(r"cat >\s+(?P<path>.*?)\s+<<\s+'" + re.escape(here_doc_value) + r"'", line)
                 if not match: raise ValueError(f"Invalid 'cat' format: {line}")
                 
                 raw_path = match.group('path').strip("'\"")
-                project_path, relative_path = resolve_path(raw_path, project_paths, use_numeric_prefixes)
-                if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
-                
-                full_path = os.path.join(project_path, relative_path.replace('/', os.sep))
+                full_path = check_safety_and_get_path(raw_path)
+
                 quoted_rel_path = shlex.quote(raw_path)
                 if os.path.isfile(full_path):
                     with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
@@ -86,15 +94,13 @@ def deploy_code():
             if command == 'mkdir':
                 paths_to_create = [arg for arg in args if arg != '-p']
                 for arg in paths_to_create:
-                    project_path, relative_path = resolve_path(arg, project_paths, use_numeric_prefixes)
-                    if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
-                    if not os.path.isdir(os.path.join(project_path, relative_path.replace('/', os.sep))):
+                    full_path = check_safety_and_get_path(arg)
+                    if not os.path.isdir(full_path):
                         rollback_commands.insert(0, f"rmdir {shlex.quote(arg)}")
             elif command == 'touch':
                 for arg in args:
-                    project_path, relative_path = resolve_path(arg, project_paths, use_numeric_prefixes)
-                    if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
-                    if not os.path.exists(os.path.join(project_path, relative_path.replace('/', os.sep))):
+                    full_path = check_safety_and_get_path(arg)
+                    if not os.path.exists(full_path):
                         rollback_commands.insert(0, f"rm -f {shlex.quote(arg)}")
             elif command == 'rm':
                 for arg in args:
@@ -102,9 +108,7 @@ def deploy_code():
                 file_paths = [arg for arg in args if not arg.startswith('-')]
                 if not file_paths: raise ValueError("'rm' command requires a file path.")
                 for relative_path_arg in file_paths:
-                    project_path, relative_path = resolve_path(relative_path_arg, project_paths, use_numeric_prefixes)
-                    if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
-                    full_path = os.path.join(project_path, relative_path.replace('/', os.sep))
+                    full_path = check_safety_and_get_path(relative_path_arg)
                     if os.path.isfile(full_path):
                         with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
                             original_content = f.read()
@@ -112,20 +116,18 @@ def deploy_code():
                         rollback_commands.insert(0, rollback_cmd)
             elif command == 'rmdir':
                 for arg in args:
-                    project_path, relative_path = resolve_path(arg, project_paths, use_numeric_prefixes)
-                    if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
-                    if os.path.isdir(os.path.join(project_path, relative_path.replace('/', os.sep))):
+                    full_path = check_safety_and_get_path(arg)
+                    if os.path.isdir(full_path):
                         rollback_commands.insert(0, f"mkdir {shlex.quote(arg)}")
             elif command == 'mv':
                 if len(args) != 2: raise ValueError("'mv' requires two arguments.")
+                # Safety for mv is checked inside execute_script, we just generate the reverse command
                 src, dest = args[0], args[1]
                 rollback_commands.insert(0, f"mv {shlex.quote(dest)} {shlex.quote(src)}")
             elif command == 'chmod':
                 file_args = args[1:]
                 for arg in file_args:
-                    project_path, relative_path = resolve_path(arg, project_paths, use_numeric_prefixes)
-                    if not is_safe_path(project_path, relative_path): raise PermissionError(f"Traversal: {relative_path}")
-                    full_path = os.path.join(project_path, relative_path.replace('/', os.sep))
+                    full_path = check_safety_and_get_path(arg)
                     if os.path.exists(full_path) and not os.path.isdir(full_path):
                         try:
                             original_permissions = stat.S_IMODE(os.stat(full_path).st_mode)
@@ -140,30 +142,25 @@ def deploy_code():
     except (ValueError, PermissionError, OSError) as e:
         return Response(f"Error during undo script generation: {str(e)}", status=500, mimetype='text/plain')
 
-    # A new deployment clears the redo history.
     clear_stack(project_paths, 'redo')
-
-    # Create new script files in the undo_stack.
     timestamp = str(int(time.time() * 1000))
     undo_stack_dir = get_history_dir(project_paths, 'undo')
     undo_script_content = "\n".join(rollback_commands)
     undo_filepath = os.path.join(undo_stack_dir, f"{timestamp}.sh")
-    redo_filepath = os.path.join(undo_stack_dir, f"{timestamp}.redo") # The redo file is the original deploy script
+    redo_filepath = os.path.join(undo_stack_dir, f"{timestamp}.redo")
 
     with open(undo_filepath, 'w', encoding='utf-8') as f: f.write(undo_script_content)
     with open(redo_filepath, 'w', encoding='utf-8') as f: f.write(script_content)
 
-    # Clean up old undo scripts if there are more than 10.
     all_undo_timestamps = get_sorted_stack_timestamps(project_paths, 'undo')
     if len(all_undo_timestamps) > 10:
-        for old_ts in all_undo_timestamps[:-10]: # Keep the 10 newest
+        for old_ts in all_undo_timestamps[:-10]:
             try:
                 os.remove(os.path.join(undo_stack_dir, f"{old_ts}.sh"))
                 os.remove(os.path.join(undo_stack_dir, f"{old_ts}.redo"))
             except OSError as e:
                 print(f"Warning: Could not delete old undo script for ts '{old_ts}': {e}")
     
-    # --- Pass 2: Execute Deployment Script ---
     try:
         output_log, error_log = execute_script(script_content, project_paths, tolerate_errors, use_numeric_prefixes)
         
@@ -178,9 +175,9 @@ def deploy_code():
         if verbose_log:
             deployment_message += "\n--- LOG ---\n" + "\n".join(output_log)
 
-        # --- Pass 3: Execute Post-Deploy Script (in first project path) ---
         if run_script_on_deploy and post_deploy_script:
             main_project_path = project_paths[0]
+            if os.path.isfile(main_project_path): main_project_path = os.path.dirname(main_project_path)
             try:
                 post_script_result = subprocess.run(
                     post_deploy_script, shell=True, cwd=main_project_path,
@@ -198,7 +195,6 @@ def deploy_code():
                     final_message = deployment_message + post_script_message
                     return Response(final_message, status=400, mimetype='text/plain')
 
-                # Script succeeded
                 if verbose_log:
                     post_script_message = "\n\n--- POST-DEPLOY SCRIPT SUCCEEDED ---\n"
                     if post_script_result.stdout: post_script_message += f"Stdout:\n{post_script_result.stdout}"

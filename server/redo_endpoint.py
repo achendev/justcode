@@ -12,17 +12,26 @@ def redo():
     
     project_paths = [os.path.abspath(p.strip()) for p in paths if p.strip()]
     for p_path in project_paths:
-        if not os.path.isdir(p_path):
-            return Response(f"Error: Provided path '{p_path}' is not a valid directory.", status=400, mimetype='text/plain')
-    
-    all_redo_timestamps = get_sorted_stack_timestamps(project_paths, 'redo')
+        if not os.path.exists(p_path):
+            return Response(f"Error: Provided path '{p_path}' is not a valid directory or file.", status=400, mimetype='text/plain')
 
     if request.method == 'GET':
+        all_redo_timestamps = get_sorted_stack_timestamps(project_paths, 'redo')
         return Response(str(len(all_redo_timestamps)), mimetype='text/plain')
     
     if request.method == 'POST':
         tolerate_errors = request.args.get('tolerateErrors', 'true').lower() == 'true'
         use_numeric_prefixes = request.args.get('useNumericPrefixes', 'false').lower() == 'true'
+
+        if not use_numeric_prefixes and len(project_paths) > 1:
+            names_to_check = []
+            for p in project_paths:
+                if os.path.isdir(p): names_to_check.append(os.path.basename(p))
+                elif os.path.isfile(p): names_to_check.append(f"{os.path.basename(os.path.dirname(p))}/{os.path.basename(p)}")
+            if len(names_to_check) != len(set(names_to_check)):
+                return Response("Error: Multiple project paths have the same name. Please enable 'Name by order number' in profile settings.", status=400)
+    
+        all_redo_timestamps = get_sorted_stack_timestamps(project_paths, 'redo')
         if not all_redo_timestamps:
             return Response("No actions to redo.", status=404, mimetype='text/plain')
 

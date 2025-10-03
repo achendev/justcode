@@ -15,6 +15,22 @@ def is_binary(file_path):
     except OSError:
         return True # Cannot read, treat as binary/inaccessible
 
+def get_file_stats(file_path):
+    """
+    Reads a single file and returns its content and stats if it's not binary.
+    """
+    if is_binary(file_path):
+        return None, 0, 0
+    try:
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read()
+        content_length = len(content)
+        # Align with JS logic: content.split('\n').length
+        line_count = len(content.split('\n'))
+        return content, content_length, line_count
+    except OSError:
+        return None, 0, 0
+
 def generate_context_from_path(project_path, include_patterns, exclude_patterns, path_prefix=None):
     """
     Generates a project context string including a file tree and file contents,
