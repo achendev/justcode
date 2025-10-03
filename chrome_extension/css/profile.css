@@ -42,3 +42,18 @@
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
 }
+
+/* Compact styling for project location inputs when there are many */
+.input-group-compact.input-group-sm > .btn,
+.input-group-compact.input-group-sm > .form-control,
+.input-group-compact.input-group-sm > .input-group-text {
+    padding-top: 0.05rem;
+    padding-bottom: 0.05rem;
+    font-size: 0.75rem; /* slightly smaller font */
+    height: auto; /* let padding define height */
+}
+
+/* Adjust icon alignment in smaller buttons */
+.input-group-compact.input-group-sm > .btn i {
+    vertical-align: middle;
+}

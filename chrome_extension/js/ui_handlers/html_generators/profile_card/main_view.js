@@ -25,8 +25,10 @@ export function getMainViewHTML(profile) {
             <!-- JS Mode -->
             <div class="js-mode-item">
                 <div id="jsProjectFoldersContainer-${profile.id}" class="d-flex flex-column gap-1">
-                    ${(profile.jsProjectFolderNames && profile.jsProjectFolderNames.length > 0 ? profile.jsProjectFolderNames : ['']).map((folderName, index) => `
-                        <div class="input-group input-group-sm">
+                    ${(profile.jsProjectFolderNames && profile.jsProjectFolderNames.length > 0 ? profile.jsProjectFolderNames : ['']).map((folderName, index) => {
+                        const isCompact = (profile.jsProjectFolderNames || []).length > 3 && index > 0;
+                        return `
+                        <div class="input-group input-group-sm ${isCompact ? 'input-group-compact' : ''}">
                             ${index === 0 ? `
                                 <button class="btn btn-outline-secondary add-js-project-folder" type="button" data-id="${profile.id}" title="Add another project folder"><i class="bi bi-plus-lg"></i></button>
                             ` : `<span class="input-group-text">${index}</span>`}
@@ -47,14 +49,16 @@ export function getMainViewHTML(profile) {
                                 </button>
                             ` : ''}
                         </div>
-                    `).join('')}
+                    `}).join('')}
                 </div>
             </div>
             <!-- Server Mode -->
             <div class="server-mode-item">
                 <div id="projectPathsContainer-${profile.id}" class="d-flex flex-column gap-1">
-                    ${(profile.projectPaths || ['']).map((path, index) => `
-                        <div class="input-group input-group-sm">
+                    ${(profile.projectPaths || ['']).map((path, index) => {
+                        const isCompact = (profile.projectPaths || []).length > 3 && index > 0;
+                        return `
+                        <div class="input-group input-group-sm ${isCompact ? 'input-group-compact' : ''}">
                             ${index === 0 ? `
                                 <button class="btn btn-outline-secondary add-project-path" type="button" data-id="${profile.id}" title="Add another project path"><i class="bi bi-plus-lg"></i></button>
                             ` : `<span class="input-group-text">${index}</span>`}
@@ -69,7 +73,7 @@ export function getMainViewHTML(profile) {
                                 </button>
                             ` : ''}
                         </div>
-                    `).join('')}
+                    `}).join('')}
                 </div>
             </div>
         </div>
