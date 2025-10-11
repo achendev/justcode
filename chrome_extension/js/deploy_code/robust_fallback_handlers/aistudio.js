@@ -37,7 +37,7 @@ export function prepareForFullAnswerExtraction() {
             if (!menuTrigger) { throw new Error("Could not find the menu trigger button."); }
             
             menuTrigger.click();
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 100));
 
             // 4. Find and click the toggle button.
             const toggleButtonSelector = 'div.mat-mdc-menu-panel button.mat-mdc-menu-item.icon-text-button[data-test-raw-mode]';
@@ -45,7 +45,7 @@ export function prepareForFullAnswerExtraction() {
             if (!toggleButton) { throw new Error(`Could not find toggle button: "${toggleButtonSelector}"`); }
 
             toggleButton.click();
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 100));
 
             console.log("--- JustCode: Toggle sequence complete. ---");
             return true; // A toggle was successfully performed.
@@ -70,7 +70,7 @@ export function revertFullAnswerExtraction() {
             const menuTrigger = lastEditor.querySelector('button.mat-mdc-menu-trigger');
             if (!menuTrigger) { return; }
             menuTrigger.click();
-            await new Promise(e => setTimeout(e, 500));
+            await new Promise(e => setTimeout(e, 100));
             const toggleButton = document.querySelector('div.mat-mdc-menu-panel button.mat-mdc-menu-item.icon-text-button[data-test-raw-mode]');
             if (!toggleButton) { return; }
             toggleButton.click();
