@@ -9,7 +9,6 @@ import { handleServerError } from './server_error_handler.js';
 import { applyReplacements } from '../utils/two_way_sync.js';
 import { pasteIntoLLM } from '../context_builder/llm_interface.js';
 
-// --- Start of New Code ---
 const GET_CONTEXT_HINT_KEY = 'getContextButtonUsageCount';
 const DEPLOY_CODE_HINT_KEY = 'deployCodeButtonUsageCount';
 const GET_CONTEXT_HINT_MESSAGE = "Pro Tip: Use the (ALT + ←) or (⌥←) shortcut next time!";
@@ -27,8 +26,6 @@ async function incrementUsageCount(key) {
         await chrome.storage.local.set({ [key]: count + 1 });
     }
 }
-// --- End of New Code ---
-
 
 async function performAction(event, actionFunc, ...extraArgs) {
     const button = event.currentTarget;
@@ -49,6 +46,21 @@ async function performAction(event, actionFunc, ...extraArgs) {
     await updateTemporaryMessage(id, '');
 
     try {
+        // --- START OF FIX for POPUP vs SHORTCUT ---
+        // Determine hostname here to ensure it's available for all call paths.
+        let hostname = null;
+        const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+        if (tab && tab.url) {
+            try {
+                hostname = new URL(tab.url).hostname;
+            } catch (e) {
+                console.warn("Could not determine hostname from tab URL:", tab.url);
+            }
+        }
+        // Add the determined hostname to the arguments passed to the action function.
+        const finalArgs = [...extraArgs, hostname];
+        // --- END OF FIX ---
+
         const result = await new Promise((resolve, reject) => {
             loadData(async (profiles) => {
                 try {
@@ -56,18 +68,15 @@ async function performAction(event, actionFunc, ...extraArgs) {
                     if (!profile) {
                         return reject(new Error("Profile not found."));
                     }
-                    const actionResult = await actionFunc(profile, ...extraArgs);
+                    const actionResult = await actionFunc(profile, ...finalArgs);
 
                     if (actionFunc === getContext) {
                         const settings = await chrome.storage.local.get({ rememberTabProfile: true });
-                        if (settings.rememberTabProfile) {
-                            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-                            if (tab && tab.id) {
-                                const mapData = await chrome.storage.local.get({ tabProfileMap: {} });
-                                const tabProfileMap = mapData.tabProfileMap;
-                                tabProfileMap[tab.id] = profile.id;
-                                await chrome.storage.local.set({ tabProfileMap });
-                            }
+                        if (settings.rememberTabProfile && tab && tab.id) {
+                            const mapData = await chrome.storage.local.get({ tabProfileMap: {} });
+                            const tabProfileMap = mapData.tabProfileMap;
+                            tabProfileMap[tab.id] = profile.id;
+                            await chrome.storage.local.set({ tabProfileMap });
                         }
                     }
 
@@ -82,7 +91,6 @@ async function performAction(event, actionFunc, ...extraArgs) {
             let messageText = result.text;
             const fromShortcut = extraArgs[0] === true;
 
-            // --- Start of Modified Code ---
             if (!fromShortcut && result.type === 'success') {
                 if (actionFunc === getContext) {
                     const usageCount = await getUsageCount(GET_CONTEXT_HINT_KEY);
@@ -98,7 +106,6 @@ async function performAction(event, actionFunc, ...extraArgs) {
                     }
                 }
             }
-             // --- End of Modified Code ---
             
             await updateAndSaveMessage(id, messageText, result.type);
 
