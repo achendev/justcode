@@ -70,7 +70,7 @@ export async function handleAddProfile(reRenderCallback) {
             jsProjectFolderNames: [],
             // Server-specific fields
             projectPaths: [''],
-            serverUrl: 'http://1227.0.0.1:5010',
+            serverUrl: 'http://127.0.0.1:5010',
             isAuthEnabled: false,
             username: '',
             password: '',
