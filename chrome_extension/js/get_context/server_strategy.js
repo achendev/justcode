@@ -13,28 +13,37 @@ function splitContextPayload(treeString, contentString, splitSizeKb, delimiter) 
 
     const fullPayloadForCheck = header + treeString + '\n\n' + contentString + footer;
 
+    // If the entire payload is within the limit, no splitting is needed.
     if (new Blob([fullPayloadForCheck]).size <= splitSizeBytes) {
         return [{ filename: 'context.txt', content: fullPayloadForCheck }];
     }
 
+    // This regex is crucial. It ensures that we only split between complete 'cat' command blocks.
+    // Each element in fileBlocks is a full, valid 'cat' command from 'cat > ...' to the closing 'EOPROJECTFILE\n\n'.
     const fileBlocks = contentString.match(/cat > .*? << 'EOPROJECTFILE'[\s\S]*?EOPROJECTFILE\n\n/g) || [];
 
     const chunks = [];
     let fileCounter = 1;
     let currentContentForChunk = '';
 
+    // Iterate over each complete file block, ensuring no script is ever cut in half.
     for (const block of fileBlocks) {
+        // Check if the current chunk has content AND if adding the *next full block* would exceed the size limit.
         if (currentContentForChunk && new Blob([header + treeString + '\n\n' + currentContentForChunk + block + footer]).size > splitSizeBytes) {
+            // If it exceeds, finalize the current chunk. It contains one or more complete blocks.
             chunks.push({
                 filename: `context_${fileCounter++}.txt`,
                 content: header + treeString + '\n\n' + currentContentForChunk + footer
             });
+            // Start a new chunk with the current block.
             currentContentForChunk = block;
         } else {
+            // Otherwise, append the current complete block to the chunk being built.
             currentContentForChunk += block;
         }
     }
 
+    // Add the last chunk, which might contain one or more blocks.
     if (currentContentForChunk) {
         chunks.push({
             filename: `context_${fileCounter++}.txt`,
