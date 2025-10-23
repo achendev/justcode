@@ -7,6 +7,46 @@ import { formatExclusionPrompt } from '../exclusion_prompt.js';
 import { writeToClipboard } from '../utils/clipboard.js';
 import { applyReplacements } from '../utils/two_way_sync.js';
 
+function splitContextPayload(treeString, contentString, splitSizeKb, delimiter) {
+    const splitSizeBytes = splitSizeKb * 1024;
+    const header = `This is current state of project files:\n${delimiter}bash\n`;
+    const footer = `${delimiter}`;
+
+    const fullPayloadForCheck = header + treeString + '\n\n' + contentString + footer;
+
+    if (new Blob([fullPayloadForCheck]).size <= splitSizeBytes) {
+        return [{ filename: 'context.txt', content: fullPayloadForCheck }];
+    }
+
+    const fileBlocks = contentString.match(/cat > .*? << 'EOPROJECTFILE'[\s\S]*?EOPROJECTFILE\n\n/g) || [];
+
+    const chunks = [];
+    let fileCounter = 1;
+    let currentContentForChunk = '';
+
+    for (const block of fileBlocks) {
+        if (currentContentForChunk && new Blob([header + treeString + '\n\n' + currentContentForChunk + block + footer]).size > splitSizeBytes) {
+            chunks.push({
+                filename: `context_${fileCounter++}.txt`,
+                content: header + treeString + '\n\n' + currentContentForChunk + footer
+            });
+            currentContentForChunk = block;
+        } else {
+            currentContentForChunk += block;
+        }
+    }
+
+    if (currentContentForChunk) {
+        chunks.push({
+            filename: `context_${fileCounter++}.txt`,
+            content: header + treeString + '\n\n' + currentContentForChunk + footer
+        });
+    }
+
+    return chunks;
+}
+
+
 async function getVerifiedHandles(profile) {
     const folderCount = (profile.jsProjectFolderNames || []).length || 1;
     const allHandles = await getHandles(profile.id, folderCount);
@@ -60,49 +100,65 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
         const treeString = buildTree(filePaths);
         const contentString = await buildFileContentString(handles, filePaths, profile);
         
-        const finalPrompt = formatContextPrompt(treeString, contentString, profile);
         const { instructionsBlock, codeBlockDelimiter } = getInstructionsBlock(profile);
-        const fileContextPayload = `${treeString}\n\n${contentString}`;
-        const fileContextForUpload = `This is current state of project files:\n${codeBlockDelimiter}bash\n${fileContextPayload}${codeBlockDelimiter}`;
-    
+        
         const process = (text) => {
             if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
                 return applyReplacements(text, profile.twoWaySyncRules, 'outgoing');
             }
             return text;
         };
-
+        
         if (profile.getContextTarget === 'clipboard') {
+            const finalPrompt = formatContextPrompt(treeString, contentString, profile);
             await writeToClipboard(process(finalPrompt));
             return { text: 'Context copied to clipboard!', type: 'success' };
         }
-    
+        
         if (!profile.contextAsFile) {
+            const finalPrompt = formatContextPrompt(treeString, contentString, profile);
             await pasteIntoLLM(process(finalPrompt), {}, hostname);
             return { text: 'Context loaded successfully!', type: 'success' };
         }
-    
-        switch (profile.separateInstructions) {
-            case 'include':
-                await uploadContextAsFile(process(finalPrompt), hostname);
-                return { text: 'Context uploaded as file!', type: 'success' };
+        
+        const appSettings = await chrome.storage.local.get({ splitContextBySize: false, contextSplitSize: 450 });
+
+        if (appSettings.splitContextBySize) {
+            const chunks = splitContextPayload(treeString, contentString, appSettings.contextSplitSize, codeBlockDelimiter);
+            for (const chunk of chunks) {
+                await uploadContextAsFile(process(chunk.content), chunk.filename, hostname);
+            }
+            const fileNamesStr = chunks.map(f => `\`${f.filename}\``).join(', ');
+            const chaperonePrompt = `The project context is in the attached file(s) ${fileNamesStr}. Please use it to fulfill the task described below.\n\n${instructionsBlock}\n\n\n \n`;
+            await pasteIntoLLM(process(chaperonePrompt), { isInstruction: true }, hostname);
+            return { text: `Context split and uploaded as ${chunks.length} file(s), instructions pasted!`, type: 'success' };
+        } else {
+            const fileContextPayload = `${treeString}\n\n${contentString}`;
+            const fileContextForUpload = `This is current state of project files:\n${codeBlockDelimiter}bash\n${fileContextPayload}${codeBlockDelimiter}`;
+            const finalPrompt = formatContextPrompt(treeString, contentString, profile);
             
-            case 'text':
-                const promptForPasting = `The project context is in the attached file \`context.txt\`. Please use it to fulfill the task described below.\n\n${instructionsBlock}\n\n\n \n`;
-                await uploadContextAsFile(process(fileContextForUpload), hostname);
-                await pasteIntoLLM(process(promptForPasting), { isInstruction: true }, hostname);
-                return { text: 'Context uploaded as file, instructions pasted!', type: 'success' };
-    
-            case 'file':
-                const chaperonePrompt = `The project context is in the attached file \`context.txt\`.\nThe critical instructions for how to respond are in the attached file \`instructions.txt\`.\nYou MUST follow these instructions to fulfill the task described below.\n\n\n \n`;
-                await uploadContextAsFile(process(fileContextForUpload), hostname);
-                await uploadInstructionsAsFile(process(instructionsBlock), hostname);
-                await pasteIntoLLM(process(chaperonePrompt), { isInstruction: true }, hostname);
-                return { text: 'Context & instructions uploaded as files!', type: 'success' };
-    
-            default: // Fallback to 'include'
-                await uploadContextAsFile(process(finalPrompt), hostname);
-                return { text: 'Context uploaded as file!', type: 'success' };
+            switch (profile.separateInstructions) {
+                case 'include':
+                    await uploadContextAsFile(process(finalPrompt), 'context.txt', hostname);
+                    return { text: 'Context uploaded as file!', type: 'success' };
+                
+                case 'text':
+                    const promptForPasting = `The project context is in the attached file \`context.txt\`. Please use it to fulfill the task described below.\n\n${instructionsBlock}\n\n\n \n`;
+                    await uploadContextAsFile(process(fileContextForUpload), 'context.txt', hostname);
+                    await pasteIntoLLM(process(promptForPasting), { isInstruction: true }, hostname);
+                    return { text: 'Context uploaded as file, instructions pasted!', type: 'success' };
+        
+                case 'file':
+                    const chaperonePrompt = `The project context is in the attached file \`context.txt\`.\nThe critical instructions for how to respond are in the attached file \`instructions.txt\`.\nYou MUST follow these instructions to fulfill the task described below.\n\n\n \n`;
+                    await uploadContextAsFile(process(fileContextForUpload), 'context.txt', hostname);
+                    await uploadInstructionsAsFile(process(instructionsBlock), hostname);
+                    await pasteIntoLLM(process(chaperonePrompt), { isInstruction: true }, hostname);
+                    return { text: 'Context & instructions uploaded as files!', type: 'success' };
+        
+                default: // Fallback to 'include'
+                    await uploadContextAsFile(process(finalPrompt), 'context.txt', hostname);
+                    return { text: 'Context uploaded as file!', type: 'success' };
+            }
         }
 
     } catch (error) {

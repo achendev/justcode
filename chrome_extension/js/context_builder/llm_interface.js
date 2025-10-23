@@ -81,11 +81,13 @@ export async function pasteIntoLLM(text, options = {}, hostname = null) {
 /**
  * Creates a file from the given text and "uploads" it to the active LLM tab.
  * @param {string} text The content for the file.
+ * @param {string} [filename='context.txt'] The name for the file.
  * @param {string|null} [hostname=null] - The hostname of the target tab.
  */
-export async function uploadContextAsFile(text, hostname = null) {
-    await uploadFile(text, 'context.txt', hostname);
+export async function uploadContextAsFile(text, filename = 'context.txt', hostname = null) {
+    await uploadFile(text, filename, hostname);
 }
+
 
 /**
  * Creates a file for the instructions and "uploads" it to the active LLM tab.

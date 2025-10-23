@@ -105,6 +105,18 @@
                         Robust Deploy (Fallback to full answer)
                     </label>
                 </div>
+                <hr>
+                <div class="form-check mb-2 ps-4">
+                    <input class="form-check-input" type="checkbox" id="splitContextBySize">
+                    <label class="form-check-label" for="splitContextBySize">
+                        Split large context into multiple files
+                    </label>
+                </div>
+                <div class="input-group input-group-sm mb-3" id="contextSplitSizeGroup">
+                    <span class="input-group-text" style="width: 140px;">Split size limit</span>
+                    <input type="number" class="form-control" id="contextSplitSizeInput" min="50" placeholder="450">
+                    <span class="input-group-text">KB</span>
+                </div>
             </div>
             <hr>
             <div class="mb-3 px-2">

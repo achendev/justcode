@@ -15,7 +15,9 @@ const AppSettings = {
     isUndoShortcutEnabled: true,
     isRedoShortcutEnabled: true,
     isApplyReplacementsShortcutEnabled: true,
-    rememberTabProfile: true
+    rememberTabProfile: true,
+    splitContextBySize: false,
+    contextSplitSize: 450
 };
 
 // --- Function to load settings and ensure defaults are set ---
@@ -122,7 +124,7 @@ async function ensureContentScript(tabId) {
             func: () => window.justCodeContentLoaded,
         });
         
-        if (results && results[0] && results[0].result) {
+        if (results && results && results.result) {
             return; // Already injected
         }
 

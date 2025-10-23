@@ -8,6 +8,9 @@ export function initializeAppSettings(reRender) {
     const hideErrorsOnSuccessCheckbox = document.getElementById('hideErrorsOnSuccess');
     const wordWrapMessagesCheckbox = document.getElementById('wordWrapMessages');
     const robustDeployCheckbox = document.getElementById('robustDeployFallback');
+    const splitContextCheckbox = document.getElementById('splitContextBySize');
+    const contextSplitSizeGroup = document.getElementById('contextSplitSizeGroup');
+    const contextSplitSizeInput = document.getElementById('contextSplitSizeInput');
     
     // Shortcut Checkboxes
     const getContextShortcutCheckbox = document.getElementById('isGetContextShortcutEnabled');
@@ -30,6 +33,8 @@ export function initializeAppSettings(reRender) {
         'hideErrorsOnSuccess',
         'wordWrapMessagesEnabled',
         'robustDeployFallback',
+        'splitContextBySize',
+        'contextSplitSize',
         'shortcutDomains', 
         'notificationPosition', 
         'notificationTimeout', 
@@ -46,6 +51,9 @@ export function initializeAppSettings(reRender) {
         hideErrorsOnSuccessCheckbox.checked = data.hideErrorsOnSuccess !== false; // Default to true
         wordWrapMessagesCheckbox.checked = data.wordWrapMessagesEnabled !== false; // Default to true
         robustDeployCheckbox.checked = data.robustDeployFallback !== false; // Default true
+        splitContextCheckbox.checked = data.splitContextBySize === true;
+        contextSplitSizeInput.value = data.contextSplitSize === undefined ? 450 : data.contextSplitSize;
+        contextSplitSizeGroup.style.display = data.splitContextBySize ? 'flex' : 'none';
         shortcutDomainsTextarea.value = data.shortcutDomains === undefined ? defaultShortcutDomains : data.shortcutDomains;
         notificationPositionSelector.value = data.notificationPosition || 'bottom-left';
         notificationTimeoutInput.value = data.notificationTimeout === undefined ? 4 : data.notificationTimeout;
@@ -86,6 +94,21 @@ export function initializeAppSettings(reRender) {
 
     robustDeployCheckbox.addEventListener('change', (event) => {
         chrome.storage.local.set({ robustDeployFallback: event.target.checked });
+    });
+
+    splitContextCheckbox.addEventListener('change', (event) => {
+        const isEnabled = event.target.checked;
+        chrome.storage.local.set({ splitContextBySize: isEnabled });
+        contextSplitSizeGroup.style.display = isEnabled ? 'flex' : 'none';
+    });
+
+    contextSplitSizeInput.addEventListener('change', (event) => {
+        let splitSize = parseInt(event.target.value, 10);
+        if (isNaN(splitSize) || splitSize < 50) {
+            splitSize = 450;
+        }
+        event.target.value = splitSize;
+        chrome.storage.local.set({ contextSplitSize: splitSize });
     });
 
     const createShortcutChangeListener = (id, key) => {
@@ -145,7 +168,7 @@ export function initializeAppSettings(reRender) {
     importBtn.addEventListener('click', () => importFileInput.click());
 
     importFileInput.addEventListener('change', (event) => {
-        const file = event.target.files[0];
+        const file = event.target.files;
         if (!file) return;
 
         const reader = new FileReader();
