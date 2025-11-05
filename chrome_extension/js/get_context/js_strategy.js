@@ -8,61 +8,60 @@ import { writeToClipboard } from '../utils/clipboard.js';
 import { applyReplacements } from '../utils/two_way_sync.js';
 
 /**
- * Splits the content string into chunks based on size, ensuring that 'cat' command blocks are not broken.
- * It also correctly handles any content that follows the last 'cat' block (e.g., additional context).
+ * Splits the content string into chunks based on size, respecting 'cat' blocks and splitting trailing content by line.
  * @param {string} contentString The string containing all 'cat' commands and other context.
  * @param {number} splitSizeKb The target size for each chunk in kilobytes.
  * @returns {string[]} An array of content chunks.
  */
 function splitContextPayload(contentString, splitSizeKb) {
     const splitSizeBytes = splitSizeKb * 1024;
-    // Reserve a conservative amount of space for the tree, headers, etc., that will be added later.
-    const overhead = 15 * 1024; // 15KB
-    const effectiveSplitSize = splitSizeBytes - overhead;
+    const overhead = 20 * 1024; // Increased overhead for safety with tree, headers, etc.
+    const effectiveSplitSize = splitSizeBytes - overhead > 0 ? splitSizeBytes - overhead : 1024;
+
+    const allChunks = [];
+    let currentChunk = '';
 
     const fileBlocks = contentString.match(/cat > .*? << 'EOPROJECTFILE'[\s\S]*?EOPROJECTFILE\n\n/g) || [];
-    
     let trailingContent = '';
     if (fileBlocks.length > 0) {
         const lastBlock = fileBlocks[fileBlocks.length - 1];
         const lastBlockIndex = contentString.lastIndexOf(lastBlock);
-        const lastBlockEndIndex = lastBlockIndex + lastBlock.length;
-        if (lastBlockEndIndex < contentString.length) {
-            trailingContent = contentString.substring(lastBlockEndIndex);
-        }
+        trailingContent = contentString.substring(lastBlockIndex + lastBlock.length);
     } else {
         trailingContent = contentString;
     }
 
-    const chunks = [];
-    let currentChunk = '';
-
     for (const block of fileBlocks) {
         if (currentChunk && new Blob([currentChunk + block]).size > effectiveSplitSize) {
-            chunks.push(currentChunk);
+            allChunks.push(currentChunk);
             currentChunk = block;
         } else {
             currentChunk += block;
         }
     }
-    
-    if (currentChunk) {
-        if (trailingContent && new Blob([currentChunk + trailingContent]).size <= effectiveSplitSize) {
-            currentChunk += trailingContent;
-            trailingContent = '';
-        }
-        chunks.push(currentChunk);
-    }
-    
+
     if (trailingContent) {
-        chunks.push(trailingContent);
-    }
-    
-    if (chunks.length === 0 && contentString) {
-        chunks.push(contentString);
+        const trailingLines = trailingContent.split('\n');
+        for (const line of trailingLines) {
+            const lineWithNewline = line + '\n';
+            if (currentChunk && new Blob([currentChunk + lineWithNewline]).size > effectiveSplitSize) {
+                allChunks.push(currentChunk);
+                currentChunk = lineWithNewline;
+            } else {
+                currentChunk += lineWithNewline;
+            }
+        }
     }
 
-    return chunks;
+    if (currentChunk) {
+        allChunks.push(currentChunk);
+    }
+    
+    if (allChunks.length === 0 && contentString) {
+        allChunks.push(contentString);
+    }
+
+    return allChunks;
 }
 
 
@@ -151,7 +150,10 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
                 const filename = `context_${i + 1}.txt`;
                 const header = `This is current state of project files:\n${codeBlockDelimiter}bash\n`;
                 const footer = `${codeBlockDelimiter}`;
-                const fileContent = `${header}${treeString}\n\n${chunk}${footer}`;
+                
+                const fileContent = (i === 0)
+                    ? `${header}${treeString}\n\n${chunk}${footer}`
+                    : `${header}${chunk}${footer}`;
                 
                 await uploadContextAsFile(process(fileContent), filename, hostname);
                 uploadedFiles.push(`\`${filename}\``);
