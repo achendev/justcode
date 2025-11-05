@@ -6,49 +6,59 @@ import { handleServerError } from '../ui_handlers/server_error_handler.js';
 import { writeToClipboard } from '../utils/clipboard.js';
 import { applyReplacements } from '../utils/two_way_sync.js';
 
-function splitContextPayload(treeString, contentString, splitSizeKb, delimiter) {
+/**
+ * Splits the content string into chunks based on size, ensuring that 'cat' command blocks are not broken.
+ * It also correctly handles any content that follows the last 'cat' block (e.g., additional context).
+ * @param {string} contentString The string containing all 'cat' commands and other context.
+ * @param {number} splitSizeKb The target size for each chunk in kilobytes.
+ * @returns {string[]} An array of content chunks.
+ */
+function splitContextPayload(contentString, splitSizeKb) {
     const splitSizeBytes = splitSizeKb * 1024;
-    const header = `This is current state of project files:\n${delimiter}bash\n`;
-    const footer = `${delimiter}`;
+    // Reserve a conservative amount of space for the tree, headers, etc., that will be added later.
+    const overhead = 15 * 1024; // 15KB
+    const effectiveSplitSize = splitSizeBytes - overhead;
 
-    const fullPayloadForCheck = header + treeString + '\n\n' + contentString + footer;
-
-    // If the entire payload is within the limit, no splitting is needed.
-    if (new Blob([fullPayloadForCheck]).size <= splitSizeBytes) {
-        return [{ filename: 'context.txt', content: fullPayloadForCheck }];
-    }
-
-    // This regex is crucial. It ensures that we only split between complete 'cat' command blocks.
-    // Each element in fileBlocks is a full, valid 'cat' command from 'cat > ...' to the closing 'EOPROJECTFILE\n\n'.
     const fileBlocks = contentString.match(/cat > .*? << 'EOPROJECTFILE'[\s\S]*?EOPROJECTFILE\n\n/g) || [];
+    
+    let trailingContent = '';
+    if (fileBlocks.length > 0) {
+        const lastBlock = fileBlocks[fileBlocks.length - 1];
+        const lastBlockIndex = contentString.lastIndexOf(lastBlock);
+        const lastBlockEndIndex = lastBlockIndex + lastBlock.length;
+        if (lastBlockEndIndex < contentString.length) {
+            trailingContent = contentString.substring(lastBlockEndIndex);
+        }
+    } else {
+        trailingContent = contentString;
+    }
 
     const chunks = [];
-    let fileCounter = 1;
-    let currentContentForChunk = '';
+    let currentChunk = '';
 
-    // Iterate over each complete file block, ensuring no script is ever cut in half.
     for (const block of fileBlocks) {
-        // Check if the current chunk has content AND if adding the *next full block* would exceed the size limit.
-        if (currentContentForChunk && new Blob([header + treeString + '\n\n' + currentContentForChunk + block + footer]).size > splitSizeBytes) {
-            // If it exceeds, finalize the current chunk. It contains one or more complete blocks.
-            chunks.push({
-                filename: `context_${fileCounter++}.txt`,
-                content: header + treeString + '\n\n' + currentContentForChunk + footer
-            });
-            // Start a new chunk with the current block.
-            currentContentForChunk = block;
+        if (currentChunk && new Blob([currentChunk + block]).size > effectiveSplitSize) {
+            chunks.push(currentChunk);
+            currentChunk = block;
         } else {
-            // Otherwise, append the current complete block to the chunk being built.
-            currentContentForChunk += block;
+            currentChunk += block;
         }
     }
-
-    // Add the last chunk, which might contain one or more blocks.
-    if (currentContentForChunk) {
-        chunks.push({
-            filename: `context_${fileCounter++}.txt`,
-            content: header + treeString + '\n\n' + currentContentForChunk + footer
-        });
+    
+    if (currentChunk) {
+        if (trailingContent && new Blob([currentChunk + trailingContent]).size <= effectiveSplitSize) {
+            currentChunk += trailingContent;
+            trailingContent = '';
+        }
+        chunks.push(currentChunk);
+    }
+    
+    if (trailingContent) {
+        chunks.push(trailingContent);
+    }
+    
+    if (chunks.length === 0 && contentString) {
+        chunks.push(contentString);
     }
 
     return chunks;
@@ -125,14 +135,41 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
         const appSettings = await chrome.storage.local.get({ splitContextBySize: false, contextSplitSize: 450 });
 
         if (appSettings.splitContextBySize) {
-            const chunks = splitContextPayload(treeString, contentString, appSettings.contextSplitSize, codeBlockDelimiter);
-            for (const chunk of chunks) {
-                await uploadContextAsFile(process(chunk.content), chunk.filename, hostname);
+            const contentChunks = splitContextPayload(contentString, appSettings.contextSplitSize);
+            const uploadedFiles = [];
+            
+            for (let i = 0; i < contentChunks.length; i++) {
+                const chunk = contentChunks[i];
+                const filename = `context_${i + 1}.txt`;
+                const header = `This is current state of project files:\n${codeBlockDelimiter}bash\n`;
+                const footer = `${codeBlockDelimiter}`;
+                const fileContent = `${header}${treeString}\n\n${chunk}${footer}`;
+                
+                await uploadContextAsFile(process(fileContent), filename, hostname);
+                uploadedFiles.push(`\`${filename}\``);
             }
-            const fileNamesStr = chunks.map(f => `\`${f.filename}\``).join(', ');
-            const chaperonePrompt = `The project context is in the attached file(s) ${fileNamesStr}. Please use it to fulfill the task described below.\n\n${instructionsBlock}\n\n\n \n`;
-            await pasteIntoLLM(process(chaperonePrompt), { isInstruction: true }, hostname);
-            return { text: `Context split and uploaded as ${chunks.length} file(s), instructions pasted!`, type: 'success' };
+
+            const fileListStr = uploadedFiles.join(', ');
+            let finalMessage, chaperonePrompt;
+
+            switch (profile.separateInstructions) {
+                case 'file':
+                    chaperonePrompt = `The project context is split across the attached file(s): ${fileListStr}.\nThe critical instructions for how to respond are in the attached file \`instructions.txt\`.\nYou MUST follow these instructions to fulfill the task described below.\n\n\n \n`;
+                    await uploadInstructionsAsFile(process(instructionsBlock), hostname);
+                    await pasteIntoLLM(process(chaperonePrompt), { isInstruction: true }, hostname);
+                    finalMessage = `Context split into ${uploadedFiles.length} file(s) & instructions uploaded!`;
+                    break;
+                
+                case 'text':
+                case 'include': // Fallback: Treat 'include' like 'text' when splitting, as a chaperone prompt is necessary.
+                default:
+                    chaperonePrompt = `The project context is split across the attached file(s): ${fileListStr}. Please use them to fulfill the task described below.\n\n${instructionsBlock}\n\n\n \n`;
+                    await pasteIntoLLM(process(chaperonePrompt), { isInstruction: true }, hostname);
+                    finalMessage = `Context split and uploaded as ${uploadedFiles.length} file(s), instructions pasted!`;
+                    break;
+            }
+            return { text: finalMessage, type: 'success' };
+
         } else {
             const fileContextForUpload = `This is current state of project files:\n${codeBlockDelimiter}bash\n${fileContextPayload}${codeBlockDelimiter}`;
             const finalPrompt = `${fileContextForUpload}\n\n\n${instructionsBlock}\n\n\n \n`;
