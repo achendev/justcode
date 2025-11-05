@@ -3,6 +3,7 @@ import traceback
 import json
 import subprocess
 import shlex
+import re
 from flask import request, Response
 from .tools.context_generator import generate_context_from_path, generate_tree_with_char_counts, get_file_stats
 from .tools.utils import here_doc_value
@@ -42,6 +43,7 @@ def get_context():
 
     try:
         all_trees_with_counts = []
+        all_trees_for_context = []
         all_contents_for_script = []
         total_size = 0
 
@@ -51,12 +53,23 @@ def get_context():
                 if not is_single_path:
                     prefix = f"./{i}" if use_numeric_prefixes else f"./{os.path.basename(p_path)}"
                 
-                tree, size = generate_tree_with_char_counts(p_path, include_patterns, exclude_patterns, path_prefix=prefix)
-                all_trees_with_counts.append(tree)
+                # For size checking and exclusion suggestions, we still need the combined tree with stats
+                tree_with_stats, size = generate_tree_with_char_counts(p_path, include_patterns, exclude_patterns, path_prefix=prefix)
+                all_trees_with_counts.append(tree_with_stats)
                 total_size += size
                 
-                content_for_script = generate_context_from_path(p_path, include_patterns, exclude_patterns, path_prefix=prefix)
-                all_contents_for_script.append(content_for_script)
+                # For the actual context, generate the string and then split it
+                full_context_for_path = generate_context_from_path(p_path, include_patterns, exclude_patterns, path_prefix=prefix)
+                
+                # Split the string into tree and content parts using a robust regex
+                parts = re.split(r'\n\n(?=cat >)', full_context_for_path, 1)
+
+                if len(parts) == 2:
+                    tree_part, content_part = parts
+                    all_trees_for_context.append(tree_part)
+                    all_contents_for_script.append(content_part)
+                elif parts: # Handles case with an empty directory (only a tree part)
+                    all_trees_for_context.append(parts[0])
 
             elif os.path.isfile(p_path):
                 content, size, lines = get_file_stats(p_path)
@@ -76,12 +89,14 @@ def get_context():
                     if use_numeric_prefixes:
                         prefix_part = str(i)
                     else:
-                        prefix_part = os.path.basename(os.path.dirname(p_path))
+                        parent_dir_name = os.path.basename(os.path.dirname(p_path))
+                        prefix_part = f"{parent_dir_name}/{filename}"
                     
-                    tree_line = f"./{prefix_part}/{filename} {format_stats(size, lines)}"
-                    path_in_script = f"./{prefix_part}/{filename}"
+                    tree_line = f"./{prefix_part} {format_stats(size, lines)}"
+                    path_in_script = f"./{prefix_part}"
                 
                 all_trees_with_counts.append(tree_line)
+                all_trees_for_context.append(tree_line)
                 
                 quoted_path = shlex.quote(path_in_script)
                 content_string = f"cat > {quoted_path} << '{here_doc_value}'\n{content}\n{here_doc_value}\n\n"
@@ -100,10 +115,14 @@ def get_context():
             error_message = f"Context size (~{total_size:,}) exceeds limit ({context_size_limit:,})."
             return Response(error_message, status=413, mimetype='text/plain')
         
-        file_contents = "".join(all_contents_for_script)
+        # Correctly assemble the final context string from the separated parts
+        final_tree = "\n\n".join(all_trees_for_context)
+        final_content = "".join(all_contents_for_script)
+        file_contents = (final_tree + "\n\n" + final_content) if final_content else final_tree
         
         if gather_context and context_script:
             main_project_path = project_paths[0]
+            if os.path.isfile(main_project_path): main_project_path = os.path.dirname(main_project_path)
             try:
                 script_for_display = context_script.replace('\r\n', '\n')
                 commands = [cmd for cmd in script_for_display.split('\n') if cmd.strip()]
