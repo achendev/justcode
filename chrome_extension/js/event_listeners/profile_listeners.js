@@ -87,4 +87,10 @@ export function attachArchiveEventListeners(reRenderCallback) {
     document.querySelectorAll('.permanent-delete-profile').forEach(button => {
         button.addEventListener('click', (e) => profileHandlers.handlePermanentDeleteProfile(e, reRenderCallback));
     });
+
+    // --- Search Listener ---
+    const searchInput = document.getElementById('archiveSearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', profileHandlers.handleArchiveSearch);
+    }
 }

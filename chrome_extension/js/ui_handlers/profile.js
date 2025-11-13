@@ -8,7 +8,8 @@ import {
     handleArchiveProfile, 
     handleDirectPermanentDeleteProfile, 
     handlePermanentDeleteProfile, 
-    handleRestoreProfile 
+    handleRestoreProfile,
+    handleArchiveSearch
 } from './profile_actions/state.js';
 
 import { 
@@ -30,6 +31,7 @@ export {
     handleDirectPermanentDeleteProfile,
     handlePermanentDeleteProfile,
     handleRestoreProfile,
+    handleArchiveSearch,
     handleMoveProfileLeft,
     handleMoveProfileRight,
     handleTabSwitch,

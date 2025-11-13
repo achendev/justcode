@@ -23,8 +23,20 @@ export function renderDOM(profiles, activeProfileId, profilesContainer, profileT
 
 export function renderArchiveView(archivedProfiles, archiveListContainer) {
     archiveListContainer.innerHTML = '';
+    const searchInput = document.getElementById('archiveSearchInput');
+    if(searchInput) {
+        searchInput.value = '';
+    }
+    const statusMessage = document.getElementById('archiveStatusMessage');
+    if (statusMessage) {
+        statusMessage.style.display = 'none';
+    }
+
     if (archivedProfiles.length === 0) {
-        archiveListContainer.innerHTML = '<p class="text-center text-muted" style="margin-top: 20px;">No archived profiles.</p>';
+        if (statusMessage) {
+            statusMessage.textContent = 'No archived profiles.';
+            statusMessage.style.display = 'block';
+        }
         return;
     }
     archivedProfiles.forEach(profile => {

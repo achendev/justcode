@@ -76,3 +76,36 @@ export function handlePermanentDeleteProfile(event, reRenderCallback) {
         });
     });
 }
+
+export function handleArchiveSearch(event) {
+    const searchTerm = event.target.value.toLowerCase();
+    const container = document.getElementById('archiveListContainer');
+    const allCards = container.querySelectorAll('.archived-profile-card');
+    const statusMessage = document.getElementById('archiveStatusMessage');
+    
+    let visibleCount = 0;
+
+    allCards.forEach(card => {
+        const nameElement = card.querySelector('strong');
+        const locationElement = card.querySelector('small');
+        
+        const name = nameElement ? nameElement.textContent.toLowerCase() : '';
+        const location = locationElement ? locationElement.textContent.toLowerCase() : '';
+
+        if (name.includes(searchTerm) || location.includes(searchTerm)) {
+            card.style.display = 'flex';
+            visibleCount++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+
+    if (statusMessage) {
+        if (allCards.length > 0 && visibleCount === 0) {
+            statusMessage.textContent = 'No matching profiles found.';
+            statusMessage.style.display = 'block';
+        } else {
+            statusMessage.style.display = 'none';
+        }
+    }
+}
