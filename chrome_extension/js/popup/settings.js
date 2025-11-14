@@ -1,3 +1,12 @@
+function updateDeployButtonText(isEnabled) {
+    const buttonText = isEnabled 
+        ? '<i class="bi bi-box-arrow-in-down"></i> Apply Code' 
+        : '<i class="bi bi-box-arrow-in-down"></i> Deploy Code';
+    document.querySelectorAll('.deploy-code').forEach(button => {
+        button.innerHTML = buttonText;
+    });
+}
+
 export function initializeAppSettings(reRender) {
     const exportBtn = document.getElementById('exportSettingsButton');
     const importBtn = document.getElementById('importSettingsButton');
@@ -11,6 +20,7 @@ export function initializeAppSettings(reRender) {
     const splitContextCheckbox = document.getElementById('splitContextBySize');
     const contextSplitSizeGroup = document.getElementById('contextSplitSizeGroup');
     const contextSplitSizeInput = document.getElementById('contextSplitSizeInput');
+    const renameDeployButtonCheckbox = document.getElementById('renameDeployButton');
     
     // Shortcut Checkboxes
     const getContextShortcutCheckbox = document.getElementById('isGetContextShortcutEnabled');
@@ -43,7 +53,8 @@ export function initializeAppSettings(reRender) {
         'isUndoShortcutEnabled',
         'isRedoShortcutEnabled',
         'isApplyReplacementsShortcutEnabled',
-        'showNotificationProgressBar'
+        'showNotificationProgressBar',
+        'renameDeployButtonEnabled'
     ], (data) => {
         closeOnGetContextCheckbox.checked = data.closeOnGetContext === true;
         rememberTabProfileCheckbox.checked = data.rememberTabProfile !== false; // Default true
@@ -64,6 +75,9 @@ export function initializeAppSettings(reRender) {
         redoShortcutCheckbox.checked = data.isRedoShortcutEnabled !== false;
         applyReplacementsShortcutCheckbox.checked = data.isApplyReplacementsShortcutEnabled !== false;
         showProgressBarCheckbox.checked = data.showNotificationProgressBar !== false;
+
+        renameDeployButtonCheckbox.checked = data.renameDeployButtonEnabled === true;
+        updateDeployButtonText(data.renameDeployButtonEnabled);
     });
     
     // Add listeners for settings changes
@@ -109,6 +123,12 @@ export function initializeAppSettings(reRender) {
         }
         event.target.value = splitSize;
         chrome.storage.local.set({ contextSplitSize: splitSize });
+    });
+
+    renameDeployButtonCheckbox.addEventListener('change', (event) => {
+        const isEnabled = event.target.checked;
+        chrome.storage.local.set({ renameDeployButtonEnabled: isEnabled });
+        updateDeployButtonText(isEnabled);
     });
 
     const createShortcutChangeListener = (id, key) => {
@@ -168,7 +188,7 @@ export function initializeAppSettings(reRender) {
     importBtn.addEventListener('click', () => importFileInput.click());
 
     importFileInput.addEventListener('change', (event) => {
-        const file = event.target.files;
+        const file = event.target.files[0];
         if (!file) return;
 
         const reader = new FileReader();
