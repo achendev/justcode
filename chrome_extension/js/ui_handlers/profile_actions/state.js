@@ -62,6 +62,14 @@ export function handleRestoreProfile(event, reRenderCallback) {
 
         saveData(updatedProfiles, newActiveProfileId, updatedArchivedProfiles, () => {
             reRenderCallback(updatedProfiles, newActiveProfileId, updatedArchivedProfiles);
+
+            // Switch back to the main view
+            const mainView = document.getElementById('mainView');
+            const archiveView = document.getElementById('archiveView');
+            if (mainView && archiveView) {
+                mainView.style.display = 'block';
+                archiveView.style.display = 'none';
+            }
         });
     });
 }

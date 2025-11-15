@@ -39,6 +39,12 @@ export function initializeViews() {
         mainView.style.display = 'none';
         archiveView.style.display = 'block';
         appSettingsView.style.display = 'none';
+
+        const searchInput = document.getElementById('archiveSearchInput');
+        if (searchInput) {
+            // Use a small timeout to ensure the element is fully visible before focusing
+            setTimeout(() => searchInput.focus(), 50);
+        }
     });
 
     closeArchiveButton.addEventListener('click', () => {
