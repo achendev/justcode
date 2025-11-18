@@ -51,6 +51,8 @@ export function handleDirectPermanentDeleteProfile(event, reRenderCallback) {
 
 export function handleRestoreProfile(event, reRenderCallback) {
     const id = parseInt(event.currentTarget.dataset.id);
+    const stayOnPage = event.shiftKey; // Check if shift key is pressed
+
     loadData((profiles, activeProfileId, archivedProfiles) => {
         const profileToRestore = archivedProfiles.find(p => p.id === id);
         if (!profileToRestore) return;
@@ -63,12 +65,14 @@ export function handleRestoreProfile(event, reRenderCallback) {
         saveData(updatedProfiles, newActiveProfileId, updatedArchivedProfiles, () => {
             reRenderCallback(updatedProfiles, newActiveProfileId, updatedArchivedProfiles);
 
-            // Switch back to the main view
-            const mainView = document.getElementById('mainView');
-            const archiveView = document.getElementById('archiveView');
-            if (mainView && archiveView) {
-                mainView.style.display = 'block';
-                archiveView.style.display = 'none';
+            // Conditionally switch back to the main view
+            if (!stayOnPage) {
+                const mainView = document.getElementById('mainView');
+                const archiveView = document.getElementById('archiveView');
+                if (mainView && archiveView) {
+                    mainView.style.display = 'block';
+                    archiveView.style.display = 'none';
+                }
             }
         });
     });
