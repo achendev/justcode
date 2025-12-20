@@ -64,14 +64,15 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
         
         const { instructionsBlock, codeBlockDelimiter } = getInstructionsBlock(profile);
         
-        // --- PROCESS FUNCTION: Handles both Custom Replacements and IP Masking ---
+        // --- PROCESS FUNCTION ---
+        // ORDER MATTERS: Apply Custom Replacements FIRST, then Auto-Mask whatever is left.
         const process = async (text) => {
             let processed = text;
-            if (profile.autoMaskIPs) {
-                processed = await maskIPs(processed);
-            }
             if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
                 processed = applyReplacements(processed, profile.twoWaySyncRules, 'outgoing');
+            }
+            if (profile.autoMaskIPs) {
+                processed = await maskIPs(processed);
             }
             return processed;
         };
@@ -195,11 +196,12 @@ export async function getExclusionSuggestionFromJS(profile, fromShortcut = false
     
     let prompt = formatExclusionPrompt({ treeString, totalChars, profile });
     
-    if (profile.autoMaskIPs) {
-        prompt = await maskIPs(prompt);
-    }
+    // Process Exclusion Prompt: Sync first, then Mask
     if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
         prompt = applyReplacements(prompt, profile.twoWaySyncRules, 'outgoing');
+    }
+    if (profile.autoMaskIPs) {
+        prompt = await maskIPs(prompt);
     }
 
     if (profile.getContextTarget === 'clipboard') {

@@ -57,13 +57,14 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
         const contentString = treeEndIndex !== -1 ? fileContextPayload.substring(treeEndIndex + 2) : fileContextPayload;
 
         // --- PROCESS FUNCTION ---
+        // ORDER MATTERS: Apply Custom Replacements FIRST, then Auto-Mask whatever is left.
         const process = async (text) => {
             let processed = text;
-            if (profile.autoMaskIPs) {
-                processed = await maskIPs(processed);
-            }
             if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
                 processed = applyReplacements(processed, profile.twoWaySyncRules, 'outgoing');
+            }
+            if (profile.autoMaskIPs) {
+                processed = await maskIPs(processed);
             }
             return processed;
         };
@@ -194,11 +195,12 @@ export async function getExclusionSuggestionFromServer(profile, fromShortcut = f
             profile: profile
         });
         
-        if (profile.autoMaskIPs) {
-            prompt = await maskIPs(prompt);
-        }
+        // Sync first, then Mask
         if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
             prompt = applyReplacements(prompt, profile.twoWaySyncRules, 'outgoing');
+        }
+        if (profile.autoMaskIPs) {
+            prompt = await maskIPs(prompt);
         }
 
         if (profile.getContextTarget === 'clipboard') {
