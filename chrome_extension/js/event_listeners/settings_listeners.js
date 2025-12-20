@@ -71,4 +71,9 @@ export function attachSettingsEventListeners(reRenderCallback) {
     document.querySelectorAll('.two-way-sync-rules').forEach(textarea => {
         textarea.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'twoWaySyncRules'));
     });
+
+    // --- Auto IP Masking ---
+    document.querySelectorAll('.auto-mask-ips').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => settingsHandlers.handleAutoMaskIPsToggle(e));
+    });
 }

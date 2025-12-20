@@ -4,6 +4,7 @@ import { extractCodeWithFallback } from './robust_fallback.js';
 import { generateUndoScript } from './undo_generator.js';
 import { executeFileSystemScript } from './script_executor.js';
 import { applyReplacements } from '../utils/two_way_sync.js';
+import { unmaskIPs } from '../utils/ip_masking.js';
 
 /**
  * Handles the deployment process for the JS (File System Access API) backend.
@@ -39,6 +40,10 @@ export async function handleJsDeployment(profile, fromShortcut = false, hostname
         throw new Error('No valid deploy script found on page or in clipboard.');
     }
     
+    // --- RESTORE MASKS ---
+    if (profile.autoMaskIPs) {
+        codeToDeploy = await unmaskIPs(codeToDeploy);
+    }
     if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
         codeToDeploy = applyReplacements(codeToDeploy, profile.twoWaySyncRules, 'incoming');
     }

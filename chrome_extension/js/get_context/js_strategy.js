@@ -7,6 +7,7 @@ import { formatExclusionPrompt } from '../exclusion_prompt.js';
 import { writeToClipboard } from '../utils/clipboard.js';
 import { applyReplacements } from '../utils/two_way_sync.js';
 import { splitContextPayload } from './utils.js';
+import { maskIPs } from '../utils/ip_masking.js';
 
 async function getVerifiedHandles(profile) {
     const folderCount = (profile.jsProjectFolderNames || []).length || 1;
@@ -63,22 +64,27 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
         
         const { instructionsBlock, codeBlockDelimiter } = getInstructionsBlock(profile);
         
-        const process = (text) => {
-            if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
-                return applyReplacements(text, profile.twoWaySyncRules, 'outgoing');
+        // --- PROCESS FUNCTION: Handles both Custom Replacements and IP Masking ---
+        const process = async (text) => {
+            let processed = text;
+            if (profile.autoMaskIPs) {
+                processed = await maskIPs(processed);
             }
-            return text;
+            if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
+                processed = applyReplacements(processed, profile.twoWaySyncRules, 'outgoing');
+            }
+            return processed;
         };
         
         if (profile.getContextTarget === 'clipboard') {
             const finalPrompt = formatContextPrompt(treeString, contentString, profile);
-            await writeToClipboard(process(finalPrompt));
+            await writeToClipboard(await process(finalPrompt));
             return { text: 'Context copied to clipboard!', type: 'success' };
         }
         
         if (!profile.contextAsFile) {
             const finalPrompt = formatContextPrompt(treeString, contentString, profile);
-            await pasteIntoLLM(process(finalPrompt), {}, hostname);
+            await pasteIntoLLM(await process(finalPrompt), {}, hostname);
             return { text: 'Context loaded successfully!', type: 'success' };
         }
         
@@ -98,7 +104,7 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
                     ? `${header}${treeString}\n\n${chunk}${footer}`
                     : `${header}${chunk}${footer}`;
                 
-                await uploadContextAsFile(process(fileContent), filename, hostname);
+                await uploadContextAsFile(await process(fileContent), filename, hostname);
                 uploadedFiles.push(`\`${filename}\``);
             }
 
@@ -108,16 +114,16 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
             switch (profile.separateInstructions) {
                 case 'file':
                     chaperonePrompt = `The project context is split across the attached file(s): ${fileListStr}.\nThe critical instructions for how to respond are in the attached file \`instructions.txt\`.\nYou MUST follow these instructions to fulfill the task described below.\n\n\n \n`;
-                    await uploadInstructionsAsFile(process(instructionsBlock), hostname);
-                    await pasteIntoLLM(process(chaperonePrompt), { isInstruction: true }, hostname);
+                    await uploadInstructionsAsFile(await process(instructionsBlock), hostname);
+                    await pasteIntoLLM(await process(chaperonePrompt), { isInstruction: true }, hostname);
                     finalMessage = `Context split into ${uploadedFiles.length} file(s) & instructions uploaded!`;
                     break;
                 
                 case 'text':
-                case 'include': // Fallback: Treat 'include' like 'text' when splitting, as a chaperone prompt is necessary.
+                case 'include': 
                 default:
                     chaperonePrompt = `The project context is split across the attached file(s): ${fileListStr}. Please use them to fulfill the task described below.\n\n${instructionsBlock}\n\n\n \n`;
-                    await pasteIntoLLM(process(chaperonePrompt), { isInstruction: true }, hostname);
+                    await pasteIntoLLM(await process(chaperonePrompt), { isInstruction: true }, hostname);
                     finalMessage = `Context split and uploaded as ${uploadedFiles.length} file(s), instructions pasted!`;
                     break;
             }
@@ -130,24 +136,24 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
             
             switch (profile.separateInstructions) {
                 case 'include':
-                    await uploadContextAsFile(process(finalPrompt), 'context.txt', hostname);
+                    await uploadContextAsFile(await process(finalPrompt), 'context.txt', hostname);
                     return { text: 'Context uploaded as file!', type: 'success' };
                 
                 case 'text':
                     const promptForPasting = `The project context is in the attached file \`context.txt\`. Please use it to fulfill the task described below.\n\n${instructionsBlock}\n\n\n \n`;
-                    await uploadContextAsFile(process(fileContextForUpload), 'context.txt', hostname);
-                    await pasteIntoLLM(process(promptForPasting), { isInstruction: true }, hostname);
+                    await uploadContextAsFile(await process(fileContextForUpload), 'context.txt', hostname);
+                    await pasteIntoLLM(await process(promptForPasting), { isInstruction: true }, hostname);
                     return { text: 'Context uploaded as file, instructions pasted!', type: 'success' };
         
                 case 'file':
                     const chaperonePrompt = `The project context is in the attached file \`context.txt\`.\nThe critical instructions for how to respond are in the attached file \`instructions.txt\`.\nYou MUST follow these instructions to fulfill the task described below.\n\n\n \n`;
-                    await uploadContextAsFile(process(fileContextForUpload), 'context.txt', hostname);
-                    await uploadInstructionsAsFile(process(instructionsBlock), hostname);
-                    await pasteIntoLLM(process(chaperonePrompt), { isInstruction: true }, hostname);
+                    await uploadContextAsFile(await process(fileContextForUpload), 'context.txt', hostname);
+                    await uploadInstructionsAsFile(await process(instructionsBlock), hostname);
+                    await pasteIntoLLM(await process(chaperonePrompt), { isInstruction: true }, hostname);
                     return { text: 'Context & instructions uploaded as files!', type: 'success' };
         
-                default: // Fallback to 'include'
-                    await uploadContextAsFile(process(finalPrompt), 'context.txt', hostname);
+                default:
+                    await uploadContextAsFile(await process(finalPrompt), 'context.txt', hostname);
                     return { text: 'Context uploaded as file!', type: 'success' };
             }
         }
@@ -189,6 +195,9 @@ export async function getExclusionSuggestionFromJS(profile, fromShortcut = false
     
     let prompt = formatExclusionPrompt({ treeString, totalChars, profile });
     
+    if (profile.autoMaskIPs) {
+        prompt = await maskIPs(prompt);
+    }
     if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
         prompt = applyReplacements(prompt, profile.twoWaySyncRules, 'outgoing');
     }

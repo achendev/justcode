@@ -69,11 +69,17 @@ export function getSettingsViewHTML(profile) {
             <label class="form-check-label" for="useNumericPrefixesForMultiProject-${profile.id}">Name multiproject directories by order number</label>
         </div>
 
-        <!-- Two-Way Sync Settings -->
+        <!-- Privacy & Sync Settings -->
         <hr>
         <div class="form-check mb-2">
+            <input type="checkbox" class="form-check-input auto-mask-ips" id="autoMaskIPs-${profile.id}" data-id="${profile.id}" ${profile.autoMaskIPs ? 'checked' : ''}>
+            <label class="form-check-label" for="autoMaskIPs-${profile.id}"><strong>Auto-Mask IP Addresses</strong></label>
+            <div class="form-text text-muted mt-0 mb-1" style="font-size: 0.75rem;">Detects IPs/CIDR in context, replaces them with random IPs (saved globally), and restores them on deploy.</div>
+        </div>
+
+        <div class="form-check mb-2">
             <input type="checkbox" class="form-check-input two-way-sync-enabled" id="twoWaySyncEnabled-${profile.id}" data-id="${profile.id}" ${profile.isTwoWaySyncEnabled ? 'checked' : ''}>
-            <label class="form-check-label" for="twoWaySyncEnabled-${profile.id}">Enable Two-Way Replacements</label>
+            <label class="form-check-label" for="twoWaySyncEnabled-${profile.id}">Enable Custom Two-Way Replacements</label>
         </div>
         <div class="mb-3">
             <label for="twoWaySyncRules-${profile.id}" class="form-label">Replacement Rules (local_value|placeholder):</label>

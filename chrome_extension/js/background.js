@@ -66,14 +66,14 @@ async function ensureContentScript(tabId) {
  * Initializes all compatible tabs by ensuring content scripts and shortcut listeners are active.
  */
 async function initializeAllTabs() {
-    const settings = await loadAndEnsureSettings();
+    // Note: We don't need to load settings here anymore for the listener injection
+    // because the listener is now stateless.
     const tabs = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] });
     for (const tab of tabs) {
         if (tab.id) {
             await ensureContentScript(tab.id);
             // After ensuring the base script is there, inject the listener.
-            // This is necessary for tabs that already exist during a reload.
-            injectShortcutListener(tab.id, settings);
+            injectShortcutListener(tab.id);
         }
     }
 }
@@ -154,20 +154,48 @@ async function executeCommand(command, hostname) {
 
 // Listen for messages from content scripts or other parts of the extension.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    // 1. Direct Command execution (Legacy/Direct)
     if (message.type === 'execute-command' && message.command) {
         executeCommand(message.command, message.hostname);
         sendResponse({status: "Command received"});
         return true;
     }
+
+    // 2. Verified Command Execution (New Stateless Shortcut Listener)
+    if (message.type === 'try-execute-command' && message.command) {
+        loadAndEnsureSettings().then(settings => {
+            // Check if shortcuts are allowed on this domain
+            const allowedDomains = (settings.shortcutDomains || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
+            if (!allowedDomains.includes(message.hostname)) {
+                return;
+            }
+
+            // Check if specific shortcut is enabled
+            let isEnabled = false;
+            switch(message.command) {
+                case 'get-context-shortcut': isEnabled = settings.isGetContextShortcutEnabled; break;
+                case 'deploy-code-shortcut': isEnabled = settings.isDeployCodeShortcutEnabled; break;
+                case 'undo-code-shortcut': isEnabled = settings.isUndoShortcutEnabled; break;
+                case 'redo-code-shortcut': isEnabled = settings.isRedoShortcutEnabled; break;
+                case 'apply-replacements-shortcut': isEnabled = settings.isApplyReplacementsShortcutEnabled; break;
+            }
+
+            if (isEnabled) {
+                executeCommand(message.command, message.hostname);
+            }
+        });
+        // No response needed
+        return true;
+    }
     
-    // A content script is announcing it is ready.
+    // 3. Content script ready signal
     if (message.type === 'justcode-content-script-ready') {
         loadAndEnsureSettings().then(settings => {
             // Send the latest settings to the content script for notifications.
             sendResponse({status: 'success', settings: settings});
             // Now that the content script is ready, inject the "live" shortcut listener.
             if (sender.tab?.id) {
-                injectShortcutListener(sender.tab.id, settings);
+                injectShortcutListener(sender.tab.id);
             }
         });
         return true; // Indicates an asynchronous response.
@@ -190,7 +218,6 @@ chrome.runtime.onStartup.addListener(() => {
 });
 
 // Immediately attempt to initialize all tabs when the service worker starts up.
-// This is the key part that handles developer reloads.
 initializeAllTabs();
 
 // Clean up tab-profile associations for closed tabs.

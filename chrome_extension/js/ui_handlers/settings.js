@@ -127,3 +127,16 @@ export function handleTwoWaySyncToggle(event) {
         }
     });
 }
+
+export function handleAutoMaskIPsToggle(event) {
+    const id = parseInt(event.target.dataset.id);
+    const isChecked = event.target.checked;
+
+    loadData((profiles, activeProfileId, archivedProfiles) => {
+        const profile = profiles.find(p => p.id === id);
+        if (profile) {
+            profile.autoMaskIPs = isChecked;
+            saveData(profiles, activeProfileId, archivedProfiles);
+        }
+    });
+}
