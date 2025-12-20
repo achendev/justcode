@@ -1,4 +1,11 @@
 /**
+ * Escapes special characters for regex.
+ */
+function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * Parses the rules string from the textarea into a structured array.
  * @param {string} rulesString The raw string from the textarea.
  * @returns {Array<{local: string, placeholder: string}>} An array of rule objects.
@@ -20,7 +27,47 @@ function parseRules(rulesString) {
 }
 
 /**
+ * Transfers casing from the matched string to the target string.
+ * Supports ALL CAPS, TitleCase, and specific index-based casing.
+ * @param {string} match The string found in the text (e.g., "MyProject" or "MYPROJECT").
+ * @param {string} target The replacement string definition (e.g., "someproject").
+ * @returns {string} The target string with the casing applied (e.g., "SoMeproject" or "SOMEPROJECT").
+ */
+function transferCasing(match, target) {
+    // 1. ALL CAPS check
+    // If the match is all uppercase (and contains at least one cased character), return target as ALL CAPS.
+    if (match === match.toUpperCase() && match !== match.toLowerCase()) {
+        return target.toUpperCase();
+    }
+
+    // 2. Character-by-character casing transfer
+    let result = '';
+    for (let i = 0; i < target.length; i++) {
+        const char = target[i];
+        
+        // If we have a corresponding character in the match
+        if (i < match.length) {
+            const matchChar = match[i];
+            
+            // Check if the match character is Upper Case
+            if (matchChar === matchChar.toUpperCase() && matchChar !== matchChar.toLowerCase()) {
+                result += char.toUpperCase();
+            } else {
+                result += char.toLowerCase();
+            }
+        } else {
+            // Target is longer than match.
+            // Default behavior: keep original casing of the target definition (usually lowercase)
+            result += char;
+        }
+    }
+    
+    return result;
+}
+
+/**
  * Applies replacements to a given text based on the provided rules and direction.
+ * Uses robust case-preservation logic.
  * @param {string} text The text to process.
  * @param {string} rulesString The raw string of rules.
  * @param {'outgoing' | 'incoming'} direction 'outgoing' for local->placeholder, 'incoming' for placeholder->local.
@@ -31,12 +78,25 @@ export function applyReplacements(text, rulesString, direction) {
     if (rules.length === 0) return text;
 
     let processedText = text;
-    for (const rule of rules) {
+    
+    // Sort rules by length (descending) to avoid partial replacements of substrings
+    // e.g., ensure "SuperSecret" is replaced before "Secret"
+    const sortedRules = [...rules].sort((a, b) => {
+        const fromA = direction === 'outgoing' ? a.local : a.placeholder;
+        const fromB = direction === 'outgoing' ? b.local : b.placeholder;
+        return fromB.length - fromA.length;
+    });
+
+    for (const rule of sortedRules) {
         const from = direction === 'outgoing' ? rule.local : rule.placeholder;
         const to = direction === 'outgoing' ? rule.placeholder : rule.local;
         
-        // Use a function in replaceAll to avoid issues with special regex characters in 'from' string.
-        processedText = processedText.replaceAll(from, to);
+        // Create a case-insensitive regex
+        const regex = new RegExp(escapeRegExp(from), 'gi');
+        
+        processedText = processedText.replace(regex, (match) => {
+            return transferCasing(match, to);
+        });
     }
     return processedText;
 }
