@@ -73,13 +73,13 @@ export function getSettingsViewHTML(profile) {
         <hr>
         <div class="form-check mb-2">
             <input type="checkbox" class="form-check-input auto-mask-ips" id="autoMaskIPs-${profile.id}" data-id="${profile.id}" ${profile.autoMaskIPs ? 'checked' : ''}>
-            <label class="form-check-label" for="autoMaskIPs-${profile.id}"><strong>Auto-Mask IP Addresses</strong></label>
+            <label class="form-check-label" for="autoMaskIPs-${profile.id}">Auto-Mask IP Addresses</label>
             <div class="form-text text-muted mt-0 mb-1" style="font-size: 0.75rem;">Detects IPs/CIDR in context, replaces them with random IPs (saved globally), and restores them on deploy.</div>
         </div>
 
         <div class="form-check mb-2">
             <input type="checkbox" class="form-check-input auto-mask-emails" id="autoMaskEmails-${profile.id}" data-id="${profile.id}" ${profile.autoMaskEmails ? 'checked' : ''}>
-            <label class="form-check-label" for="autoMaskEmails-${profile.id}"><strong>Auto-Mask Email Addresses</strong></label>
+            <label class="form-check-label" for="autoMaskEmails-${profile.id}">Auto-Mask Email Addresses</label>
             <div class="form-text text-muted mt-0 mb-1" style="font-size: 0.75rem;">Detects Emails in context, replaces them with random Emails, and restores them on deploy.</div>
         </div>
 
