@@ -35,7 +35,6 @@ function parseRules(rulesString) {
  */
 function transferCasing(match, target) {
     // 1. ALL CAPS check
-    // If the match is all uppercase (and contains at least one cased character), return target as ALL CAPS.
     if (match === match.toUpperCase() && match !== match.toLowerCase()) {
         return target.toUpperCase();
     }
@@ -45,10 +44,8 @@ function transferCasing(match, target) {
     for (let i = 0; i < target.length; i++) {
         const char = target[i];
         
-        // If we have a corresponding character in the match
         if (i < match.length) {
             const matchChar = match[i];
-            
             // Check if the match character is Upper Case
             if (matchChar === matchChar.toUpperCase() && matchChar !== matchChar.toLowerCase()) {
                 result += char.toUpperCase();
@@ -56,19 +53,22 @@ function transferCasing(match, target) {
                 result += char.toLowerCase();
             }
         } else {
-            // Target is longer than match.
-            // Default behavior: keep original casing of the target definition (usually lowercase)
             result += char;
         }
     }
-    
     return result;
 }
 
 /**
  * Applies replacements to a given text based on the provided rules and direction.
- * Uses robust case-preservation logic ONLY if the rule definition is lowercase.
- * If the rule definition has specific casing, it performs a strict replacement.
+ * 
+ * Logic:
+ * 1. If a rule (either local OR placeholder) contains any uppercase letters, it is treated as STRICT.
+ *    - Case-Sensitive Matching.
+ *    - Exact Replacement (No smart casing).
+ * 2. If a rule is entirely lowercase on both sides, it is treated as SMART.
+ *    - Case-Insensitive Matching.
+ *    - Smart Casing Transfer (e.g., myproject -> someproject, MyProject -> SomeProject).
  * 
  * @param {string} text The text to process.
  * @param {string} rulesString The raw string of rules.
@@ -81,7 +81,7 @@ export function applyReplacements(text, rulesString, direction) {
 
     let processedText = text;
     
-    // Sort rules by length (descending) to avoid partial replacements of substrings
+    // Sort rules by length (descending) to avoid partial replacements
     const sortedRules = [...rules].sort((a, b) => {
         const fromA = direction === 'outgoing' ? a.local : a.placeholder;
         const fromB = direction === 'outgoing' ? b.local : b.placeholder;
@@ -92,17 +92,17 @@ export function applyReplacements(text, rulesString, direction) {
         const from = direction === 'outgoing' ? rule.local : rule.placeholder;
         const to = direction === 'outgoing' ? rule.placeholder : rule.local;
         
-        // Check if the 'from' pattern has any uppercase letters.
-        // If it does, the user likely intends a specific case-sensitive match.
-        // If it is all lowercase, we apply the smart casing logic.
-        const isStrictCase = from !== from.toLowerCase();
+        // CHECK BOTH SIDES: If either side has uppercase, use strict mode.
+        // This ensures PassWord|password works strictly in both directions.
+        const isStrictRule = (rule.local !== rule.local.toLowerCase()) || 
+                             (rule.placeholder !== rule.placeholder.toLowerCase());
 
-        if (isStrictCase) {
-            // Strict replacement: simply replace all exact occurrences
+        if (isStrictRule) {
+            // Strict replacement: Case-Sensitive, Exact Replace
             const regex = new RegExp(escapeRegExp(from), 'g');
             processedText = processedText.replace(regex, to);
         } else {
-            // Smart replacement: Case-insensitive match + casing transfer
+            // Smart replacement: Case-Insensitive, Smart Casing
             const regex = new RegExp(escapeRegExp(from), 'gi');
             processedText = processedText.replace(regex, (match) => {
                 return transferCasing(match, to);
