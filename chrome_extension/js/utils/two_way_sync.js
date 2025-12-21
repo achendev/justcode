@@ -67,7 +67,9 @@ function transferCasing(match, target) {
 
 /**
  * Applies replacements to a given text based on the provided rules and direction.
- * Uses robust case-preservation logic.
+ * Uses robust case-preservation logic ONLY if the rule definition is lowercase.
+ * If the rule definition has specific casing, it performs a strict replacement.
+ * 
  * @param {string} text The text to process.
  * @param {string} rulesString The raw string of rules.
  * @param {'outgoing' | 'incoming'} direction 'outgoing' for local->placeholder, 'incoming' for placeholder->local.
@@ -80,7 +82,6 @@ export function applyReplacements(text, rulesString, direction) {
     let processedText = text;
     
     // Sort rules by length (descending) to avoid partial replacements of substrings
-    // e.g., ensure "SuperSecret" is replaced before "Secret"
     const sortedRules = [...rules].sort((a, b) => {
         const fromA = direction === 'outgoing' ? a.local : a.placeholder;
         const fromB = direction === 'outgoing' ? b.local : b.placeholder;
@@ -91,12 +92,22 @@ export function applyReplacements(text, rulesString, direction) {
         const from = direction === 'outgoing' ? rule.local : rule.placeholder;
         const to = direction === 'outgoing' ? rule.placeholder : rule.local;
         
-        // Create a case-insensitive regex
-        const regex = new RegExp(escapeRegExp(from), 'gi');
-        
-        processedText = processedText.replace(regex, (match) => {
-            return transferCasing(match, to);
-        });
+        // Check if the 'from' pattern has any uppercase letters.
+        // If it does, the user likely intends a specific case-sensitive match.
+        // If it is all lowercase, we apply the smart casing logic.
+        const isStrictCase = from !== from.toLowerCase();
+
+        if (isStrictCase) {
+            // Strict replacement: simply replace all exact occurrences
+            const regex = new RegExp(escapeRegExp(from), 'g');
+            processedText = processedText.replace(regex, to);
+        } else {
+            // Smart replacement: Case-insensitive match + casing transfer
+            const regex = new RegExp(escapeRegExp(from), 'gi');
+            processedText = processedText.replace(regex, (match) => {
+                return transferCasing(match, to);
+            });
+        }
     }
     return processedText;
 }
