@@ -78,6 +78,12 @@ export function getSettingsViewHTML(profile) {
         </div>
 
         <div class="form-check mb-2">
+            <input type="checkbox" class="form-check-input auto-mask-emails" id="autoMaskEmails-${profile.id}" data-id="${profile.id}" ${profile.autoMaskEmails ? 'checked' : ''}>
+            <label class="form-check-label" for="autoMaskEmails-${profile.id}"><strong>Auto-Mask Email Addresses</strong></label>
+            <div class="form-text text-muted mt-0 mb-1" style="font-size: 0.75rem;">Detects Emails in context, replaces them with random Emails, and restores them on deploy.</div>
+        </div>
+
+        <div class="form-check mb-2">
             <input type="checkbox" class="form-check-input two-way-sync-enabled" id="twoWaySyncEnabled-${profile.id}" data-id="${profile.id}" ${profile.isTwoWaySyncEnabled ? 'checked' : ''}>
             <label class="form-check-label" for="twoWaySyncEnabled-${profile.id}">Enable Custom Two-Way Replacements</label>
         </div>

@@ -1,6 +1,7 @@
 import { extractCodeWithFallback } from './robust_fallback.js';
 import { applyReplacements } from '../utils/two_way_sync.js';
 import { unmaskIPs } from '../utils/ip_masking.js';
+import { unmaskEmails } from '../utils/email_masking.js';
 
 /**
  * Handles the deployment process for the server backend.
@@ -22,6 +23,9 @@ export async function handleServerDeployment(profile, fromShortcut = false, host
     }
 
     // --- RESTORE MASKS ---
+    if (profile.autoMaskEmails) {
+        codeToDeploy = await unmaskEmails(codeToDeploy);
+    }
     if (profile.autoMaskIPs) {
         codeToDeploy = await unmaskIPs(codeToDeploy);
     }

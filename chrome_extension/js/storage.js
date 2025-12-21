@@ -62,6 +62,7 @@ function migrateProfile(profile) {
     if (profile.isTwoWaySyncEnabled === undefined) { profile.isTwoWaySyncEnabled = false; changed = true; }
     if (profile.twoWaySyncRules === undefined) { profile.twoWaySyncRules = 'StroNgPasWord|password\nmydomain.com|example.com'; changed = true; }
     if (profile.autoMaskIPs === undefined) { profile.autoMaskIPs = false; changed = true; }
+    if (profile.autoMaskEmails === undefined) { profile.autoMaskEmails = false; changed = true; }
     
     return changed;
 }
@@ -103,7 +104,8 @@ export function loadData(callback) {
                 useNumericPrefixesForMultiProject: false,
                 isTwoWaySyncEnabled: false,
                 twoWaySyncRules: 'StroNgPasWord|password\nmydomain.com|example.com',
-                autoMaskIPs: false
+                autoMaskIPs: false,
+                autoMaskEmails: false
             }];
             needsSave = true;
         }

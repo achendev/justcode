@@ -8,6 +8,7 @@ import { writeToClipboard } from '../utils/clipboard.js';
 import { applyReplacements } from '../utils/two_way_sync.js';
 import { splitContextPayload } from './utils.js';
 import { maskIPs } from '../utils/ip_masking.js';
+import { maskEmails } from '../utils/email_masking.js';
 
 async function getVerifiedHandles(profile) {
     const folderCount = (profile.jsProjectFolderNames || []).length || 1;
@@ -65,7 +66,7 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
         const { instructionsBlock, codeBlockDelimiter } = getInstructionsBlock(profile);
         
         // --- PROCESS FUNCTION ---
-        // ORDER MATTERS: Apply Custom Replacements FIRST, then Auto-Mask whatever is left.
+        // ORDER MATTERS: Apply Custom Replacements FIRST, then Auto-Masks.
         const process = async (text) => {
             let processed = text;
             if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
@@ -73,6 +74,9 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
             }
             if (profile.autoMaskIPs) {
                 processed = await maskIPs(processed);
+            }
+            if (profile.autoMaskEmails) {
+                processed = await maskEmails(processed);
             }
             return processed;
         };
@@ -202,6 +206,9 @@ export async function getExclusionSuggestionFromJS(profile, fromShortcut = false
     }
     if (profile.autoMaskIPs) {
         prompt = await maskIPs(prompt);
+    }
+    if (profile.autoMaskEmails) {
+        prompt = await maskEmails(prompt);
     }
 
     if (profile.getContextTarget === 'clipboard') {

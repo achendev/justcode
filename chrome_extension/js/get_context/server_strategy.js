@@ -7,6 +7,7 @@ import { writeToClipboard } from '../utils/clipboard.js';
 import { applyReplacements } from '../utils/two_way_sync.js';
 import { splitContextPayload } from './utils.js';
 import { maskIPs } from '../utils/ip_masking.js';
+import { maskEmails } from '../utils/email_masking.js';
 
 export async function getContextFromServer(profile, fromShortcut, hostname) {
     const paths = profile.projectPaths;
@@ -57,7 +58,7 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
         const contentString = treeEndIndex !== -1 ? fileContextPayload.substring(treeEndIndex + 2) : fileContextPayload;
 
         // --- PROCESS FUNCTION ---
-        // ORDER MATTERS: Apply Custom Replacements FIRST, then Auto-Mask whatever is left.
+        // ORDER MATTERS: Apply Custom Replacements FIRST, then Auto-Masks.
         const process = async (text) => {
             let processed = text;
             if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
@@ -65,6 +66,9 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
             }
             if (profile.autoMaskIPs) {
                 processed = await maskIPs(processed);
+            }
+            if (profile.autoMaskEmails) {
+                processed = await maskEmails(processed);
             }
             return processed;
         };
@@ -201,6 +205,9 @@ export async function getExclusionSuggestionFromServer(profile, fromShortcut = f
         }
         if (profile.autoMaskIPs) {
             prompt = await maskIPs(prompt);
+        }
+        if (profile.autoMaskEmails) {
+            prompt = await maskEmails(prompt);
         }
 
         if (profile.getContextTarget === 'clipboard') {

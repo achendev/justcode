@@ -76,4 +76,9 @@ export function attachSettingsEventListeners(reRenderCallback) {
     document.querySelectorAll('.auto-mask-ips').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => settingsHandlers.handleAutoMaskIPsToggle(e));
     });
+    
+    // --- Auto Email Masking ---
+    document.querySelectorAll('.auto-mask-emails').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => settingsHandlers.handleAutoMaskEmailsToggle(e));
+    });
 }

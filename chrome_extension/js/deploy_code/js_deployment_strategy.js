@@ -5,6 +5,7 @@ import { generateUndoScript } from './undo_generator.js';
 import { executeFileSystemScript } from './script_executor.js';
 import { applyReplacements } from '../utils/two_way_sync.js';
 import { unmaskIPs } from '../utils/ip_masking.js';
+import { unmaskEmails } from '../utils/email_masking.js';
 
 /**
  * Handles the deployment process for the JS (File System Access API) backend.
@@ -41,6 +42,9 @@ export async function handleJsDeployment(profile, fromShortcut = false, hostname
     }
     
     // --- RESTORE MASKS ---
+    if (profile.autoMaskEmails) {
+        codeToDeploy = await unmaskEmails(codeToDeploy);
+    }
     if (profile.autoMaskIPs) {
         codeToDeploy = await unmaskIPs(codeToDeploy);
     }
