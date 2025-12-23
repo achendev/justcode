@@ -22,6 +22,7 @@ def redo():
     if request.method == 'POST':
         tolerate_errors = request.args.get('tolerateErrors', 'true').lower() == 'true'
         use_numeric_prefixes = request.args.get('useNumericPrefixes', 'false').lower() == 'true'
+        add_empty_line = request.args.get('addEmptyLine', 'true').lower() == 'true'
 
         if not use_numeric_prefixes and len(project_paths) > 1:
             names_to_check = []
@@ -50,7 +51,7 @@ def redo():
             script_content = f.read() # This is the original deploy script
         
         try:
-            output_log, error_log = execute_script(script_content, project_paths, tolerate_errors, use_numeric_prefixes)
+            output_log, error_log = execute_script(script_content, project_paths, tolerate_errors, use_numeric_prefixes, add_empty_line)
             
             # Move the script pair back to the undo stack
             shutil.move(undo_script_path_in_redo, os.path.join(undo_stack_dir, f"{latest_timestamp}.sh"))

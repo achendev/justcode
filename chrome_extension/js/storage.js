@@ -56,6 +56,7 @@ function migrateProfile(profile) {
     if (profile.separateInstructions === undefined) { profile.separateInstructions = 'file'; changed = true; }
     if (profile.runScriptOnDeploy === undefined) { profile.runScriptOnDeploy = false; changed = true; }
     if (profile.postDeployScript === undefined) { profile.postDeployScript = defaultPostDeployScript; changed = true; }
+    if (profile.addEmptyLineOnDeploy === undefined) { profile.addEmptyLineOnDeploy = true; changed = true; }
     if (profile.gatherAdditionalContext === undefined) { profile.gatherAdditionalContext = false; changed = true; }
     if (profile.additionalContextScript === undefined) { profile.additionalContextScript = defaultAdditionalContextScript; changed = true; }
     if (profile.useNumericPrefixesForMultiProject === undefined) { profile.useNumericPrefixesForMultiProject = false; changed = true; }
@@ -101,6 +102,7 @@ export function loadData(callback) {
                 additionalContextScript: 'echo "Example: Get current git branch"\ngit rev-parse --abbrev-ref HEAD',
                 runScriptOnDeploy: false,
                 postDeployScript: 'set -x\necho Deploy completed',
+                addEmptyLineOnDeploy: true,
                 useNumericPrefixesForMultiProject: false,
                 isTwoWaySyncEnabled: false,
                 twoWaySyncRules: 'StroNgPasWord|password\nmydomain.com|example.com',

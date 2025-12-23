@@ -44,6 +44,8 @@ export async function handleServerDeployment(profile, fromShortcut = false, host
     if (profile.useNumericPrefixesForMultiProject) {
         endpoint += `&useNumericPrefixes=true`;
     }
+    endpoint += `&addEmptyLine=${profile.addEmptyLineOnDeploy !== false}`;
+
     if (profile.runScriptOnDeploy && profile.postDeployScript) {
         endpoint += `&runScript=true&scriptToRun=${encodeURIComponent(profile.postDeployScript)}`;
     }

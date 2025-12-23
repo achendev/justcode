@@ -58,7 +58,7 @@ def resolve_path(raw_path, project_paths, use_numeric_prefixes=False):
     raise ValueError(f"Could not find a matching project for path '{raw_path}'. Known project prefixes: {known_prefixes}")
 
 
-def execute_script(script_content, project_paths, tolerate_errors=False, use_numeric_prefixes=False):
+def execute_script(script_content, project_paths, tolerate_errors=False, use_numeric_prefixes=False, add_empty_line=True):
     """Parses and executes a deployment script, returning logs and errors."""
     lines = script_content.replace('\r\n', '\n').split('\n')
     i = 0
@@ -106,6 +106,9 @@ def execute_script(script_content, project_paths, tolerate_errors=False, use_num
                     raise ValueError(f"Unterminated heredoc for file '{raw_path_for_command}'")
                 
                 file_content = "\n".join(content_lines)
+                if add_empty_line:
+                    file_content += "\n"
+                
                 os.makedirs(os.path.dirname(full_path), exist_ok=True)
                 with open(full_path, 'w', encoding='utf-8') as f: f.write(file_content)
                 output_log.append(f"Wrote file: {raw_path_for_command}")

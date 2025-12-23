@@ -10,6 +10,7 @@ import { resolveHandleAndPath } from './fs_helpers.js';
  */
 export async function executeFileSystemScript(handles, script, profile) {
     const tolerateErrors = profile.tolerateErrors !== false;
+    const addEmptyLine = profile.addEmptyLineOnDeploy !== false; // Default true
     const lines = script.replace(/\r\n/g, '\n').split('\n');
     let i = 0;
     const errors = [];
@@ -43,7 +44,11 @@ export async function executeFileSystemScript(handles, script, profile) {
                 }
 
                 if (!contentEnded) throw new Error(`Script parsing error: EOF while looking for '${hereDocValue}'`);
-                if (content.endsWith('\n')) content = content.slice(0, -1);
+                
+                // If user doesn't want trailing empty line, trim the one we added in the loop
+                if (!addEmptyLine && content.endsWith('\n')) {
+                    content = content.slice(0, -1);
+                }
                 
                 const { handle, relativePath } = resolveHandleAndPath(handles, rawPath, profile);
                 const pathParts = relativePath.split('/');

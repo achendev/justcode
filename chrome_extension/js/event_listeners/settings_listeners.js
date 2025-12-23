@@ -28,6 +28,9 @@ export function attachSettingsEventListeners(reRenderCallback) {
     document.querySelectorAll('.tolerate-errors').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => inputHandlers.handleCheckboxChange(e, 'tolerateErrors'));
     });
+    document.querySelectorAll('.add-empty-line-on-deploy').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => inputHandlers.handleCheckboxChange(e, 'addEmptyLineOnDeploy'));
+    });
     document.querySelectorAll('.use-numeric-prefixes-for-multi-project').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => inputHandlers.handleCheckboxChange(e, 'useNumericPrefixesForMultiProject'));
     });

@@ -65,6 +65,10 @@ export function getSettingsViewHTML(profile) {
             <label class="form-check-label" for="tolerateErrors-${profile.id}">Tolerate script execution errors</label>
         </div>
         <div class="form-check mb-2">
+            <input type="checkbox" class="form-check-input add-empty-line-on-deploy" id="addEmptyLineOnDeploy-${profile.id}" data-id="${profile.id}" ${profile.addEmptyLineOnDeploy ? 'checked' : ''}>
+            <label class="form-check-label" for="addEmptyLineOnDeploy-${profile.id}">Add empty line to end of files</label>
+        </div>
+        <div class="form-check mb-2">
             <input type="checkbox" class="form-check-input use-numeric-prefixes-for-multi-project" id="useNumericPrefixesForMultiProject-${profile.id}" data-id="${profile.id}" ${profile.useNumericPrefixesForMultiProject ? 'checked' : ''}>
             <label class="form-check-label" for="useNumericPrefixesForMultiProject-${profile.id}">Name multiproject directories by order number</label>
         </div>

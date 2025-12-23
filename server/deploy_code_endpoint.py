@@ -18,6 +18,7 @@ def deploy_code():
     verbose_log = request.args.get('verbose', 'true').lower() == 'true'
     hide_errors_on_success = request.args.get('hideErrorsOnSuccess', 'false').lower() == 'true'
     use_numeric_prefixes = request.args.get('useNumericPrefixes', 'false').lower() == 'true'
+    add_empty_line = request.args.get('addEmptyLine', 'true').lower() == 'true'
 
     if not paths or not any(p.strip() for p in paths):
         return Response("Error: 'path' parameter is missing.", status=400, mimetype='text/plain')
@@ -162,7 +163,7 @@ def deploy_code():
                 print(f"Warning: Could not delete old undo script for ts '{old_ts}': {e}")
     
     try:
-        output_log, error_log = execute_script(script_content, project_paths, tolerate_errors, use_numeric_prefixes)
+        output_log, error_log = execute_script(script_content, project_paths, tolerate_errors, use_numeric_prefixes, add_empty_line)
         
         deployment_message = ""
         if error_log:

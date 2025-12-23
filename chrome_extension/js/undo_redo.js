@@ -104,6 +104,7 @@ async function handleServerStackAction(profile, fromShortcut, action) {
         if (profile.useNumericPrefixesForMultiProject) {
             endpoint += `&useNumericPrefixes=true`;
         }
+        endpoint += `&addEmptyLine=${profile.addEmptyLineOnDeploy !== false}`;
 
         const headers = { 'Content-Type': 'text/plain' };
         if (profile.isAuthEnabled && profile.username) {
