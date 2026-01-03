@@ -1,4 +1,4 @@
-import { saveData } from './storage.js';
+import { saveData, loadData } from './storage.js';
 import { getContext } from './get_context.js';
 import { deployCode } from './deploy_code.js';
 import { undoCode, redoCode } from './undo_redo.js';
@@ -31,6 +31,25 @@ async function loadAndEnsureSettings() {
     });
 }
 
+// Helper: Sleep for X milliseconds
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Update the profile's last message in storage (background compatible).
+ */
+async function updateProfileStatus(profileId, text, type) {
+    return new Promise(resolve => {
+        loadData((profiles, activeProfileId, archivedProfiles) => {
+            const profile = profiles.find(p => p.id === profileId);
+            if (profile) {
+                profile.lastMessage = { text, type };
+                saveData(profiles, activeProfileId, archivedProfiles, resolve);
+            } else {
+                resolve();
+            }
+        });
+    });
+}
 
 /**
  * Ensures the base content script (for notifications) is injected into a tab.
@@ -61,23 +80,105 @@ async function ensureContentScript(tabId) {
     }
 }
 
-
 /**
  * Initializes all compatible tabs by ensuring content scripts and shortcut listeners are active.
  */
 async function initializeAllTabs() {
-    // Note: We don't need to load settings here anymore for the listener injection
-    // because the listener is now stateless.
     const tabs = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] });
     for (const tab of tabs) {
         if (tab.id) {
             await ensureContentScript(tab.id);
-            // After ensuring the base script is there, inject the listener.
             injectShortcutListener(tab.id);
         }
     }
 }
 
+async function handleAutoDeployTrigger() {
+    console.log("JustCode: Auto-deploy triggered (Background Service Worker).");
+    
+    // 1. Get the active tab to send notifications
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    
+    // Use a single stable ID for the whole sequence so messages update in-place
+    // rather than stacking up on the screen.
+    const notificationId = 'justcode-autodeploy-active-sequence';
+
+    // Helper to send notification if tab exists
+    const notify = (text, type = 'info', spinner = false) => {
+        if (tab && tab.id) {
+            chrome.tabs.sendMessage(tab.id, { 
+                type: 'showNotificationOnPage', 
+                notificationId, 
+                text, 
+                messageType: type, 
+                showSpinner: spinner 
+            }).catch(() => {});
+        }
+    };
+
+    // 2. Load Profile
+    loadData(async (profiles, activeProfileId, archivedProfiles) => {
+        const activeProfile = profiles.find(p => p.id === activeProfileId);
+        
+        if (!activeProfile || !activeProfile.autoDeploy) {
+            console.log("JustCode: Auto-deploy ignored (disabled or no profile).");
+            return;
+        }
+
+        // 3. Initial Delay (Rendering time)
+        notify("Auto-deploy: Waiting for rendering...", "info", true);
+        await sleep(1000); 
+
+        // 4. Retry Loop
+        const maxRetries = 3;
+        const retryDelay = 5000;
+
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                notify(`Auto-deploying... (Attempt ${attempt}/${maxRetries})`, "info", true);
+                
+                // We pass the tab hostname if available for context logic
+                const hostname = tab && tab.url ? new URL(tab.url).hostname : null;
+                
+                const result = await deployCode(activeProfile, true, hostname); // fromShortcut=true suppresses some UI updates inside
+                
+                // If we get here without error, it succeeded
+                await updateProfileStatus(activeProfile.id, result.text + " (Auto)", result.type);
+                // Spinner=false will trigger the auto-hide timer in notification_manager.js
+                notify(result.text + " (Auto)", result.type, false);
+                return; // Exit loop on success
+
+            } catch (e) {
+                const isScriptNotFoundError = e.message && (
+                    e.message.includes("No valid deploy script") || 
+                    e.message.includes("Could not find target")
+                );
+
+                if (isScriptNotFoundError) {
+                    console.log(`JustCode: Auto-deploy attempt ${attempt} failed (No script found).`);
+                    
+                    if (attempt < maxRetries) {
+                        notify(`No script found yet. Retrying in ${retryDelay/1000}s...`, "warning", true);
+                        await sleep(retryDelay);
+                        continue; // Retry loop
+                    } else {
+                        // Final failure for script not found
+                        const msg = "Auto-deploy failed: No script found after retries.";
+                        await updateProfileStatus(activeProfile.id, msg, "error");
+                        notify(msg, "error", false);
+                    }
+                } else {
+                    // It was a real error (filesystem, server, etc), do not retry
+                    console.error("JustCode: Auto-deploy fatal error:", e);
+                    const msg = "Auto-deploy failed: " + e.message;
+                    await updateProfileStatus(activeProfile.id, msg, "error");
+                    notify(msg, "error", false);
+                    break; 
+                }
+            }
+        }
+    });
+}
 
 async function executeCommand(command, hostname) {
     const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
@@ -106,7 +207,7 @@ async function executeCommand(command, hostname) {
 
         const profiles = data.profiles || [];
         const archivedProfiles = data.archivedProfiles || [];
-        let activeProfileId = data.activeProfileId; // This is the global active profile
+        let activeProfileId = data.activeProfileId; 
         const tabProfileMap = data.tabProfileMap || {};
 
         let profileToUseId = activeProfileId;
@@ -118,8 +219,6 @@ async function executeCommand(command, hostname) {
             }
         }
         
-        // If getContext is used, update the association for the current tab.
-        // It uses the profile determined above (either tab-specific or global default).
         if (command === 'get-context-shortcut' && settings.rememberTabProfile) {
             tabProfileMap[tab.id] = profileToUseId;
             await chrome.storage.local.set({ tabProfileMap });
@@ -132,8 +231,6 @@ async function executeCommand(command, hostname) {
             const messageTextToShow = result?.text || 'Action completed.';
             const messageTypeToShow = result?.type || 'info';
             
-            // Update the profile's last message and save all data.
-            // Note: we save the original global activeProfileId, not the one we used for this action.
             const profileInArray = profiles.find(p => p.id === profileToUseId);
             if (profileInArray) {
                 profileInArray.lastMessage = { text: messageTextToShow, type: messageTypeToShow };
@@ -152,25 +249,23 @@ async function executeCommand(command, hostname) {
     }
 }
 
-// Listen for messages from content scripts or other parts of the extension.
+// Listen for messages
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    // 1. Direct Command execution (Legacy/Direct)
+    // 1. Direct Command execution
     if (message.type === 'execute-command' && message.command) {
         executeCommand(message.command, message.hostname);
         sendResponse({status: "Command received"});
         return true;
     }
 
-    // 2. Verified Command Execution (New Stateless Shortcut Listener)
+    // 2. Verified Command Execution
     if (message.type === 'try-execute-command' && message.command) {
         loadAndEnsureSettings().then(settings => {
-            // Check if shortcuts are allowed on this domain
             const allowedDomains = (settings.shortcutDomains || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
             if (!allowedDomains.includes(message.hostname)) {
                 return;
             }
 
-            // Check if specific shortcut is enabled
             let isEnabled = false;
             switch(message.command) {
                 case 'get-context-shortcut': isEnabled = settings.isGetContextShortcutEnabled; break;
@@ -184,29 +279,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 executeCommand(message.command, message.hostname);
             }
         });
-        // No response needed
+        return true;
+    }
+
+    // 3. Auto Deploy Trigger (From Content Script)
+    if (message.type === 'auto_deploy_trigger') {
+        handleAutoDeployTrigger();
         return true;
     }
     
-    // 3. Content script ready signal
+    // 4. Content script ready signal
     if (message.type === 'justcode-content-script-ready') {
         loadAndEnsureSettings().then(settings => {
-            // Send the latest settings to the content script for notifications.
             sendResponse({status: 'success', settings: settings});
-            // Now that the content script is ready, inject the "live" shortcut listener.
             if (sender.tab?.id) {
                 injectShortcutListener(sender.tab.id);
             }
         });
-        return true; // Indicates an asynchronous response.
+        return true; 
     }
 });
 
 
-// On first install or update, and on browser startup, ensure all tabs are initialized.
+// On first install or update
 chrome.runtime.onInstalled.addListener((details) => {
     if (details.reason === 'install') {
-        // Open the welcome page on first install
         chrome.tabs.create({ url: chrome.runtime.getURL('welcome/welcome.html') });
     }
     if (details.reason === 'install' || details.reason === 'update') {
@@ -217,10 +314,10 @@ chrome.runtime.onStartup.addListener(() => {
     initializeAllTabs();
 });
 
-// Immediately attempt to initialize all tabs when the service worker starts up.
+// Immediately attempt to initialize all tabs
 initializeAllTabs();
 
-// Clean up tab-profile associations for closed tabs.
+// Clean up tab-profile associations
 chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
     const settings = await chrome.storage.local.get({ rememberTabProfile: true });
     if (settings.rememberTabProfile) {

@@ -4,6 +4,8 @@ import { initializeViews } from './js/popup/view.js';
 import { initializeAppSettings } from './js/popup/settings.js';
 import { initializeListeners } from './js/popup/listeners.js';
 import { initializeMessaging } from './js/popup/messaging.js';
+import { loadData } from './js/storage.js';
+import { initAutoDeploy } from './js/ui_handlers/settings.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize theme first to prevent any flash of unstyled/wrongly-themed content.
@@ -38,4 +40,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     initializeAppSettings(reRender);
     initializeListeners(reRender);
     initializeMessaging(reRender);
+
+    // Initialize auto deploy state for active profile
+    loadData((profiles, activeProfileId) => {
+        const activeProfile = profiles.find(p => p.id === activeProfileId);
+        if (activeProfile) {
+            initAutoDeploy(activeProfile);
+        }
+    });
 });

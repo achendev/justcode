@@ -153,3 +153,73 @@ export function handleAutoMaskEmailsToggle(event) {
         }
     });
 }
+
+/**
+ * Manages the injection and state of the auto-deploy observer script.
+ */
+async function setAutoDeployState(enabled) {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab || !tab.id) return;
+
+    if (enabled) {
+        // First ensure the observer script is loaded
+        try {
+            await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                files: ['js/content_script/auto_deploy_observer.js']
+            });
+            // Then start it
+            await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: () => {
+                    if (window.justCodeAutoDeployObserver) {
+                        window.justCodeAutoDeployObserver.start();
+                    }
+                }
+            });
+            console.log("JustCode: Enabled auto-deploy observer.");
+        } catch (e) {
+            console.warn("JustCode: Could not inject auto-deploy observer. (Page might be restricted)", e);
+        }
+    } else {
+        // Stop it
+        try {
+            await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: () => {
+                    if (window.justCodeAutoDeployObserver) {
+                        window.justCodeAutoDeployObserver.stop();
+                    }
+                }
+            });
+            console.log("JustCode: Disabled auto-deploy observer.");
+        } catch (e) {
+             // Ignore errors if script wasn't there
+        }
+    }
+}
+
+export function handleAutoDeployToggle(event) {
+    const id = parseInt(event.target.dataset.id);
+    const isChecked = event.target.checked;
+
+    loadData((profiles, activeProfileId, archivedProfiles) => {
+        const profile = profiles.find(p => p.id === id);
+        if (profile) {
+            profile.autoDeploy = isChecked;
+            saveData(profiles, activeProfileId, archivedProfiles);
+            
+            // Apply logic immediately if this is the active profile
+            if (activeProfileId === id) {
+                setAutoDeployState(isChecked);
+            }
+        }
+    });
+}
+
+// Export helper to be called on popup open
+export function initAutoDeploy(profile) {
+    if (profile && profile.autoDeploy) {
+        setAutoDeployState(true);
+    }
+}

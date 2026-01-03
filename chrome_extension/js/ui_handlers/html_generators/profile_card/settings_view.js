@@ -72,6 +72,13 @@ export function getSettingsViewHTML(profile) {
             <input type="checkbox" class="form-check-input use-numeric-prefixes-for-multi-project" id="useNumericPrefixesForMultiProject-${profile.id}" data-id="${profile.id}" ${profile.useNumericPrefixesForMultiProject ? 'checked' : ''}>
             <label class="form-check-label" for="useNumericPrefixesForMultiProject-${profile.id}">Name multiproject directories by order number</label>
         </div>
+        
+        <!-- Auto Deploy Setting -->
+        <div class="form-check mb-2">
+            <input type="checkbox" class="form-check-input auto-deploy" id="autoDeploy-${profile.id}" data-id="${profile.id}" ${profile.autoDeploy ? 'checked' : ''}>
+            <label class="form-check-label" for="autoDeploy-${profile.id}">Auto Deploy (When LLM stops generating)</label>
+            <div class="form-text text-muted mt-0 mb-1" style="font-size: 0.75rem;">Automatically triggers "Deploy Code" when the LLM's "Stop" button changes back to "Run".</div>
+        </div>
 
         <!-- Privacy & Sync Settings -->
         <hr>

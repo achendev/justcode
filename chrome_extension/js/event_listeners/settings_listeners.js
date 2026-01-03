@@ -41,6 +41,11 @@ export function attachSettingsEventListeners(reRenderCallback) {
         textarea.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'criticalInstructions'));
     });
     
+    // --- Auto Deploy Toggle ---
+    document.querySelectorAll('.auto-deploy').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => settingsHandlers.handleAutoDeployToggle(e));
+    });
+    
     // --- Server-mode settings inside settings view ---
     document.querySelectorAll('.server-url').forEach(input => {
         input.addEventListener('change', (e) => settingsHandlers.handleServerUrlChange(e));

@@ -4,7 +4,7 @@ import { loadData, saveData } from '../storage.js';
 
 export function initializeMessaging(reRender) {
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        // Ignore messages from content scripts or other tabs
+        // Ignore messages from content scripts or other tabs 
         if (sender.tab) return;
 
         switch (message.type) {
@@ -29,7 +29,6 @@ export function initializeMessaging(reRender) {
         }
         
         // Return true to indicate you wish to send a response asynchronously (even if you don't).
-        // This is required in some cases to keep the message channel open.
         return true; 
     });
 }

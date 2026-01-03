@@ -64,6 +64,7 @@ function migrateProfile(profile) {
     if (profile.twoWaySyncRules === undefined) { profile.twoWaySyncRules = 'StroNgPasWord|password\nmydomain.com|example.com'; changed = true; }
     if (profile.autoMaskIPs === undefined) { profile.autoMaskIPs = false; changed = true; }
     if (profile.autoMaskEmails === undefined) { profile.autoMaskEmails = false; changed = true; }
+    if (profile.autoDeploy === undefined) { profile.autoDeploy = false; changed = true; }
     
     return changed;
 }
@@ -107,7 +108,8 @@ export function loadData(callback) {
                 isTwoWaySyncEnabled: false,
                 twoWaySyncRules: 'StroNgPasWord|password\nmydomain.com|example.com',
                 autoMaskIPs: false,
-                autoMaskEmails: false
+                autoMaskEmails: false,
+                autoDeploy: false
             }];
             needsSave = true;
         }
