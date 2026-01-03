@@ -8,6 +8,13 @@ import { applyReplacements } from '../utils/two_way_sync.js';
 import { splitContextPayload } from './utils.js';
 import { maskIPs } from '../utils/ip_masking.js';
 import { maskEmails } from '../utils/email_masking.js';
+import { agentInstructions } from '../agent_constants.js';
+
+// New helper for agent upload
+async function uploadAgentInstructions(hostname) {
+    // We upload this as agent.txt
+    await uploadContextAsFile(agentInstructions, 'agent.txt', hostname);
+}
 
 export async function getContextFromServer(profile, fromShortcut, hostname) {
     const paths = profile.projectPaths;
@@ -72,15 +79,22 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
             }
             return processed;
         };
+        
+        // --- Agent Mode Injection Logic ---
+        let finalPromptInstructions = instructionsBlock;
+        if (profile.isAgentModeEnabled) {
+            finalPromptInstructions += `\n\n**AGENT MODE INSTRUCTIONS:**\nSpecial agent instructions are in the attached file \`agent.txt\`. You MUST follow them for tool use.`;
+            await uploadAgentInstructions(hostname);
+        }
 
         if (profile.getContextTarget === 'clipboard') {
-            const finalPrompt = `This is current state of project files:\n${codeBlockDelimiter}bash\n${fileContextPayload}${codeBlockDelimiter}\n\n\n${instructionsBlock}\n\n\n \n`;
+            const finalPrompt = `This is current state of project files:\n${codeBlockDelimiter}bash\n${fileContextPayload}${codeBlockDelimiter}\n\n\n${finalPromptInstructions}\n\n\n \n`;
             await writeToClipboard(await process(finalPrompt));
             return { text: 'Context copied to clipboard!', type: 'success' };
         }
         
         if (!profile.contextAsFile) {
-             const finalPrompt = `This is current state of project files:\n${codeBlockDelimiter}bash\n${fileContextPayload}${codeBlockDelimiter}\n\n\n${instructionsBlock}\n\n\n \n`;
+             const finalPrompt = `This is current state of project files:\n${codeBlockDelimiter}bash\n${fileContextPayload}${codeBlockDelimiter}\n\n\n${finalPromptInstructions}\n\n\n \n`;
             await pasteIntoLLM(await process(finalPrompt), {}, hostname);
             return { text: 'Context loaded successfully!', type: 'success' };
         }
@@ -110,8 +124,8 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
 
             switch (profile.separateInstructions) {
                 case 'file':
-                    chaperonePrompt = `The project context is split across the attached file(s): ${fileListStr}.\nThe critical instructions for how to respond are in the attached file \`instructions.txt\`.\nYou MUST follow these instructions to fulfill the task described below.\n\n\n \n`;
-                    await uploadInstructionsAsFile(await process(instructionsBlock), hostname);
+                    chaperonePrompt = `The project context is split across the attached file(s): ${fileListStr}.\nThe critical instructions for how to respond are in the attached file \`instructions.txt\`.\n${profile.isAgentModeEnabled ? 'Agent instructions are in \`agent.txt\`.\n' : ''}You MUST follow these instructions to fulfill the task described below.\n\n\n \n`;
+                    await uploadInstructionsAsFile(await process(finalPromptInstructions), hostname);
                     await pasteIntoLLM(await process(chaperonePrompt), { isInstruction: true }, hostname);
                     finalMessage = `Context split into ${uploadedFiles.length} file(s) & instructions uploaded!`;
                     break;
@@ -119,7 +133,7 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
                 case 'text':
                 case 'include': 
                 default:
-                    chaperonePrompt = `The project context is split across the attached file(s): ${fileListStr}. Please use them to fulfill the task described below.\n\n${instructionsBlock}\n\n\n \n`;
+                    chaperonePrompt = `The project context is split across the attached file(s): ${fileListStr}. Please use them to fulfill the task described below.\n\n${finalPromptInstructions}\n\n\n \n`;
                     await pasteIntoLLM(await process(chaperonePrompt), { isInstruction: true }, hostname);
                     finalMessage = `Context split and uploaded as ${uploadedFiles.length} file(s), instructions pasted!`;
                     break;
@@ -128,7 +142,7 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
 
         } else {
             const fileContextForUpload = `This is current state of project files:\n${codeBlockDelimiter}bash\n${fileContextPayload}${codeBlockDelimiter}`;
-            const finalPrompt = `${fileContextForUpload}\n\n\n${instructionsBlock}\n\n\n \n`;
+            const finalPrompt = `${fileContextForUpload}\n\n\n${finalPromptInstructions}\n\n\n \n`;
 
             switch (profile.separateInstructions) {
                 case 'include':
@@ -136,15 +150,15 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
                     return { text: 'Context uploaded as file!', type: 'success' };
                 
                 case 'text':
-                    const promptForPasting = `The project context is in the attached file \`context.txt\`. Please use it to fulfill the task described below.\n\n${instructionsBlock}\n\n\n \n`;
+                    const promptForPasting = `The project context is in the attached file \`context.txt\`. Please use it to fulfill the task described below.\n\n${finalPromptInstructions}\n\n\n \n`;
                     await uploadContextAsFile(await process(fileContextForUpload), 'context.txt', hostname);
                     await pasteIntoLLM(await process(promptForPasting), { isInstruction: true }, hostname);
                     return { text: 'Context uploaded as file, instructions pasted!', type: 'success' };
                     
                 case 'file':
-                    const chaperonePrompt = `The project context is in the attached file \`context.txt\`.\nThe critical instructions for how to respond are in the attached file \`instructions.txt\`.\nYou MUST follow these instructions to fulfill the task described below.\n\n\n \n`;
+                    const chaperonePrompt = `The project context is in the attached file \`context.txt\`.\nThe critical instructions for how to respond are in the attached file \`instructions.txt\`.\n${profile.isAgentModeEnabled ? 'Agent instructions are in \`agent.txt\`.\n' : ''}You MUST follow these instructions to fulfill the task described below.\n\n\n \n`;
                     await uploadContextAsFile(await process(fileContextForUpload), 'context.txt', hostname);
-                    await uploadInstructionsAsFile(await process(instructionsBlock), hostname);
+                    await uploadInstructionsAsFile(await process(finalPromptInstructions), hostname);
                     await pasteIntoLLM(await process(chaperonePrompt), { isInstruction: true }, hostname);
                     return { text: 'Context & instructions uploaded as files!', type: 'success' };
         

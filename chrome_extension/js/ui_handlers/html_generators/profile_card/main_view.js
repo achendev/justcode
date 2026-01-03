@@ -71,6 +71,9 @@ export function getMainViewHTML(profile) {
                                 <button class="btn btn-outline-secondary btn-sm backend-toggle-btn" type="button" data-id="${profile.id}" title="Switch to Browser (JS) Backend">
                                     <i class="bi bi-browser-chrome"></i>
                                 </button>
+                                <button class="btn ${profile.isAgentModeEnabled ? 'btn-outline-warning' : 'btn-outline-secondary'} btn-sm agent-mode-toggle-btn" type="button" data-id="${profile.id}" title="${profile.isAgentModeEnabled ? 'Disable Agent Mode' : 'Enable Agent Mode'}">
+                                    <i class="bi bi-robot"></i>
+                                </button>
                             ` : ''}
                         </div>
                     `}).join('')}

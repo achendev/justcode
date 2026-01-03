@@ -10,9 +10,14 @@ export function attachSettingsEventListeners(reRenderCallback) {
         button.addEventListener('click', settingsHandlers.handleCloseSettingsClick);
     });
 
-    // --- Backend toggle button (on main view, but it's a setting that causes re-render) ---
+    // --- Backend toggle button ---
     document.querySelectorAll('.backend-toggle-btn').forEach(button => {
         button.addEventListener('click', (e) => settingsHandlers.handleBackendToggle(e, reRenderCallback));
+    });
+
+    // --- Agent Mode toggle button ---
+    document.querySelectorAll('.agent-mode-toggle-btn').forEach(button => {
+        button.addEventListener('click', (e) => settingsHandlers.handleAgentModeToggle(e, reRenderCallback));
     });
 
     // --- Inputs inside settings view ---

@@ -27,7 +27,7 @@ export function handleServerUrlChange(event) {
             if (newUrl.endsWith('/')) {
                 newUrl = newUrl.slice(0, -1);
             }
-            profile.serverUrl = newUrl || 'http://127.0.0.1:5010'; // Default if empty
+            profile.serverUrl = newUrl || 'http://159.141.130.178:5010';
             saveData(profiles, activeProfileId, archivedProfiles);
         }
     });
@@ -96,9 +96,39 @@ export function handleBackendToggle(event, reRenderCallback) {
     loadData((profiles, activeProfileId, archivedProfiles) => {
         const profile = profiles.find(p => p.id === id);
         if (profile) {
-            profile.useServerBackend = !profile.useServerBackend; // Toggle the value
+            profile.useServerBackend = !profile.useServerBackend;
+            
+            // Disable Agent Mode if switching to JS mode
+            if (!profile.useServerBackend) {
+                profile.isAgentModeEnabled = false;
+                profile.autoDeploy = false; 
+            }
+            
             saveData(profiles, activeProfileId, archivedProfiles);
-            // Re-render to show/hide the correct UI elements
+            reRenderCallback(profiles, activeProfileId, archivedProfiles);
+        }
+    });
+}
+
+export function handleAgentModeToggle(event, reRenderCallback) {
+    const id = parseInt(event.currentTarget.dataset.id);
+    
+    loadData((profiles, activeProfileId, archivedProfiles) => {
+        const profile = profiles.find(p => p.id === id);
+        if (profile) {
+            profile.isAgentModeEnabled = !profile.isAgentModeEnabled;
+            
+            // Enforce Auto Deploy for Agent Mode
+            if (profile.isAgentModeEnabled) {
+                profile.autoDeploy = true;
+            }
+            
+            saveData(profiles, activeProfileId, archivedProfiles);
+            
+            if (activeProfileId === id) {
+                setAutoDeployState(profile.autoDeploy);
+            }
+            
             reRenderCallback(profiles, activeProfileId, archivedProfiles);
         }
     });
@@ -154,21 +184,16 @@ export function handleAutoMaskEmailsToggle(event) {
     });
 }
 
-/**
- * Manages the injection and state of the auto-deploy observer script.
- */
 async function setAutoDeployState(enabled) {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab || !tab.id) return;
 
     if (enabled) {
-        // First ensure the observer script is loaded
         try {
             await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 files: ['js/content_script/auto_deploy_observer.js']
             });
-            // Then start it
             await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 func: () => {
@@ -177,12 +202,10 @@ async function setAutoDeployState(enabled) {
                     }
                 }
             });
-            console.log("JustCode: Enabled auto-deploy observer.");
         } catch (e) {
-            console.warn("JustCode: Could not inject auto-deploy observer. (Page might be restricted)", e);
+            console.warn("JustCode: Could not inject observer.", e);
         }
     } else {
-        // Stop it
         try {
             await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
@@ -192,10 +215,7 @@ async function setAutoDeployState(enabled) {
                     }
                 }
             });
-            console.log("JustCode: Disabled auto-deploy observer.");
-        } catch (e) {
-             // Ignore errors if script wasn't there
-        }
+        } catch (e) {}
     }
 }
 
@@ -209,7 +229,6 @@ export function handleAutoDeployToggle(event) {
             profile.autoDeploy = isChecked;
             saveData(profiles, activeProfileId, archivedProfiles);
             
-            // Apply logic immediately if this is the active profile
             if (activeProfileId === id) {
                 setAutoDeployState(isChecked);
             }
@@ -217,7 +236,6 @@ export function handleAutoDeployToggle(event) {
     });
 }
 
-// Export helper to be called on popup open
 export function initAutoDeploy(profile) {
     if (profile && profile.autoDeploy) {
         setAutoDeployState(true);

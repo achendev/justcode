@@ -8,6 +8,7 @@ from server.deploy_code_endpoint import deploy_code
 from server.undo_endpoint import undo
 from server.redo_endpoint import redo
 from server.update_endpoint import update_app
+from server.agent_endpoint import agent_execute
 
 # Load environment variables from .env file
 load_dotenv()
@@ -21,6 +22,7 @@ app.add_url_rule('/deploycode', 'deploy_code', deploy_code, methods=['POST'])
 app.add_url_rule('/undo', 'undo', undo, methods=['GET', 'POST'])
 app.add_url_rule('/redo', 'redo', redo, methods=['GET', 'POST'])
 app.add_url_rule('/update', 'update_app', update_app, methods=['POST'])
+app.add_url_rule('/agent/execute', 'agent_execute', agent_execute, methods=['POST'])
 
 if __name__ == '__main__':
     # Get host and port from environment variables or use defaults

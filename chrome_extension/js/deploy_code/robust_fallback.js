@@ -3,6 +3,8 @@ import { prepareForFullAnswerExtraction, revertFullAnswerExtraction } from './ro
 
 // A simple regex to check for the presence of at least one valid command.
 const VALID_COMMAND_REGEX = /^\s*(cat\s+>|mkdir|rm|rmdir|mv|touch|chmod)/m;
+// Regex to check for agent tool usage
+const VALID_TOOL_REGEX = /<tool\s+code=["'].*?["']\s*\/>/;
 
 /**
  * Attempts to extract code to deploy, with a robust fallback to the full answer if the initial extraction fails.
@@ -16,10 +18,18 @@ export async function extractCodeWithFallback(profile, fromShortcut = false, hos
     let codeToDeploy = await extractCodeToDeploy(profile, fromShortcut, hostname);
     let usedFallback = false;
 
+    // Helper to validate content based on profile mode
+    const isValidContent = (content) => {
+        if (!content) return false;
+        if (VALID_COMMAND_REGEX.test(content)) return true;
+        if (profile.isAgentModeEnabled && VALID_TOOL_REGEX.test(content)) return true;
+        return false;
+    };
+
     const needsFallback = (await chrome.storage.local.get({ robustDeployFallback: true })).robustDeployFallback &&
                           profile.deployCodeSource === 'ui' &&
                           !profile.deployFromFullAnswer &&
-                          (!codeToDeploy || !VALID_COMMAND_REGEX.test(codeToDeploy));
+                          !isValidContent(codeToDeploy);
 
     if (needsFallback) {
         console.log("JustCode: Code block empty/invalid. Trying fallback to full answer.");
@@ -59,7 +69,7 @@ export async function extractCodeWithFallback(profile, fromShortcut = false, hos
         // --- END OF THE FIX ---
     }
 
-    if (codeToDeploy && !VALID_COMMAND_REGEX.test(codeToDeploy)) {
+    if (!isValidContent(codeToDeploy)) {
         return { codeToDeploy: null, usedFallback };
     }
 

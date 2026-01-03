@@ -5,6 +5,7 @@ import { extractGeminiAnswer } from './answer_extractors/gemini.js';
 import { extractGrokAnswer } from './answer_extractors/grok.js';
 import { extractGrokAnswerX } from './answer_extractors/x_grok.js';
 import { readFromClipboard } from '../utils/clipboard.js';
+import { loadData } from '../storage.js'; // To access profile state if needed inside function without passing it
 
 /**
  * Extracts the deployment script from either the clipboard or the active LLM page.
@@ -37,23 +38,28 @@ export async function extractCodeToDeploy(profile, fromShortcut = false, hostnam
     }
 
     let extractFunc;
-    let args = [profile.deployFromFullAnswer];
+    
+    // If agent mode is enabled, we almost always want full extraction to find <tool> tags which might be outside code blocks.
+    // However, the answer_extractors generally return code blocks by default.
+    // We force `shouldExtractFullAnswer` to true if Agent Mode is on to ensure we catch XML tags.
+    const shouldExtractFullAnswer = profile.deployFromFullAnswer || profile.isAgentModeEnabled;
+    let args = [shouldExtractFullAnswer];
 
     if (hostname.includes('aistudio.google.com')) {
         extractFunc = extractAIStudioAnswer;
     } else if (hostname.includes('gemini.google.com')) {
         extractFunc = extractGeminiAnswer;
-        if (profile.deployFromFullAnswer) {
+        if (shouldExtractFullAnswer) {
             args.push(profile.codeBlockDelimiter || '```');
         }
     } else if (hostname.includes('chatgpt.com')) {
         extractFunc = extractChatGPTAnswer;
     } else if (hostname.includes('grok.com')) {
         extractFunc = extractGrokAnswer;
-        if (profile.deployFromFullAnswer) {
+        if (shouldExtractFullAnswer) {
             args.push(profile.codeBlockDelimiter || '```');
         }
-    } else if (hostname.includes('x.com') && profile.deployFromFullAnswer) {
+    } else if (hostname.includes('x.com') && shouldExtractFullAnswer) {
         extractFunc = extractGrokAnswerX;
         args.push(profile.codeBlockDelimiter || '```');
     } else {
