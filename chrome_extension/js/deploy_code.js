@@ -18,13 +18,7 @@ export async function deployCode(profile, fromShortcut = false, hostname = null)
              return { text: successMessage, type: 'success' };
         }
 
-        // --- Server Mode Branch ---
-        
-        // 1. Extract Raw Code First to check for Agent Tools
-        // Note: handleServerDeployment usually calls extractCodeWithFallback internally.
-        // To support agent mode, we need to peek at the content first.
-        // However, extracting twice might be inefficient or state-changing (AI Studio fallback).
-        // Let's modify logic: extract once here, pass to handler.
+        // --- Server Mode / Agent Mode Branch ---
         
         let { codeToDeploy, usedFallback } = await extractCodeWithFallback(profile, fromShortcut, hostname);
 
@@ -32,27 +26,57 @@ export async function deployCode(profile, fromShortcut = false, hostname = null)
             throw new Error('No valid content found on page or in clipboard.');
         }
 
-        // 2. Check for Agent Tools if Agent Mode enabled
-        if (profile.isAgentModeEnabled) {
-            const toolMatch = codeToDeploy.match(/<tool\s+code=["'](.*?)["']\s*\/>/);
-            if (toolMatch) {
-                const command = toolMatch[1];
-                const msg = await handleAgentTool(profile, command, hostname);
-                return { text: `Agent Tool: ${msg}`, type: 'success' };
-            }
+        let resultMessages = [];
+        const isAgent = profile.isAgentModeEnabled;
+
+        // 1. Check for Done Tag (signals end of loop)
+        const hasDoneTag = isAgent && /<done\s*\/>/.test(codeToDeploy);
+        
+        // 2. Check for Bash Commands (Standard Deployment)
+        const VALID_COMMAND_REGEX = /^\s*(cat\s+>|mkdir|rm|rmdir|mv|touch|chmod)/m;
+        const hasBashCode = VALID_COMMAND_REGEX.test(codeToDeploy);
+
+        // 3. Check for Agent Tools
+        const toolMatch = isAgent ? codeToDeploy.match(/<tool\s+code=["'](.*?)["']\s*\/>/) : null;
+        const hasTool = !!toolMatch;
+
+        // --- EXECUTION SEQUENCE ---
+
+        // A) Deploy Files First
+        if (hasBashCode) {
+            // We re-use the standard strategy. It handles parsing and executing the bash script.
+            // Note: handleServerDeployment calls the server which parses the string.
+            // The server parser ignores XML tags like <tool> or <done>, treating them as text unless inside a heredoc.
+            const deployMsg = await handleServerDeployment(profile, fromShortcut, hostname, codeToDeploy);
+            resultMessages.push("Files Deployed");
         }
 
-        // 3. Fallback to Standard File Deployment
-        // We pass the already-extracted code to a modified server deployment handler
-        // or we just call the existing one and let it re-extract (safest for now to minimize refactor risk, 
-        // though slightly inefficient).
-        // Actually, handleServerDeployment does not accept code string args yet.
-        // Let's rely on the fact that handleServerDeployment is robust.
-        // BUT wait, if we already extracted it and it WASN'T a tool, we still need to deploy it.
-        // Re-extracting is fine.
-        
-        const successMessage = await handleServerDeployment(profile, fromShortcut, hostname);
-        return { text: successMessage, type: 'success' };
+        // B) Execute Tool Second (if present)
+        if (hasTool) {
+            const command = toolMatch[1];
+            // If <done /> is present, we do NOT auto-run the next turn.
+            const shouldTriggerRun = !hasDoneTag;
+            const toolMsg = await handleAgentTool(profile, command, hostname, shouldTriggerRun);
+            resultMessages.push(toolMsg);
+        }
+
+        // C) Handle Termination
+        if (hasDoneTag) {
+            resultMessages.push("Task Completed (Stopped by <done />).");
+            // We return a success message. The auto-deploy observer will see no new generation 
+            // and the loop will naturally cease because we didn't click "Run" in handleAgentTool (if tool existed)
+            // or simply because we stopped here.
+        }
+
+        // --- FEEDBACK CONSTRUCTION ---
+
+        if (resultMessages.length === 0) {
+            // Should not happen due to validation in extractCodeWithFallback
+            return { text: "No actionable agent commands found.", type: 'info' };
+        }
+
+        const finalMessage = resultMessages.join(" | ");
+        return { text: finalMessage, type: 'success' };
 
     } catch (error) {
         console.error('JustCode Deploy Error:', error);

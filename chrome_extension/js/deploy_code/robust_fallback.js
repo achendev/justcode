@@ -5,6 +5,8 @@ import { prepareForFullAnswerExtraction, revertFullAnswerExtraction } from './ro
 const VALID_COMMAND_REGEX = /^\s*(cat\s+>|mkdir|rm|rmdir|mv|touch|chmod)/m;
 // Regex to check for agent tool usage
 const VALID_TOOL_REGEX = /<tool\s+code=["'].*?["']\s*\/>/;
+// Regex to check for done tag
+const DONE_TAG_REGEX = /<done\s*\/>/;
 
 /**
  * Attempts to extract code to deploy, with a robust fallback to the full answer if the initial extraction fails.
@@ -22,7 +24,10 @@ export async function extractCodeWithFallback(profile, fromShortcut = false, hos
     const isValidContent = (content) => {
         if (!content) return false;
         if (VALID_COMMAND_REGEX.test(content)) return true;
-        if (profile.isAgentModeEnabled && VALID_TOOL_REGEX.test(content)) return true;
+        if (profile.isAgentModeEnabled) {
+            if (VALID_TOOL_REGEX.test(content)) return true;
+            if (DONE_TAG_REGEX.test(content)) return true;
+        }
         return false;
     };
 
@@ -38,8 +43,6 @@ export async function extractCodeWithFallback(profile, fromShortcut = false, hos
         const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
         let stateChanged = false;
 
-        // --- START OF THE FIX ---
-        // This logic now guarantees the revert action is called.
         try {
             // Special handling for AI Studio
             if (tab && hostname && hostname.includes('aistudio.google.com')) {
@@ -48,25 +51,19 @@ export async function extractCodeWithFallback(profile, fromShortcut = false, hos
                     func: prepareForFullAnswerExtraction,
                 });
                 stateChanged = results[0]?.result || false;
-                console.log(`JustCode: AI Studio state was changed by toggle: ${stateChanged}`);
             }
             
-            // Now, extract from the full answer.
             const tempProfile = { ...profile, deployFromFullAnswer: true };
             codeToDeploy = await extractCodeToDeploy(tempProfile, fromShortcut, hostname);
 
         } finally {
-            // This 'finally' block ensures that we ALWAYS try to revert the state if it was changed,
-            // even if the 'extractCodeToDeploy' call above fails or returns nothing.
             if (tab && stateChanged && hostname && hostname.includes('aistudio.google.com')) {
-                console.log("JustCode: Reverting AI Studio view state in 'finally' block.");
                 await chrome.scripting.executeScript({
                     target: { tabId: tab.id },
                     func: revertFullAnswerExtraction,
                 });
             }
         }
-        // --- END OF THE FIX ---
     }
 
     if (!isValidContent(codeToDeploy)) {

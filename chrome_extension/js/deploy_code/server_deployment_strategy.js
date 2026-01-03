@@ -8,15 +8,23 @@ import { unmaskEmails } from '../utils/email_masking.js';
  * @param {object} profile - The active user profile.
  * @param {boolean} fromShortcut - Whether the call originated from a background shortcut.
  * @param {string|null} hostname - The hostname of the active tab.
+ * @param {string|null} [preExtractedCode=null] - Optional pre-extracted code string to avoid re-extraction.
  * @returns {Promise<string>} A status message upon completion.
  */
-export async function handleServerDeployment(profile, fromShortcut = false, hostname = null) {
+export async function handleServerDeployment(profile, fromShortcut = false, hostname = null, preExtractedCode = null) {
     const paths = profile.projectPaths;
     if (!paths || paths.length === 0 || !paths.some(p => p && p.trim())) {
         throw new Error('Please enter at least one project path.');
     }
     
-    let { codeToDeploy, usedFallback } = await extractCodeWithFallback(profile, fromShortcut, hostname);
+    let codeToDeploy = preExtractedCode;
+    let usedFallback = false;
+
+    if (!codeToDeploy) {
+        const extraction = await extractCodeWithFallback(profile, fromShortcut, hostname);
+        codeToDeploy = extraction.codeToDeploy;
+        usedFallback = extraction.usedFallback;
+    }
 
     if (!codeToDeploy) {
         throw new Error('No valid deploy script found on page or in clipboard.');

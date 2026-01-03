@@ -5,8 +5,9 @@ import { pasteIntoLLM } from '../context_builder/llm_interface.js';
  * @param {object} profile The active profile.
  * @param {string} command The command to execute (extracted from <tool> tag).
  * @param {string} hostname Hostname of the current tab.
+ * @param {boolean} shouldTriggerRun If true, clicks the send button after pasting.
  */
-export async function handleAgentTool(profile, command, hostname) {
+export async function handleAgentTool(profile, command, hostname, shouldTriggerRun = true) {
     if (!profile.useServerBackend) {
         return "Error: Agent mode tools require Server Backend.";
     }
@@ -37,14 +38,21 @@ export async function handleAgentTool(profile, command, hostname) {
         }
 
         // Format result for LLM
-        const reply = `\n<tool_output>\n${resultText}\n</tool_output>\n\nProceed with the next step.`;
+        let reply = `\n<tool_output>\n${resultText}\n</tool_output>`;
+        
+        if (shouldTriggerRun) {
+            reply += "\n\nProceed with the next step.";
+        } else {
+            reply += "\n\n(Auto-run stopped by <done /> tag or user interruption).";
+        }
         
         // Paste into UI
         await pasteIntoLLM(reply, {}, hostname);
         
-        // Click Send (Triggering logic)
-        // We will trigger a specific "click send" script
-        await clickSendButton(hostname);
+        // Click Send (Triggering logic) if requested
+        if (shouldTriggerRun) {
+            await clickSendButton(hostname);
+        }
 
         return `Executed: ${command}`;
 
