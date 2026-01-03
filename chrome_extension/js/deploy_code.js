@@ -48,7 +48,7 @@ export async function deployCode(profile, fromShortcut = false, hostname = null)
             // Note: handleServerDeployment calls the server which parses the string.
             // The server parser ignores XML tags like <tool> or <done>, treating them as text unless inside a heredoc.
             const deployMsg = await handleServerDeployment(profile, fromShortcut, hostname, codeToDeploy);
-            resultMessages.push("Files Deployed");
+            resultMessages.push(deployMsg);
         }
 
         // B) Execute Tool Second (if present)
