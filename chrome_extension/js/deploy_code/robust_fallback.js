@@ -3,9 +3,9 @@ import { prepareForFullAnswerExtraction, revertFullAnswerExtraction } from './ro
 
 // A simple regex to check for the presence of at least one valid command.
 const VALID_COMMAND_REGEX = /^\s*(cat\s+>|mkdir|rm|rmdir|mv|touch|chmod)/m;
-// Regex to check for agent tool usage
-const VALID_TOOL_REGEX = /<tool\s+code=["'].*?["']\s*\/>/;
-// Regex to check for done tag (robust matching)
+// Regex to check for agent tool usage (Robust: matches <tool ... code="..." ... >)
+const VALID_TOOL_REGEX = /<tool\b[^>]+code=['"][^'"]*['"][^>]*>/i;
+// Regex to check for done tag (Robust)
 const DONE_TAG_REGEX = /<done\b[^>]*\/?>/i;
 
 /**
@@ -24,10 +24,12 @@ export async function extractCodeWithFallback(profile, fromShortcut = false, hos
     const isValidContent = (content) => {
         if (!content) return false;
         if (VALID_COMMAND_REGEX.test(content)) return true;
-        if (profile.isAgentModeEnabled) {
-            if (VALID_TOOL_REGEX.test(content)) return true;
-            if (DONE_TAG_REGEX.test(content)) return true;
-        }
+        // Always check for agent tags as valid content, regardless of profile mode.
+        // This prevents errors if the user has Agent Mode off but the LLM outputs tools.
+        // The execution logic in deploy_code.js will decide whether to run them.
+        if (VALID_TOOL_REGEX.test(content)) return true;
+        if (DONE_TAG_REGEX.test(content)) return true;
+        
         return false;
     };
 
@@ -53,6 +55,7 @@ export async function extractCodeWithFallback(profile, fromShortcut = false, hos
                 stateChanged = results[0]?.result || false;
             }
             
+            // Force full extraction for fallback
             const tempProfile = { ...profile, deployFromFullAnswer: true };
             codeToDeploy = await extractCodeToDeploy(tempProfile, fromShortcut, hostname);
 

@@ -30,15 +30,20 @@ export async function deployCode(profile, fromShortcut = false, hostname = null)
         const isAgent = profile.isAgentModeEnabled;
 
         // 1. Check for Done Tag (signals end of loop)
-        const hasDoneTag = isAgent && /<done\b[^>]*\/?>/i.test(codeToDeploy);
+        const hasDoneTag = /<done\b[^>]*\/?>/i.test(codeToDeploy);
         
         // 2. Check for Bash Commands (Standard Deployment)
         const VALID_COMMAND_REGEX = /^\s*(cat\s+>|mkdir|rm|rmdir|mv|touch|chmod)/m;
         const hasBashCode = VALID_COMMAND_REGEX.test(codeToDeploy);
 
-        // 3. Check for Agent Tools
-        const toolMatch = isAgent ? codeToDeploy.match(/<tool\s+code=["'](.*?)["']\s*\/>/) : null;
-        const hasTool = !!toolMatch;
+        // 3. Check for Agent Tools (Robust Regex)
+        // Matches <tool ... code="command" ... >
+        const toolRegex = /<tool\b[^>]+code=['"]([^'"]*)['"][^>]*>/i;
+        const toolMatch = codeToDeploy.match(toolRegex);
+        
+        // Only consider it a valid tool execution if profile enables it OR if we want to be lenient.
+        // For security, strictly check isAgent.
+        const hasTool = isAgent && !!toolMatch;
 
         // --- EXECUTION SEQUENCE ---
 
@@ -55,6 +60,9 @@ export async function deployCode(profile, fromShortcut = false, hostname = null)
             const shouldTriggerRun = !hasDoneTag;
             const toolMsg = await handleAgentTool(profile, command, hostname, shouldTriggerRun);
             resultMessages.push(toolMsg);
+        } else if (toolMatch && !isAgent) {
+            // Warn if tool found but Agent Mode disabled
+            resultMessages.push("Agent tool detected but Agent Mode is disabled. Tool ignored.");
         }
 
         // C) Handle Termination
@@ -65,7 +73,6 @@ export async function deployCode(profile, fromShortcut = false, hostname = null)
         // --- FEEDBACK CONSTRUCTION ---
 
         if (resultMessages.length === 0) {
-            // Should not happen due to validation in extractCodeWithFallback
             return { text: "No actionable agent commands found.", type: 'info' };
         }
 
