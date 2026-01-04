@@ -30,7 +30,7 @@ export async function deployCode(profile, fromShortcut = false, hostname = null)
         const isAgent = profile.isAgentModeEnabled;
 
         // 1. Check for Done Tag (signals end of loop)
-        const hasDoneTag = isAgent && /<done\s*\/>/.test(codeToDeploy);
+        const hasDoneTag = isAgent && /<done\b[^>]*\/?>/i.test(codeToDeploy);
         
         // 2. Check for Bash Commands (Standard Deployment)
         const VALID_COMMAND_REGEX = /^\s*(cat\s+>|mkdir|rm|rmdir|mv|touch|chmod)/m;
@@ -44,9 +44,6 @@ export async function deployCode(profile, fromShortcut = false, hostname = null)
 
         // A) Deploy Files First
         if (hasBashCode) {
-            // We re-use the standard strategy. It handles parsing and executing the bash script.
-            // Note: handleServerDeployment calls the server which parses the string.
-            // The server parser ignores XML tags like <tool> or <done>, treating them as text unless inside a heredoc.
             const deployMsg = await handleServerDeployment(profile, fromShortcut, hostname, codeToDeploy);
             resultMessages.push(deployMsg);
         }
@@ -62,10 +59,7 @@ export async function deployCode(profile, fromShortcut = false, hostname = null)
 
         // C) Handle Termination
         if (hasDoneTag) {
-            resultMessages.push("Task Completed (Stopped by <done />).");
-            // We return a success message. The auto-deploy observer will see no new generation 
-            // and the loop will naturally cease because we didn't click "Run" in handleAgentTool (if tool existed)
-            // or simply because we stopped here.
+            resultMessages.push("Task Completed.");
         }
 
         // --- FEEDBACK CONSTRUCTION ---

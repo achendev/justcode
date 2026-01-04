@@ -5,8 +5,8 @@ import { prepareForFullAnswerExtraction, revertFullAnswerExtraction } from './ro
 const VALID_COMMAND_REGEX = /^\s*(cat\s+>|mkdir|rm|rmdir|mv|touch|chmod)/m;
 // Regex to check for agent tool usage
 const VALID_TOOL_REGEX = /<tool\s+code=["'].*?["']\s*\/>/;
-// Regex to check for done tag
-const DONE_TAG_REGEX = /<done\s*\/>/;
+// Regex to check for done tag (robust matching)
+const DONE_TAG_REGEX = /<done\b[^>]*\/?>/i;
 
 /**
  * Attempts to extract code to deploy, with a robust fallback to the full answer if the initial extraction fails.
