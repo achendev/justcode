@@ -1,6 +1,6 @@
 export function getSettingsViewHTML(profile) {
     return `
-    <!-- Settings View for the profile (hidden by default) -->
+    <!-- Settings View for the profile -->
     <div class="profile-settings-view" style="display: none;">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0">Settings</h5>
@@ -26,6 +26,22 @@ export function getSettingsViewHTML(profile) {
                 <input type="password" class="form-control password" id="password-${profile.id}" data-id="${profile.id}" value="${profile.password}">
             </div>
             <hr>
+            
+            <!-- Agent Mode Settings -->
+            <div class="form-check mb-2">
+                <input type="checkbox" class="form-check-input auto-deploy" id="autoDeploy-${profile.id}" data-id="${profile.id}" ${profile.autoDeploy ? 'checked' : ''}>
+                <label class="form-check-label" for="autoDeploy-${profile.id}">Auto Deploy (When LLM stops generating)</label>
+            </div>
+            <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text" style="width: 130px;">Review Policy</span>
+                <select class="form-select form-select-sm agent-review-policy" id="agentReviewPolicy-${profile.id}" data-id="${profile.id}" ${!profile.autoDeploy ? 'disabled' : ''}>
+                    <option value="review" ${profile.agentReviewPolicy === 'review' ? 'selected' : ''}>Request Review</option>
+                    <option value="always" ${profile.agentReviewPolicy === 'always' ? 'selected' : ''}>Always Allow</option>
+                </select>
+            </div>
+            <div class="form-text text-muted mt-0 mb-3" style="font-size: 0.75rem;">'Request Review' asks for confirmation before running code.</div>
+
+            <hr>
             <div class="form-check mb-2">
                 <input type="checkbox" class="form-check-input gather-additional-context" id="gatherAdditionalContext-${profile.id}" data-id="${profile.id}" ${profile.gatherAdditionalContext ? 'checked' : ''}>
                 <label class="form-check-label" for="gatherAdditionalContext-${profile.id}">Gather additional context script</label>
@@ -33,7 +49,6 @@ export function getSettingsViewHTML(profile) {
             <div class="mb-3">
                 <label for="additionalContextScript-${profile.id}" class="form-label">Additional context script:</label>
                 <textarea class="form-control form-control-sm additional-context-script" id="additionalContextScript-${profile.id}" rows="4" data-id="${profile.id}" ${!profile.gatherAdditionalContext ? 'disabled' : ''}>${profile.additionalContextScript}</textarea>
-                <small class="form-text text-muted">Runs in project root. Output is appended to context.</small>
             </div>
             <hr>
             <div class="form-check mb-2">
@@ -43,7 +58,6 @@ export function getSettingsViewHTML(profile) {
             <div class="mb-3">
                 <label for="postDeployScript-${profile.id}" class="form-label">Post-deploy script:</label>
                 <textarea class="form-control form-control-sm post-deploy-script" id="postDeployScript-${profile.id}" rows="4" data-id="${profile.id}" ${!profile.runScriptOnDeploy ? 'disabled' : ''}>${profile.postDeployScript}</textarea>
-                <small class="form-text text-muted">Runs in project root. Use absolute paths for commands if needed.</small>
             </div>
             <hr>
         </div>
@@ -51,7 +65,7 @@ export function getSettingsViewHTML(profile) {
         <!-- Common Settings -->
         <div class="input-group input-group-sm mb-2">
             <span class="input-group-text" style="width: 130px;">Context Limit</span>
-            <input type="number" class="form-control context-size-limit" id="contextSizeLimit-${profile.id}" value="${profile.contextSizeLimit}" title="Context Size Limit (characters)">
+            <input type="number" class="form-control context-size-limit" id="contextSizeLimit-${profile.id}" value="${profile.contextSizeLimit}">
         </div>
         <div class="input-group input-group-sm mb-2">
             <span class="input-group-text" style="width: 130px;">Block Delimiter</span>
@@ -72,36 +86,24 @@ export function getSettingsViewHTML(profile) {
             <input type="checkbox" class="form-check-input use-numeric-prefixes-for-multi-project" id="useNumericPrefixesForMultiProject-${profile.id}" data-id="${profile.id}" ${profile.useNumericPrefixesForMultiProject ? 'checked' : ''}>
             <label class="form-check-label" for="useNumericPrefixesForMultiProject-${profile.id}">Name multiproject directories by order number</label>
         </div>
-        
-        <!-- Auto Deploy Setting -->
-        <div class="form-check mb-2">
-            <input type="checkbox" class="form-check-input auto-deploy" id="autoDeploy-${profile.id}" data-id="${profile.id}" ${profile.autoDeploy ? 'checked' : ''}>
-            <label class="form-check-label" for="autoDeploy-${profile.id}">Auto Deploy (When LLM stops generating)</label>
-            <div class="form-text text-muted mt-0 mb-1" style="font-size: 0.75rem;">Automatically triggers "Deploy Code" when the LLM's "Stop" button changes back to "Run".</div>
-        </div>
 
-        <!-- Privacy & Sync Settings -->
         <hr>
+        <!-- Privacy -->
         <div class="form-check mb-2">
             <input type="checkbox" class="form-check-input auto-mask-ips" id="autoMaskIPs-${profile.id}" data-id="${profile.id}" ${profile.autoMaskIPs ? 'checked' : ''}>
             <label class="form-check-label" for="autoMaskIPs-${profile.id}">Auto-Mask IP Addresses</label>
-            <div class="form-text text-muted mt-0 mb-1" style="font-size: 0.75rem;">Detects IPs/CIDR in context, replaces them with random IPs (saved globally), and restores them on deploy.</div>
         </div>
-
         <div class="form-check mb-2">
             <input type="checkbox" class="form-check-input auto-mask-emails" id="autoMaskEmails-${profile.id}" data-id="${profile.id}" ${profile.autoMaskEmails ? 'checked' : ''}>
             <label class="form-check-label" for="autoMaskEmails-${profile.id}">Auto-Mask Email Addresses</label>
-            <div class="form-text text-muted mt-0 mb-1" style="font-size: 0.75rem;">Detects Emails in context, replaces them with random Emails, and restores them on deploy.</div>
         </div>
-
         <div class="form-check mb-2">
             <input type="checkbox" class="form-check-input two-way-sync-enabled" id="twoWaySyncEnabled-${profile.id}" data-id="${profile.id}" ${profile.isTwoWaySyncEnabled ? 'checked' : ''}>
             <label class="form-check-label" for="twoWaySyncEnabled-${profile.id}">Enable Custom Two-Way Replacements</label>
         </div>
         <div class="mb-3">
-            <label for="twoWaySyncRules-${profile.id}" class="form-label">Replacement Rules (local_value|placeholder):</label>
+            <label for="twoWaySyncRules-${profile.id}" class="form-label">Replacement Rules:</label>
             <textarea class="form-control form-control-sm two-way-sync-rules" id="twoWaySyncRules-${profile.id}" rows="4" data-id="${profile.id}" ${!profile.isTwoWaySyncEnabled ? 'disabled' : ''}>${profile.twoWaySyncRules}</textarea>
-            <small class="form-text text-muted">Replaces local values with placeholders before "Get Context", and vice-versa before "Deploy Code".</small>
         </div>
         <hr>
         
@@ -119,9 +121,7 @@ export function getSettingsViewHTML(profile) {
             <label class="form-check-label" for="customInstructionsEnabled-${profile.id}">Enable Custom Critical Instructions</label>
         </div>
         <div class="mb-3">
-            <label for="criticalInstructions-${profile.id}" class="form-label">Critical Instructions Prompt:</label>
             <textarea class="form-control form-control-sm critical-instructions" id="criticalInstructions-${profile.id}" rows="8" data-id="${profile.id}" ${!profile.isCriticalInstructionsEnabled ? 'disabled' : ''}>${profile.criticalInstructions}</textarea>
-            <small class="form-text text-muted">Use <code>{{DELIMITER}}</code> for your chosen delimiter.</small>
         </div>
     </div>
     `;

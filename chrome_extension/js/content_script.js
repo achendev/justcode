@@ -10,9 +10,7 @@
 
     function applySettings(newSettings) {
         if (!newSettings) return;
-        
         settings = newSettings;
-
         if (window.justCodeDOM) {
             window.justCodeDOM.applyNotificationPosition(settings.notificationPosition);
         }
@@ -28,24 +26,22 @@
                     request.text,
                     request.messageType,
                     request.showSpinner,
-                    { timeout: settings.notificationTimeout, showProgressBar: settings.showNotificationProgressBar }
+                    { timeout: settings.notificationTimeout, showProgressBar: settings.showNotificationProgressBar },
+                    request.actionsHTML // Pass optional actions HTML
                 );
             }
-            sendResponse({ status: "Notification command processed" });
+            sendResponse({ status: "Notification processed" });
         }
         return true;
     });
 
     chrome.storage.onChanged.addListener((changes, namespace) => {
         if (namespace !== 'local' || !settings) return;
-
         let positionChanged = false;
         for (let [key, { newValue }] of Object.entries(changes)) {
             if (settings.hasOwnProperty(key)) {
                 settings[key] = newValue;
-                if (key === 'notificationPosition') {
-                    positionChanged = true;
-                }
+                if (key === 'notificationPosition') positionChanged = true;
             }
         }
         if (positionChanged && window.justCodeDOM) {
@@ -59,31 +55,24 @@
         const initialDelay = 100;
 
         const requestSettings = () => {
-            if (settings) return; // Stop if another process (like storage.onChanged) provided settings.
-
+            if (settings) return;
             attempts++;
-
             chrome.runtime.sendMessage({ type: 'justcode-content-script-ready' }, (response) => {
                 if (chrome.runtime.lastError) {
-                    // This error means the service worker is not listening yet.
                     if (attempts < maxAttempts) {
-                        const delay = initialDelay * Math.pow(2, attempts - 1);
-                        setTimeout(requestSettings, delay);
+                        setTimeout(requestSettings, initialDelay * Math.pow(2, attempts - 1));
                     }
                     return;
                 }
-
                 if (response && response.status === 'success') {
                     applySettings(response.settings);
                 } else {
                     if (attempts < maxAttempts) {
-                        const delay = initialDelay * Math.pow(2, attempts - 1);
-                        setTimeout(requestSettings, delay);
+                        setTimeout(requestSettings, initialDelay * Math.pow(2, attempts - 1));
                     }
                 }
             });
         };
-        
         requestSettings();
     }
 

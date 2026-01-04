@@ -27,7 +27,7 @@ export function handleServerUrlChange(event) {
             if (newUrl.endsWith('/')) {
                 newUrl = newUrl.slice(0, -1);
             }
-            profile.serverUrl = newUrl || 'http://159.141.130.178:5010';
+            profile.serverUrl = newUrl || 'http://127.0.0.1:5010';
             saveData(profiles, activeProfileId, archivedProfiles);
         }
     });
@@ -36,12 +36,9 @@ export function handleServerUrlChange(event) {
 export function handleCustomInstructionsToggle(event) {
     const id = parseInt(event.target.dataset.id);
     const isChecked = event.target.checked;
-    
     const profileCard = document.getElementById(`profile-${id}`);
     const textarea = profileCard.querySelector('.critical-instructions');
-    if (textarea) {
-        textarea.disabled = !isChecked;
-    }
+    if (textarea) textarea.disabled = !isChecked;
 
     loadData((profiles, activeProfileId, archivedProfiles) => {
         const profile = profiles.find(p => p.id === id);
@@ -55,12 +52,9 @@ export function handleCustomInstructionsToggle(event) {
 export function handleGatherAdditionalContextToggle(event) {
     const id = parseInt(event.target.dataset.id);
     const isChecked = event.target.checked;
-    
     const profileCard = document.getElementById(`profile-${id}`);
     const textarea = profileCard.querySelector('.additional-context-script');
-    if (textarea) {
-        textarea.disabled = !isChecked;
-    }
+    if (textarea) textarea.disabled = !isChecked;
 
     loadData((profiles, activeProfileId, archivedProfiles) => {
         const profile = profiles.find(p => p.id === id);
@@ -74,12 +68,9 @@ export function handleGatherAdditionalContextToggle(event) {
 export function handleRunScriptOnDeployToggle(event) {
     const id = parseInt(event.target.dataset.id);
     const isChecked = event.target.checked;
-    
     const profileCard = document.getElementById(`profile-${id}`);
     const textarea = profileCard.querySelector('.post-deploy-script');
-    if (textarea) {
-        textarea.disabled = !isChecked;
-    }
+    if (textarea) textarea.disabled = !isChecked;
 
     loadData((profiles, activeProfileId, archivedProfiles) => {
         const profile = profiles.find(p => p.id === id);
@@ -92,18 +83,14 @@ export function handleRunScriptOnDeployToggle(event) {
 
 export function handleBackendToggle(event, reRenderCallback) {
     const id = parseInt(event.currentTarget.dataset.id);
-    
     loadData((profiles, activeProfileId, archivedProfiles) => {
         const profile = profiles.find(p => p.id === id);
         if (profile) {
             profile.useServerBackend = !profile.useServerBackend;
-            
-            // Disable Agent Mode if switching to JS mode
             if (!profile.useServerBackend) {
                 profile.isAgentModeEnabled = false;
                 profile.autoDeploy = false; 
             }
-            
             saveData(profiles, activeProfileId, archivedProfiles);
             reRenderCallback(profiles, activeProfileId, archivedProfiles);
         }
@@ -112,23 +99,17 @@ export function handleBackendToggle(event, reRenderCallback) {
 
 export function handleAgentModeToggle(event, reRenderCallback) {
     const id = parseInt(event.currentTarget.dataset.id);
-    
     loadData((profiles, activeProfileId, archivedProfiles) => {
         const profile = profiles.find(p => p.id === id);
         if (profile) {
             profile.isAgentModeEnabled = !profile.isAgentModeEnabled;
-            
-            // Enforce Auto Deploy for Agent Mode
             if (profile.isAgentModeEnabled) {
                 profile.autoDeploy = true;
             }
-            
             saveData(profiles, activeProfileId, archivedProfiles);
-            
             if (activeProfileId === id) {
                 setAutoDeployState(profile.autoDeploy);
             }
-            
             reRenderCallback(profiles, activeProfileId, archivedProfiles);
         }
     });
@@ -137,17 +118,11 @@ export function handleAgentModeToggle(event, reRenderCallback) {
 export function handleTwoWaySyncToggle(event) {
     const id = parseInt(event.target.dataset.id);
     const isChecked = event.target.checked;
-    
     const profileCard = document.getElementById(`profile-${id}`);
     const textarea = profileCard.querySelector('.two-way-sync-rules');
-    if (textarea) {
-        textarea.disabled = !isChecked;
-    }
-
+    if (textarea) textarea.disabled = !isChecked;
     const applyBtn = profileCard.querySelector('.apply-replacements');
-    if (applyBtn) {
-        applyBtn.classList.toggle('d-none', !isChecked);
-    }
+    if (applyBtn) applyBtn.classList.toggle('d-none', !isChecked);
 
     loadData((profiles, activeProfileId, archivedProfiles) => {
         const profile = profiles.find(p => p.id === id);
@@ -160,12 +135,10 @@ export function handleTwoWaySyncToggle(event) {
 
 export function handleAutoMaskIPsToggle(event) {
     const id = parseInt(event.target.dataset.id);
-    const isChecked = event.target.checked;
-
     loadData((profiles, activeProfileId, archivedProfiles) => {
         const profile = profiles.find(p => p.id === id);
         if (profile) {
-            profile.autoMaskIPs = isChecked;
+            profile.autoMaskIPs = event.target.checked;
             saveData(profiles, activeProfileId, archivedProfiles);
         }
     });
@@ -173,12 +146,10 @@ export function handleAutoMaskIPsToggle(event) {
 
 export function handleAutoMaskEmailsToggle(event) {
     const id = parseInt(event.target.dataset.id);
-    const isChecked = event.target.checked;
-
     loadData((profiles, activeProfileId, archivedProfiles) => {
         const profile = profiles.find(p => p.id === id);
         if (profile) {
-            profile.autoMaskEmails = isChecked;
+            profile.autoMaskEmails = event.target.checked;
             saveData(profiles, activeProfileId, archivedProfiles);
         }
     });
@@ -197,9 +168,7 @@ async function setAutoDeployState(enabled) {
             await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 func: () => {
-                    if (window.justCodeAutoDeployObserver) {
-                        window.justCodeAutoDeployObserver.start();
-                    }
+                    if (window.justCodeAutoDeployObserver) window.justCodeAutoDeployObserver.start();
                 }
             });
         } catch (e) {
@@ -210,9 +179,7 @@ async function setAutoDeployState(enabled) {
             await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 func: () => {
-                    if (window.justCodeAutoDeployObserver) {
-                        window.justCodeAutoDeployObserver.stop();
-                    }
+                    if (window.justCodeAutoDeployObserver) window.justCodeAutoDeployObserver.stop();
                 }
             });
         } catch (e) {}
@@ -222,13 +189,17 @@ async function setAutoDeployState(enabled) {
 export function handleAutoDeployToggle(event) {
     const id = parseInt(event.target.dataset.id);
     const isChecked = event.target.checked;
+    
+    // Enable/Disable the policy dropdown based on auto-deploy
+    const profileCard = document.getElementById(`profile-${id}`);
+    const policySelect = profileCard.querySelector('.agent-review-policy');
+    if (policySelect) policySelect.disabled = !isChecked;
 
     loadData((profiles, activeProfileId, archivedProfiles) => {
         const profile = profiles.find(p => p.id === id);
         if (profile) {
             profile.autoDeploy = isChecked;
             saveData(profiles, activeProfileId, archivedProfiles);
-            
             if (activeProfileId === id) {
                 setAutoDeployState(isChecked);
             }

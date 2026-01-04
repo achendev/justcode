@@ -1,6 +1,5 @@
 // Part of the JustCode notification system.
 // This file is responsible for all direct DOM manipulation.
-// It creates, finds, updates, and positions notification elements.
 
 (function() {
     'use strict';
@@ -14,9 +13,6 @@
             'justcode-noti-left-center', 'justcode-noti-right-center'
         ],
 
-        /**
-         * Ensures the main container and stylesheet are present in the DOM.
-         */
         ensureInfrastructure: function() {
             if (document.getElementById('justcode-notification-container')) {
                 this.notificationContainer = document.getElementById('justcode-notification-container');
@@ -34,41 +30,37 @@
             this.notificationContainer.id = 'justcode-notification-container';
             this.notificationContainer.className = 'justcode-notification-container';
             
-            // Get and apply position from storage before appending to body
             chrome.storage.local.get({ notificationPosition: 'bottom-left' }, (data) => {
                 this.applyNotificationPosition(data.notificationPosition);
                 document.body.appendChild(this.notificationContainer);
             });
         },
 
-        /**
-         * Applies the correct CSS class to the container to position it.
-         * @param {string} position The desired position (e.g., 'bottom-left').
-         */
         applyNotificationPosition: function(position) {
             if (!this.notificationContainer) return;
-            
             this.notificationContainer.classList.remove(...this.ALL_POSITION_CLASSES);
-
             const positionClass = `justcode-noti-${position || 'bottom-left'}`;
             this.notificationContainer.classList.add(
                 this.ALL_POSITION_CLASSES.includes(positionClass) ? positionClass : 'justcode-noti-bottom-left'
             );
         },
 
-        /**
-         * Creates a new notification element with all its inner parts.
-         * @param {string} id The unique ID for the notification message.
-         * @returns {HTMLElement} The fully constructed notification element.
-         */
         createNotificationElement: function(id) {
             const notification = document.createElement('div');
             notification.id = `justcode-notification-${id}`;
             notification.className = 'justcode-notification-message';
 
+            // HTML Structure:
+            // [Spinner] [Text Content] [Close]
+            // [Actions Row]
+            // [Progress Bar]
+            
             notification.innerHTML = `
-                <div class="justcode-notification-spinner"></div>
-                <span class="justcode-notification-text"></span>
+                <div class="justcode-notification-content">
+                    <div class="justcode-notification-spinner"></div>
+                    <span class="justcode-notification-text"></span>
+                </div>
+                <div class="justcode-notification-actions" style="display: none;"></div>
                 <button class="justcode-notification-close-btn" title="Close">&times;</button>
                 <div class="justcode-notification-progress-bar"></div>
             `;

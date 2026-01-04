@@ -1,17 +1,19 @@
 // Part of the JustCode notification system.
-// This file is the main orchestrator, connecting DOM, timer, and event logic.
-// It exposes the main `showNotification` function.
+// Orchestrator for DOM, timer, and events.
 
 (function() {
     'use strict';
 
-    // Attach event listeners to a newly created notification element.
     function attachEventListeners(notification, id) {
         const progressBar = notification.querySelector('.justcode-notification-progress-bar');
 
-        // Close button click
+        // Close button
         notification.querySelector('.justcode-notification-close-btn').addEventListener('click', (e) => {
             e.stopPropagation();
+            // If declined explicitly via close, we might want to signal that, but for now simple close.
+            if (notification.querySelector('.jc-btn-decline')) {
+                chrome.runtime.sendMessage({ type: 'auto_deploy_response', approved: false });
+            }
             window.justCodeTimer.clear(id);
             notification.classList.add('hide');
         });
@@ -23,22 +25,24 @@
             }
         });
         
-        // Click to make persistent
-        notification.addEventListener('click', () => {
+        // Click main body to make persistent (unless clicking an action)
+        notification.addEventListener('click', (e) => {
+            if (e.target.closest('.justcode-notification-actions') || e.target.closest('.justcode-notification-close-btn')) return;
+            
             if (notification.classList.contains('persistent')) return;
             notification.classList.add('persistent');
             window.justCodeTimer.clear(id);
             if (progressBar) progressBar.style.animationPlayState = 'paused';
         });
 
-        // Pause on hover
+        // Hover pause
         notification.addEventListener('mouseenter', () => {
             if (notification.classList.contains('persistent')) return;
             window.justCodeTimer.pause(id);
             if (progressBar) progressBar.style.animationPlayState = 'paused';
         });
 
-        // Resume on leave
+        // Hover resume
         notification.addEventListener('mouseleave', () => {
             if (notification.classList.contains('persistent')) return;
             window.justCodeTimer.resume(id);
@@ -46,17 +50,49 @@
         });
     }
 
-    // Namespace to avoid global scope pollution
+    // Attach dynamic action listeners (Allow/Decline/Select)
+    function attachActionListeners(notification, id) {
+        const actionsContainer = notification.querySelector('.justcode-notification-actions');
+        
+        // Delegated listener for the actions container
+        actionsContainer.onclick = (e) => {
+            if (e.target.classList.contains('jc-btn-allow')) {
+                // User clicked "Allow"
+                chrome.runtime.sendMessage({ type: 'auto_deploy_response', approved: true });
+                
+                // Switch to loading state visually
+                const textSpan = notification.querySelector('.justcode-notification-text');
+                textSpan.textContent = "Approving...";
+                actionsContainer.style.display = 'none'; // Hide buttons immediately
+                notification.classList.add('with-spinner');
+                
+            } else if (e.target.classList.contains('jc-btn-decline')) {
+                // User clicked "Decline"
+                chrome.runtime.sendMessage({ type: 'auto_deploy_response', approved: false });
+                window.justCodeTimer.clear(id);
+                notification.classList.add('hide');
+            }
+        };
+
+        // Change listener for Policy Select
+        actionsContainer.onchange = (e) => {
+            if (e.target.classList.contains('jc-policy-select')) {
+                const newPolicy = e.target.value;
+                chrome.runtime.sendMessage({ type: 'update_agent_policy', policy: newPolicy });
+            }
+        };
+    }
+
     window.justCodeManager = {
         /**
-         * The main public function to display or update a notification.
-         * @param {string} id - The unique ID for this notification action.
-         * @param {string} text - The message to display.
-         * @param {string} type - 'info', 'success', or 'error'.
-         * @param {boolean} showSpinner - Whether to show a loading spinner.
-         * @param {object} settings - An object with { timeout, showProgressBar }.
+         * @param {string} id - Notification ID
+         * @param {string} text - Message text
+         * @param {string} type - 'info', 'success', 'error'
+         * @param {boolean} showSpinner
+         * @param {object} settings - { timeout, showProgressBar }
+         * @param {string} [actionsHTML] - Optional HTML for buttons/selectors
          */
-        showNotification: function(id, text, type, showSpinner, settings) {
+        showNotification: function(id, text, type, showSpinner, settings, actionsHTML = null) {
             window.justCodeDOM.ensureInfrastructure();
 
             const notificationId = `justcode-notification-${id}`;
@@ -68,6 +104,7 @@
                 notification = window.justCodeDOM.createNotificationElement(id);
                 window.justCodeDOM.notificationContainer.appendChild(notification);
                 attachEventListeners(notification, id);
+                attachActionListeners(notification, id);
             }
 
             const progressBar = notification.querySelector('.justcode-notification-progress-bar');
@@ -76,39 +113,48 @@
             notification.classList.toggle('with-spinner', showSpinner);
             
             const textSpan = notification.querySelector('.justcode-notification-text');
-            if (textSpan) textSpan.innerHTML = text; // Use innerHTML to render links
+            if (textSpan) textSpan.innerHTML = text;
+
+            // Handle Actions
+            const actionsDiv = notification.querySelector('.justcode-notification-actions');
+            if (actionsHTML) {
+                actionsDiv.innerHTML = actionsHTML;
+                actionsDiv.style.display = 'flex';
+                // If actions are present (like Review request), execute logically shouldn't imply auto-hide,
+                // but we let the caller control that via 'persistent' class or spinner.
+                // We enforce persistence for Review requests generally.
+            } else {
+                actionsDiv.style.display = 'none';
+                actionsDiv.innerHTML = '';
+            }
             
-            // Trigger fade-in animation
             if (isNew) {
                 setTimeout(() => notification.classList.add('show'), 10);
             } else {
                 notification.classList.add('show');
             }
 
-            // Clear any previous timer for this ID
             window.justCodeTimer.clear(id);
-            
-            // Reset and hide progress bar by default
             if (progressBar) {
                 progressBar.style.animation = 'none';
                 progressBar.style.display = 'none';
             }
 
-            // Start a new timer if the notification is not a persistent spinner
-            if (!showSpinner && !notification.classList.contains('persistent')) {
+            // Start timer if not spinner and not persistent (unless it's an "Always Allow" success message which has actions but should timeout)
+            // Rule: If actions contains buttons (allow/decline), make persistent. If just selector, allow timeout.
+            const hasInteractiveButtons = actionsHTML && actionsHTML.includes('jc-btn-allow');
+            const shouldPersist = showSpinner || notification.classList.contains('persistent') || hasInteractiveButtons;
+
+            if (!shouldPersist) {
                 const timeoutDuration = settings.timeout * 1000;
-                
                 if (settings.showProgressBar && progressBar) {
                     progressBar.style.display = 'block';
-                    // Trigger a reflow to ensure the animation restarts correctly
                     void progressBar.offsetWidth; 
                     progressBar.style.animation = `justcode-progress-anim ${timeoutDuration}ms linear forwards`;
                     progressBar.style.animationPlayState = 'running';
                 }
-
                 window.justCodeTimer.start(id, timeoutDuration);
             }
         }
     };
-
 })();

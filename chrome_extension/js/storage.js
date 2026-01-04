@@ -66,6 +66,7 @@ function migrateProfile(profile) {
     if (profile.autoMaskEmails === undefined) { profile.autoMaskEmails = false; changed = true; }
     if (profile.autoDeploy === undefined) { profile.autoDeploy = false; changed = true; }
     if (profile.isAgentModeEnabled === undefined) { profile.isAgentModeEnabled = false; changed = true; }
+    if (profile.agentReviewPolicy === undefined) { profile.agentReviewPolicy = 'review'; changed = true; }
     
     return changed;
 }
@@ -111,7 +112,8 @@ export function loadData(callback) {
                 autoMaskIPs: false,
                 autoMaskEmails: false,
                 autoDeploy: false,
-                isAgentModeEnabled: false
+                isAgentModeEnabled: false,
+                agentReviewPolicy: 'review'
             }];
             needsSave = true;
         }

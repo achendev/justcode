@@ -50,6 +50,10 @@ export function attachSettingsEventListeners(reRenderCallback) {
     document.querySelectorAll('.auto-deploy').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => settingsHandlers.handleAutoDeployToggle(e));
     });
+    // --- Agent Review Policy ---
+    document.querySelectorAll('.agent-review-policy').forEach(select => {
+        select.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'agentReviewPolicy'));
+    });
     
     // --- Server-mode settings inside settings view ---
     document.querySelectorAll('.server-url').forEach(input => {
