@@ -3,6 +3,9 @@ import { handleServerDeployment } from './deploy_code/server_deployment_strategy
 import { handleServerError } from './ui_handlers/server_error_handler.js';
 import { extractCodeWithFallback } from './deploy_code/robust_fallback.js';
 import { handleAgentTool } from './deploy_code/agent_strategy.js';
+import { applyReplacements } from './utils/two_way_sync.js';
+import { unmaskIPs } from './utils/ip_masking.js';
+import { unmaskEmails } from './utils/email_masking.js';
 
 // Regex to capture the command content from the bash heredoc syntax
 // Matches: bash << EOBASHxxx ...content... EOBASHxxx
@@ -17,19 +20,32 @@ const AGENT_COMMAND_REGEX = /bash\s*<<\s*(EOBASH\d{3})\s*([\s\S]*?)\s*\1/i;
  */
 export async function deployCode(profile, fromShortcut = false, hostname = null) {
     try {
-        if (!profile.useServerBackend) {
-             const successMessage = await handleJsDeployment(profile, fromShortcut, hostname);
-             return { text: successMessage, type: 'success' };
-        }
-
-        // --- Server Mode / Agent Mode Branch ---
-        
         let { codeToDeploy, usedFallback } = await extractCodeWithFallback(profile, fromShortcut, hostname);
 
         if (!codeToDeploy) {
             throw new Error('No valid content found on page or in clipboard.');
         }
 
+        // --- CENTRALIZED INPUT PROCESSING ---
+        // Apply "Incoming" replacements (Unmasking/Restoring) BEFORE any parsing or execution.
+        // This ensures both the Agent commands and file operations use the "Real" values (e.g. 'admin' instead of 'baboon').
+        if (profile.autoMaskEmails) {
+            codeToDeploy = await unmaskEmails(codeToDeploy);
+        }
+        if (profile.autoMaskIPs) {
+            codeToDeploy = await unmaskIPs(codeToDeploy);
+        }
+        if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
+            codeToDeploy = applyReplacements(codeToDeploy, profile.twoWaySyncRules, 'incoming');
+        }
+
+        if (!profile.useServerBackend) {
+             const successMessage = await handleJsDeployment(profile, fromShortcut, hostname, codeToDeploy);
+             return { text: successMessage, type: 'success' };
+        }
+
+        // --- Server Mode / Agent Mode Branch ---
+        
         let resultMessages = [];
         const isAgent = profile.isAgentModeEnabled;
 

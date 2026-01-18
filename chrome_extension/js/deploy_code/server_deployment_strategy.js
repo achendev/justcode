@@ -1,7 +1,4 @@
 import { extractCodeWithFallback } from './robust_fallback.js';
-import { applyReplacements } from '../utils/two_way_sync.js';
-import { unmaskIPs } from '../utils/ip_masking.js';
-import { unmaskEmails } from '../utils/email_masking.js';
 
 /**
  * Handles the deployment process for the server backend.
@@ -30,16 +27,7 @@ export async function handleServerDeployment(profile, fromShortcut = false, host
         throw new Error('No valid deploy script found on page or in clipboard.');
     }
 
-    // --- RESTORE MASKS ---
-    if (profile.autoMaskEmails) {
-        codeToDeploy = await unmaskEmails(codeToDeploy);
-    }
-    if (profile.autoMaskIPs) {
-        codeToDeploy = await unmaskIPs(codeToDeploy);
-    }
-    if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
-        codeToDeploy = applyReplacements(codeToDeploy, profile.twoWaySyncRules, 'incoming');
-    }
+    // Masking/Replacements are now handled in the parent deployCode function.
 
     const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
     const tolerateErrors = profile.tolerateErrors !== false;

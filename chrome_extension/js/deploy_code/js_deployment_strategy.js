@@ -3,18 +3,16 @@ import { getHandles, verifyPermission } from '../file_system_manager.js';
 import { extractCodeWithFallback } from './robust_fallback.js';
 import { generateUndoScript } from './undo_generator.js';
 import { executeFileSystemScript } from './script_executor.js';
-import { applyReplacements } from '../utils/two_way_sync.js';
-import { unmaskIPs } from '../utils/ip_masking.js';
-import { unmaskEmails } from '../utils/email_masking.js';
 
 /**
  * Handles the deployment process for the JS (File System Access API) backend.
  * @param {object} profile - The active user profile.
  * @param {boolean} fromShortcut - Whether the call originated from a background shortcut.
  * @param {string|null} hostname - The hostname of the active tab.
+ * @param {string|null} preExtractedCode - The code already extracted and processed by deployCode.js.
  * @returns {Promise<string>} A status message upon completion.
  */
-export async function handleJsDeployment(profile, fromShortcut = false, hostname = null) {
+export async function handleJsDeployment(profile, fromShortcut = false, hostname = null, preExtractedCode = null) {
     const folderCount = (profile.jsProjectFolderNames || []).length || 1;
     const handles = await getHandles(profile.id, folderCount);
     const validHandles = handles.filter(Boolean);
@@ -35,22 +33,22 @@ export async function handleJsDeployment(profile, fromShortcut = false, hostname
         }
     }
 
-    let { codeToDeploy, usedFallback } = await extractCodeWithFallback(profile, fromShortcut, hostname);
+    let codeToDeploy = preExtractedCode;
+    let usedFallback = false;
+
+    if (!codeToDeploy) {
+        const extraction = await extractCodeWithFallback(profile, fromShortcut, hostname);
+        codeToDeploy = extraction.codeToDeploy;
+        usedFallback = extraction.usedFallback;
+        // Note: In standalone calls, we assume code is raw. 
+        // But since this is only called from deployCode.js now, preExtractedCode should always be present and pre-processed.
+    }
 
     if (!codeToDeploy) {
         throw new Error('No valid deploy script found on page or in clipboard.');
     }
     
-    // --- RESTORE MASKS ---
-    if (profile.autoMaskEmails) {
-        codeToDeploy = await unmaskEmails(codeToDeploy);
-    }
-    if (profile.autoMaskIPs) {
-        codeToDeploy = await unmaskIPs(codeToDeploy);
-    }
-    if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
-        codeToDeploy = applyReplacements(codeToDeploy, profile.twoWaySyncRules, 'incoming');
-    }
+    // Masking/Replacements are now handled in the parent deployCode function.
     
     if (!fromShortcut) updateTemporaryMessage(profile.id, 'Generating undo script...');
     const undoScript = await generateUndoScript(validHandles, codeToDeploy, profile);
