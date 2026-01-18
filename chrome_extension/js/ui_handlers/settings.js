@@ -103,10 +103,14 @@ export function handleAgentModeToggle(event, reRenderCallback) {
         const profile = profiles.find(p => p.id === id);
         if (profile) {
             profile.isAgentModeEnabled = !profile.isAgentModeEnabled;
-            if (profile.isAgentModeEnabled) {
-                profile.autoDeploy = true;
-            }
+            // Sync autoDeploy state with Agent Mode
+            // If Agent Mode is disabled, autoDeploy must be disabled too.
+            // If Agent Mode is enabled, we enable autoDeploy by default.
+            profile.autoDeploy = profile.isAgentModeEnabled;
+
             saveData(profiles, activeProfileId, archivedProfiles);
+            
+            // Apply the change immediately to the active tab if this is the active profile
             if (activeProfileId === id) {
                 setAutoDeployState(profile.autoDeploy);
             }

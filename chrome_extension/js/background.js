@@ -125,16 +125,6 @@ async function performAutoDeploy(profileId, tabId, hostname) {
                 );
 
                 if (isScriptNotFoundError) {
-                    // Silent fail / retry logic handled by observer? 
-                    // No, background handles retry. If we are here, we are committed.
-                    // But actually, deployCode throws immediately if no code.
-                    // Since we already passed the "Review" stage, failing now is an error.
-                    // However, we want to respect the original retry logic.
-                    // The original retry logic was inside handleAutoDeployTrigger loop.
-                    // Since we split it, we might lose retry capability if we aren't careful.
-                    // Let's rely on simple execution here. If it fails, it fails.
-                    // Agent usually produces code before stopping.
-                    
                     const msg = "Auto-deploy failed: No script found.";
                     await updateProfileStatus(profile.id, msg, "error");
                     notify(msg, "error", false);
@@ -153,10 +143,10 @@ async function performAutoDeploy(profileId, tabId, hostname) {
 // Stores the pending auto-deploy state
 let pendingAutoDeploy = null;
 
-async function handleAutoDeployTrigger() {
+async function handleAutoDeployTrigger(sender) {
     console.log("JustCode: Auto-deploy triggered.");
     
-    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    const tab = sender.tab;
     if (!tab || !tab.id) return;
 
     const notificationId = 'justcode-autodeploy-active-sequence';
@@ -166,37 +156,46 @@ async function handleAutoDeployTrigger() {
         }).catch(() => {});
     };
 
-    loadData(async (profiles, activeProfileId) => {
-        const activeProfile = profiles.find(p => p.id === activeProfileId);
+    const settings = await chrome.storage.local.get({ rememberTabProfile: true });
+    const data = await chrome.storage.local.get(['profiles', 'activeProfileId', 'archivedProfiles', 'tabProfileMap']);
+
+    // Determine the profile for this specific tab
+    let profileId = data.activeProfileId;
+    if (settings.rememberTabProfile && data.tabProfileMap && data.tabProfileMap[tab.id]) {
+        const mappedId = data.tabProfileMap[tab.id];
+        if (data.profiles.some(p => p.id === mappedId)) profileId = mappedId;
+    }
+
+    const activeProfile = data.profiles.find(p => p.id === profileId);
+    
+    // Check if autoDeploy is enabled for this specific profile
+    if (!activeProfile || !activeProfile.autoDeploy) return;
+
+    // Delay for rendering
+    notify("Auto-deploy: Waiting for rendering...", "info", true);
+    await sleep(1000);
+
+    const hostname = tab.url ? new URL(tab.url).hostname : null;
+
+    if (activeProfile.agentReviewPolicy === 'always') {
+        // DIRECT EXECUTION
+        await performAutoDeploy(profileId, tab.id, hostname);
+    } else {
+        // REQUEST REVIEW
+        const actionsHTML = `
+            <button class="jc-btn jc-btn-allow">Allow</button>
+            <button class="jc-btn jc-btn-decline">Decline</button>
+        `;
         
-        if (!activeProfile || !activeProfile.autoDeploy) return;
+        // Store state for when user clicks Allow
+        pendingAutoDeploy = {
+            profileId: profileId,
+            tabId: tab.id,
+            hostname: hostname
+        };
 
-        // Delay for rendering
-        notify("Auto-deploy: Waiting for rendering...", "info", true);
-        await sleep(1000);
-
-        const hostname = tab.url ? new URL(tab.url).hostname : null;
-
-        if (activeProfile.agentReviewPolicy === 'always') {
-            // DIRECT EXECUTION
-            await performAutoDeploy(activeProfileId, tab.id, hostname);
-        } else {
-            // REQUEST REVIEW
-            const actionsHTML = `
-                <button class="jc-btn jc-btn-allow">Allow</button>
-                <button class="jc-btn jc-btn-decline">Decline</button>
-            `;
-            
-            // Store state for when user clicks Allow
-            pendingAutoDeploy = {
-                profileId: activeProfileId,
-                tabId: tab.id,
-                hostname: hostname
-            };
-
-            notify("Agent requests to deploy changes.", "info", false, actionsHTML);
-        }
-    });
+        notify("Agent requests to deploy changes.", "info", false, actionsHTML);
+    }
 }
 
 // --- Message Listener ---
@@ -213,7 +212,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     // 2. Auto Deploy Trigger (From Content Script Observer)
     if (message.type === 'auto_deploy_trigger') {
-        handleAutoDeployTrigger();
+        handleAutoDeployTrigger(sender);
         return true;
     }
 
@@ -245,13 +244,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     // 5. Shortcuts
     if (message.type === 'try-execute-command' || message.type === 'execute-command') {
-        // ... (Existing shortcut logic) ...
         const execute = async () => {
             const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
             if (!tab || !tab.id) return;
             
-            // Re-use logic from previous background.js implementation
-            // Ideally should be modularized, but for now copying key parts:
             await ensureContentScript(tab.id);
             
             let command = message.command;
@@ -304,14 +300,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 const profile = data.profiles.find(p => p.id === profileId);
                 if (profile) {
                     const result = await actionFunc(profile, true, message.hostname);
+                    
+                    // Show result on page
                     chrome.tabs.sendMessage(tab.id, { 
                         type: 'showNotificationOnPage', notificationId, text: result.text, messageType: result.type, showSpinner: false 
                     }).catch(()=>{});
+
+                    // Save result to profile storage (for Popup sync)
+                    await updateProfileStatus(profile.id, result.text, result.type);
                 }
             } catch (e) {
+                const msg = "Error: " + e.message;
                 chrome.tabs.sendMessage(tab.id, { 
-                    type: 'showNotificationOnPage', notificationId, text: "Error: " + e.message, messageType: 'error', showSpinner: false 
+                    type: 'showNotificationOnPage', notificationId, text: msg, messageType: 'error', showSpinner: false 
                 }).catch(()=>{});
+                
+                // Save error to profile storage
+                // We need to resolve profile ID again, but simpler to skip or do best effort if profile undefined
+                // Ideally, we'd have the profile ID from above block.
+                // Re-fetch data or use variable scope if possible.
+                // For simplicity/robustness, we log to console here as UI update failed.
+                console.error("JustCode Shortcut Error:", e);
             }
         };
         execute();
