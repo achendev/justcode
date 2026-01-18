@@ -14,10 +14,11 @@ const DONE_TAG_REGEX = /<done\b[^>]*\/?>/i;
  * @param {object} profile - The active user profile.
  * @param {boolean} fromShortcut - Whether the call originated from a background shortcut.
  * @param {string|null} hostname - The hostname of the active tab.
+ * @param {number|null} [tabId=null] - Explicit tab ID for background operations.
  * @returns {Promise<{codeToDeploy: string|null, usedFallback: boolean}>}
  */
-export async function extractCodeWithFallback(profile, fromShortcut = false, hostname = null) {
-    let codeToDeploy = await extractCodeToDeploy(profile, fromShortcut, hostname);
+export async function extractCodeWithFallback(profile, fromShortcut = false, hostname = null, tabId = null) {
+    let codeToDeploy = await extractCodeToDeploy(profile, fromShortcut, hostname, tabId);
     let usedFallback = false;
 
     // Helper to validate content based on profile mode
@@ -42,12 +43,20 @@ export async function extractCodeWithFallback(profile, fromShortcut = false, hos
         console.log("JustCode: Code block empty/invalid. Trying fallback to full answer.");
         usedFallback = true;
         
-        const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+        // Find correct tab for script injection fallback
+        let tab;
+        if (tabId) {
+            try { tab = await chrome.tabs.get(tabId); } catch(e) {}
+        } else {
+            const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+            tab = tabs[0];
+        }
+
         let stateChanged = false;
 
         try {
             // Special handling for AI Studio
-            if (tab && hostname && hostname.includes('aistudio.google.com')) {
+            if (tab && tab.id && hostname && hostname.includes('aistudio.google.com')) {
                 const results = await chrome.scripting.executeScript({
                     target: { tabId: tab.id },
                     func: prepareForFullAnswerExtraction,
@@ -57,10 +66,10 @@ export async function extractCodeWithFallback(profile, fromShortcut = false, hos
             
             // Force full extraction for fallback
             const tempProfile = { ...profile, deployFromFullAnswer: true };
-            codeToDeploy = await extractCodeToDeploy(tempProfile, fromShortcut, hostname);
+            codeToDeploy = await extractCodeToDeploy(tempProfile, fromShortcut, hostname, tabId);
 
         } finally {
-            if (tab && stateChanged && hostname && hostname.includes('aistudio.google.com')) {
+            if (tab && tab.id && stateChanged && hostname && hostname.includes('aistudio.google.com')) {
                 await chrome.scripting.executeScript({
                     target: { tabId: tab.id },
                     func: revertFullAnswerExtraction,

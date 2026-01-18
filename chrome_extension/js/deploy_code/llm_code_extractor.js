@@ -12,9 +12,10 @@ import { loadData } from '../storage.js'; // To access profile state if needed i
  * @param {object} profile - The active user profile.
  * @param {boolean} fromShortcut - Whether the call originated from a background shortcut.
  * @param {string|null} [hostname=null] - The hostname of the active tab.
+ * @param {number|null} [tabId=null] - The explicit tab ID to extract from (optional).
  * @returns {Promise<string|null>} The deployment script text, or null if not found.
  */
-export async function extractCodeToDeploy(profile, fromShortcut = false, hostname = null) {
+export async function extractCodeToDeploy(profile, fromShortcut = false, hostname = null, tabId = null) {
     const isDocumentContext = typeof window !== 'undefined' && window.document;
     const isDetached = isDocumentContext && new URLSearchParams(window.location.search).get('view') === 'window';
 
@@ -22,9 +23,21 @@ export async function extractCodeToDeploy(profile, fromShortcut = false, hostnam
         return await readFromClipboard();
     }
     
-    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    let tab;
+    if (tabId) {
+        try {
+            tab = await chrome.tabs.get(tabId);
+        } catch (e) {
+            console.error("JustCode: Invalid tabId provided to extractor.", e);
+            return null;
+        }
+    } else {
+        const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+        tab = tabs[0];
+    }
+
     if (!tab) {
-        console.error("JustCode: Could not find active tab to extract code from.");
+        console.error("JustCode: Could not find tab to extract code from.");
         return null;
     }
 

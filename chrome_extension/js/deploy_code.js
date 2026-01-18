@@ -8,9 +8,16 @@ import { unmaskIPs } from './utils/ip_masking.js';
 import { unmaskEmails } from './utils/email_masking.js';
 import { unmaskFQDNs } from './utils/fqdn_masking.js';
 
-export async function deployCode(profile, fromShortcut = false, hostname = null) {
+export async function deployCode(profile, fromShortcut = false, hostname = null, preExtractedCode = null, tabId = null) {
     try {
-        let { codeToDeploy, usedFallback } = await extractCodeWithFallback(profile, fromShortcut, hostname);
+        let codeToDeploy = preExtractedCode;
+        let usedFallback = false;
+
+        if (!codeToDeploy) {
+            const extraction = await extractCodeWithFallback(profile, fromShortcut, hostname, tabId);
+            codeToDeploy = extraction.codeToDeploy;
+            usedFallback = extraction.usedFallback;
+        }
 
         if (!codeToDeploy) {
             throw new Error('No valid content found on page or in clipboard.');

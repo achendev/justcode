@@ -4,6 +4,7 @@ import { deployCode } from './deploy_code.js';
 import { undoCode, redoCode } from './undo_redo.js';
 import { applyReplacementsAndPaste } from './apply_replacements.js';
 import { injectShortcutListener } from './background/shortcuts.js';
+import { extractCodeWithFallback } from './deploy_code/robust_fallback.js';
 
 // --- Default settings ---
 const AppSettings = {
@@ -79,7 +80,7 @@ async function initializeAllTabs() {
 
 // --- Auto Deploy Logic ---
 
-async function performAutoDeploy(profileId, tabId, hostname) {
+async function performAutoDeploy(profileId, tabId, hostname, codeToDeploy = null) {
     const notificationId = 'justcode-autodeploy-active-sequence';
     
     // Load fresh data to get current handles/paths
@@ -104,7 +105,8 @@ async function performAutoDeploy(profileId, tabId, hostname) {
             notify("Auto-deploying...", "info", true);
 
             try {
-                const result = await deployCode(profile, true, hostname);
+                // Pass codeToDeploy and tabId to deployCode
+                const result = await deployCode(profile, true, hostname, codeToDeploy, tabId);
                 await updateProfileStatus(profile.id, result.text + " (Auto)", result.type);
                 
                 // Construct Actions HTML for success message (Policy Switcher)
@@ -177,9 +179,30 @@ async function handleAutoDeployTrigger(sender) {
 
     const hostname = tab.url ? new URL(tab.url).hostname : null;
 
+    // --- Pre-extract code to check for <done /> tag ---
+    let codeToDeploy = null;
+    try {
+        const extraction = await extractCodeWithFallback(activeProfile, true, hostname, tab.id);
+        codeToDeploy = extraction.codeToDeploy;
+    } catch (e) {
+        console.warn("JustCode: Auto-deploy extraction failed.", e);
+    }
+
+    // Regex to check for done tag (Robust)
+    const DONE_TAG_REGEX = /<done\b[^>]*\/?>/i;
+    
+    if (codeToDeploy && DONE_TAG_REGEX.test(codeToDeploy)) {
+        console.log("JustCode: Agent signaled done via <done /> tag. Finishing without deployment.");
+        const msg = "Task Completed.";
+        await updateProfileStatus(profileId, msg, "success");
+        notify(msg, "success", false);
+        return;
+    }
+    // -------------------------------------------------
+
     if (activeProfile.agentReviewPolicy === 'always') {
         // DIRECT EXECUTION
-        await performAutoDeploy(profileId, tab.id, hostname);
+        await performAutoDeploy(profileId, tab.id, hostname, codeToDeploy);
     } else {
         // REQUEST REVIEW
         const actionsHTML = `
@@ -187,11 +210,12 @@ async function handleAutoDeployTrigger(sender) {
             <button class="jc-btn jc-btn-decline">Decline</button>
         `;
         
-        // Store state for when user clicks Allow
+        // Store state for when user clicks Allow, including the cached code
         pendingAutoDeploy = {
             profileId: profileId,
             tabId: tab.id,
-            hostname: hostname
+            hostname: hostname,
+            codeToDeploy: codeToDeploy
         };
 
         notify("Agent requests to deploy changes.", "info", false, actionsHTML);
@@ -220,7 +244,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'auto_deploy_response') {
         if (message.approved && pendingAutoDeploy) {
             // Proceed
-            performAutoDeploy(pendingAutoDeploy.profileId, pendingAutoDeploy.tabId, pendingAutoDeploy.hostname)
+            performAutoDeploy(pendingAutoDeploy.profileId, pendingAutoDeploy.tabId, pendingAutoDeploy.hostname, pendingAutoDeploy.codeToDeploy)
                 .then(() => { pendingAutoDeploy = null; });
         } else {
             // Declined
