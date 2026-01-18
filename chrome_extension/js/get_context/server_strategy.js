@@ -122,7 +122,24 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
         // --- Agent Mode Injection Logic ---
         let finalPromptInstructions = instructionsBlock;
         if (profile.isAgentModeEnabled && agentDelimiter) {
-            const specificInstructions = agentInstructions.replace(/{{AGENT_DELIMITER}}/g, agentDelimiter);
+            let specificInstructions = agentInstructions.replace(/{{AGENT_DELIMITER}}/g, agentDelimiter);
+            
+            // --- Inject Directory Information ---
+            const validPaths = (profile.projectPaths || []).filter(p => p && p.trim().length > 0);
+            if (validPaths.length > 0) {
+                const cwd = validPaths[0];
+                specificInstructions += `\n\n**ENVIRONMENT CONTEXT:**\n`;
+                specificInstructions += `Current Working Directory (CWD): ${cwd}\n`;
+                
+                if (validPaths.length > 1) {
+                    specificInstructions += `Other Included Directories (Absolute Paths):\n`;
+                    for (let i = 1; i < validPaths.length; i++) {
+                        specificInstructions += `- ${validPaths[i]}\n`;
+                    }
+                }
+            }
+            // ------------------------------------
+
             finalPromptInstructions += `\n\n**AGENT MODE INSTRUCTIONS:**\nSpecial agent instructions are in the attached file \`agent.txt\`.\nYou MUST follow them for tool use.`;
             await uploadAgentInstructions(hostname, specificInstructions);
         }
