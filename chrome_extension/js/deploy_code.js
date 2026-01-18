@@ -56,10 +56,11 @@ export async function deployCode(profile, fromShortcut = false, hostname = null)
 
         // B) Execute Tool Second (if present)
         if (hasTool) {
+            const delimiter = toolMatch[1]; // Capture group 1 is the delimiter (e.g., EOBASH123)
             const command = toolMatch[2].trim(); // Capture group 2 is the content
             // If <done /> is present, we do NOT auto-run the next turn.
             const shouldTriggerRun = !hasDoneTag;
-            const toolMsg = await handleAgentTool(profile, command, hostname, shouldTriggerRun);
+            const toolMsg = await handleAgentTool(profile, command, delimiter, hostname, shouldTriggerRun);
             resultMessages.push(toolMsg);
         } else if (toolMatch && !isAgent) {
             // Warn if tool found but Agent Mode disabled
