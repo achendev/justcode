@@ -5,7 +5,6 @@ import stat
 from .utils import is_safe_path, here_doc_value
 
 def resolve_path(raw_path, project_paths, use_numeric_prefixes=False):
-    # (Implementation matches previous file, only top part copied for context)
     path = re.sub(r'^\./', '', raw_path)
     if len(project_paths) == 1:
         base_path = project_paths[0]
@@ -39,8 +38,16 @@ def resolve_path(raw_path, project_paths, use_numeric_prefixes=False):
 
 def execute_script(script_content, project_paths, tolerate_errors=False, use_numeric_prefixes=False, add_empty_line=True, delimiter=None):
     """Parses and executes a deployment script, returning logs and errors."""
+    
+    # Auto-detect delimiter if not provided (Crucial for Undo/Redo operations)
     if delimiter is None:
-        delimiter = here_doc_value
+        # Look for the pattern: cat > path << 'DELIMITER'
+        # Matches quoted or unquoted paths
+        match = re.search(r"cat >\s+(?:'[^']+'|\"[^\"]+\"|[^\s]+)\s+<<\s+'([^']+)'", script_content)
+        if match:
+            delimiter = match.group(1)
+        else:
+            delimiter = here_doc_value
 
     lines = script_content.replace('\r\n', '\n').split('\n')
     i = 0
@@ -64,7 +71,7 @@ def execute_script(script_content, project_paths, tolerate_errors=False, use_num
                 match = re.match(r"cat >\s+(?P<path>.*?)\s+<<\s+'" + delim_pattern + r"'", line)
                 
                 if not match:
-                    # Check for mismatch logic
+                    # Check for mismatch logic to provide helpful error
                     if re.search(r"cat >.*<<\s+'EO.*'", line):
                          raise ValueError(f"Delimiter mismatch (Expected '{delimiter}'): {line}")
                     raise ValueError(f"Invalid 'cat' command format")
