@@ -94,6 +94,10 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
         let finalPromptInstructions = instructionsBlock;
         if (profile.isAgentModeEnabled) {
             const delimiter = generateAgentDelimiter();
+            
+            // Save the session delimiter specific to this profile
+            await chrome.storage.local.set({ [`agent_state_${profile.id}`]: { delimiter } });
+
             const specificInstructions = agentInstructions.replace(/{{AGENT_DELIMITER}}/g, delimiter);
             
             finalPromptInstructions += `\n\n**AGENT MODE INSTRUCTIONS:**\nSpecial agent instructions are in the attached file \`agent.txt\`.\nYou MUST follow them for tool use.`;
