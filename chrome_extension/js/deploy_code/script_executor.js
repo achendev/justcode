@@ -1,20 +1,25 @@
-import { hereDocValue } from '../default_instructions.js';
 import { resolveHandleAndPath } from './fs_helpers.js';
 
 /**
  * Parses and executes a bash-like script using the File System Access API.
- * @param {Array<FileSystemDirectoryHandle>} handles The root directory handles for the project(s).
+ * @param {Array<FileSystemDirectoryHandle>} handles The root directory handles.
  * @param {string} script The script to execute.
  * @param {object} profile The active user profile.
- * @returns {Promise<{log: string[], errors: string[]}>} A list of log messages and error messages encountered.
+ * @param {string} delimiter The heredoc delimiter to use.
+ * @returns {Promise<{log: string[], errors: string[]}>}
  */
-export async function executeFileSystemScript(handles, script, profile) {
+export async function executeFileSystemScript(handles, script, profile, delimiter = 'EOPROJECTFILE') {
     const tolerateErrors = profile.tolerateErrors !== false;
-    const addEmptyLine = profile.addEmptyLineOnDeploy !== false; // Default true
+    const addEmptyLine = profile.addEmptyLineOnDeploy !== false; 
     const lines = script.replace(/\r\n/g, '\n').split('\n');
     let i = 0;
     const errors = [];
     const log = [];
+
+    // Regex to match "cat > path << 'EOFILE123'"
+    // We escape the delimiter to be safe in regex
+    const delimiterPattern = delimiter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const catRegex = new RegExp(`^cat >\\s+((?:'.*?'|".*?"|[^\\s'"]+))\\s+<<\\s+'${delimiterPattern}'`);
 
     while (i < lines.length) {
         const line = lines[i].trim();
@@ -26,15 +31,29 @@ export async function executeFileSystemScript(handles, script, profile) {
         
         try {
             if (line.startsWith('cat >')) {
-                const match = line.match(/^cat >\s+((?:'.*?'|".*?"|[^\s'"]+))\s+<<\s+'EOPROJECTFILE'/);
-                if (!match) throw new Error(`Invalid cat command format: ${line}`);
+                const match = line.match(catRegex);
+                if (!match) {
+                    // Check if it's a cat command with a WRONG delimiter to give better error?
+                    // Or check if it's just malformed?
+                    // If strict matching is required, we just say invalid format or ignore.
+                    // For robustness, if it matches generic cat but not our delimiter, we might log it.
+                    if (line.match(/^cat >.*<<\s+'(EO.*?)'/)) {
+                         // Found a different delimiter -> ignore or error? 
+                         // "it should parse and execute... only if 123 is initially stored"
+                         // So we treat this as not matching our command set. 
+                         // However, if the line looks like a command but fails strict parse, user might want to know.
+                         // For now, standard error "Invalid cat command format".
+                         throw new Error(`Invalid cat command format or delimiter mismatch (Expected '${delimiter}'): ${line}`);
+                    }
+                    throw new Error(`Invalid cat command format: ${line}`);
+                }
                 
                 let rawPath = match[1].replace(/^['"]|['"]$/g, '');
                 
                 let content = '';
                 let contentEnded = false;
                 while (i < lines.length) {
-                    if (lines[i].startsWith(hereDocValue)) {
+                    if (lines[i].startsWith(delimiter)) {
                         contentEnded = true;
                         i++;
                         break;
@@ -43,9 +62,8 @@ export async function executeFileSystemScript(handles, script, profile) {
                     i++;
                 }
 
-                if (!contentEnded) throw new Error(`Script parsing error: EOF while looking for '${hereDocValue}'`);
+                if (!contentEnded) throw new Error(`Script parsing error: EOF while looking for '${delimiter}'`);
                 
-                // If user doesn't want trailing empty line, trim the one we added in the loop
                 if (!addEmptyLine && content.endsWith('\n')) {
                     content = content.slice(0, -1);
                 }
@@ -71,6 +89,7 @@ export async function executeFileSystemScript(handles, script, profile) {
             const command = parts[0];
             const args = parts.slice(1);
 
+            // ... (Rest of commands mkdir, rm, etc. remain unchanged) ...
             if (command === 'mkdir') {
                 const pFlag = args.includes('-p');
                 const dirPaths = args.filter(arg => arg !== '-p');

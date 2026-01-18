@@ -68,7 +68,11 @@ async function handleJsStackAction(profile, fromShortcut, action) {
         }
 
         const scriptToRun = action.name === 'undo' ? item.undoScript : item.redoScript;
-        await executeFileSystemScript(validHandles, scriptToRun, profile);
+        
+        // Use the delimiter stored in the stack item, or fallback to default
+        const delimiter = item.delimiter || 'EOPROJECTFILE';
+        
+        await executeFileSystemScript(validHandles, scriptToRun, profile, delimiter);
         
         const msg = { text: action.successMessage, type: 'success' };
         if (!fromShortcut) updateAndSaveMessage(profile.id, msg.text, msg.type);
@@ -84,6 +88,10 @@ async function handleJsStackAction(profile, fromShortcut, action) {
 }
 
 async function handleServerStackAction(profile, fromShortcut, action) {
+    // Note: For server mode, the delimiter is stored in the file on disk or managed by the server's history.
+    // The history endpoint logic generally re-executes the saved script. 
+    // Since the server doesn't take a delimiter arg for undo/redo (it reads files), we just call it.
+    
     const actionName = action.name.charAt(0).toUpperCase() + action.name.slice(1);
 
     const paths = profile.projectPaths;

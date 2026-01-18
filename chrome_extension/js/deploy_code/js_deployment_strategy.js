@@ -9,10 +9,11 @@ import { executeFileSystemScript } from './script_executor.js';
  * @param {object} profile - The active user profile.
  * @param {boolean} fromShortcut - Whether the call originated from a background shortcut.
  * @param {string|null} hostname - The hostname of the active tab.
- * @param {string|null} preExtractedCode - The code already extracted and processed by deployCode.js.
+ * @param {string|null} preExtractedCode - The code already extracted and processed.
+ * @param {string} [delimiter='EOPROJECTFILE'] - The expected heredoc delimiter.
  * @returns {Promise<string>} A status message upon completion.
  */
-export async function handleJsDeployment(profile, fromShortcut = false, hostname = null, preExtractedCode = null) {
+export async function handleJsDeployment(profile, fromShortcut = false, hostname = null, preExtractedCode = null, delimiter = 'EOPROJECTFILE') {
     const folderCount = (profile.jsProjectFolderNames || []).length || 1;
     const handles = await getHandles(profile.id, folderCount);
     const validHandles = handles.filter(Boolean);
@@ -40,21 +41,17 @@ export async function handleJsDeployment(profile, fromShortcut = false, hostname
         const extraction = await extractCodeWithFallback(profile, fromShortcut, hostname);
         codeToDeploy = extraction.codeToDeploy;
         usedFallback = extraction.usedFallback;
-        // Note: In standalone calls, we assume code is raw. 
-        // But since this is only called from deployCode.js now, preExtractedCode should always be present and pre-processed.
     }
 
     if (!codeToDeploy) {
         throw new Error('No valid deploy script found on page or in clipboard.');
     }
     
-    // Masking/Replacements are now handled in the parent deployCode function.
-    
     if (!fromShortcut) updateTemporaryMessage(profile.id, 'Generating undo script...');
-    const undoScript = await generateUndoScript(validHandles, codeToDeploy, profile);
+    const undoScript = await generateUndoScript(validHandles, codeToDeploy, profile, delimiter);
 
     if (!fromShortcut) updateTemporaryMessage(profile.id, 'Deploying code locally...');
-    const { errors, log } = await executeFileSystemScript(validHandles, codeToDeploy, profile);
+    const { errors, log } = await executeFileSystemScript(validHandles, codeToDeploy, profile, delimiter);
     
     const undoKey = `undo_stack_${profile.id}`;
     const redoKey = `redo_stack_${profile.id}`;
@@ -62,7 +59,8 @@ export async function handleJsDeployment(profile, fromShortcut = false, hostname
     const undoData = await chrome.storage.local.get(undoKey);
     const undoStack = undoData[undoKey] || [];
     
-    undoStack.push({ undoScript: undoScript, redoScript: codeToDeploy });
+    // Save the delimiter used for this script so undo/redo knows which one to look for later
+    undoStack.push({ undoScript: undoScript, redoScript: codeToDeploy, delimiter: delimiter });
     
     await chrome.storage.local.set({ [undoKey]: undoStack.slice(-20) });
     await chrome.storage.local.remove(redoKey);

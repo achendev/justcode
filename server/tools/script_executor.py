@@ -5,69 +5,54 @@ import stat
 from .utils import is_safe_path, here_doc_value
 
 def resolve_path(raw_path, project_paths, use_numeric_prefixes=False):
-    """
-    Resolves a path from a script, which may be prefixed for multi-root projects.
-    Returns the absolute full path of the target and the project path it belongs to for security checks.
-    """
+    # (Implementation matches previous file, only top part copied for context)
     path = re.sub(r'^\./', '', raw_path)
-
-    # SINGLE PATH LOGIC
     if len(project_paths) == 1:
         base_path = project_paths[0]
         script_relative_path = path
-        
         if os.path.isfile(base_path):
-            if os.path.basename(base_path) == script_relative_path:
-                return base_path, base_path
-            else:
-                raise ValueError(f"Script path '{script_relative_path}' does not match the provided file path's name '{os.path.basename(base_path)}'.")
-        
+            if os.path.basename(base_path) == script_relative_path: return base_path, base_path
+            else: raise ValueError(f"Script path mismatch.")
         full_path = os.path.join(base_path, script_relative_path.replace('/', os.sep))
         return full_path, base_path
 
-    # NEW MULTI-PATH LOGIC
     prefix_map = []
     if use_numeric_prefixes:
-        for i, p_path in enumerate(project_paths):
-            prefix_map.append((str(i), p_path))
+        for i, p_path in enumerate(project_paths): prefix_map.append((str(i), p_path))
     else:
         for p_path in project_paths:
-            if os.path.isdir(p_path):
-                prefix_map.append((os.path.basename(p_path), p_path))
-            elif os.path.isfile(p_path):
-                parent = os.path.basename(os.path.dirname(p_path))
-                fname = os.path.basename(p_path)
-                prefix_map.append((f"{parent}/{fname}", p_path))
-
+            if os.path.isdir(p_path): prefix_map.append((os.path.basename(p_path), p_path))
+            elif os.path.isfile(p_path): prefix_map.append((f"{os.path.basename(os.path.dirname(p_path))}/{os.path.basename(p_path)}", p_path))
     prefix_map.sort(key=lambda item: len(item[0]), reverse=True)
     
     for prefix, base_path in prefix_map:
-        if path == prefix:
-            return base_path, base_path
-        
+        if path == prefix: return base_path, base_path
         if path.startswith(prefix + '/'):
             script_relative_path = path[len(prefix) + 1:]
-            
-            if os.path.isfile(base_path):
-                 raise ValueError(f"Cannot resolve path '{script_relative_path}' inside a file path '{base_path}'.")
-
+            if os.path.isfile(base_path): raise ValueError(f"Cannot resolve path inside file.")
             full_path = os.path.join(base_path, script_relative_path.replace('/', os.sep))
             return full_path, base_path
-
+    
     known_prefixes = [p[0] for p in prefix_map]
-    raise ValueError(f"Could not find a matching project for path '{raw_path}'. Known project prefixes: {known_prefixes}")
+    raise ValueError(f"Could not find matching project for path '{raw_path}'. Prefixes: {known_prefixes}")
 
 
-def execute_script(script_content, project_paths, tolerate_errors=False, use_numeric_prefixes=False, add_empty_line=True):
+def execute_script(script_content, project_paths, tolerate_errors=False, use_numeric_prefixes=False, add_empty_line=True, delimiter=None):
     """Parses and executes a deployment script, returning logs and errors."""
+    if delimiter is None:
+        delimiter = here_doc_value
+
     lines = script_content.replace('\r\n', '\n').split('\n')
     i = 0
     output_log = []
     error_log = []
 
+    # Safe regex pattern for the delimiter
+    delim_pattern = re.escape(delimiter)
+    
     while i < len(lines):
         line = lines[i].strip()
-        original_line_ref = lines[i] # For error message
+        original_line_ref = lines[i]
         line_num_for_error = i + 1
         
         try:
@@ -75,11 +60,14 @@ def execute_script(script_content, project_paths, tolerate_errors=False, use_num
                 i += 1
                 continue
             
-            raw_path_for_command = '' # For error messages
-
             if line.startswith('cat >'):
-                match = re.match(r"cat >\s+(?P<path>.*?)\s+<<\s+'" + re.escape(here_doc_value) + r"'", line)
-                if not match: raise ValueError(f"Invalid 'cat' command format")
+                match = re.match(r"cat >\s+(?P<path>.*?)\s+<<\s+'" + delim_pattern + r"'", line)
+                
+                if not match:
+                    # Check for mismatch logic
+                    if re.search(r"cat >.*<<\s+'EO.*'", line):
+                         raise ValueError(f"Delimiter mismatch (Expected '{delimiter}'): {line}")
+                    raise ValueError(f"Invalid 'cat' command format")
                 
                 raw_path_for_command = match.group('path').strip("'\"")
                 full_path, owning_project_path = resolve_path(raw_path_for_command, project_paths, use_numeric_prefixes)
@@ -94,7 +82,7 @@ def execute_script(script_content, project_paths, tolerate_errors=False, use_num
                 content_start_index = i + 1
                 temp_i = content_start_index
                 while temp_i < len(lines):
-                    if lines[temp_i].startswith(here_doc_value):
+                    if lines[temp_i].startswith(delimiter):
                         heredoc_found = True
                         content_lines = lines[content_start_index:temp_i]
                         i = temp_i + 1

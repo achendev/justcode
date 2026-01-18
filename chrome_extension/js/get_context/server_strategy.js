@@ -11,16 +11,18 @@ import { maskEmails } from '../utils/email_masking.js';
 import { maskFQDNs } from '../utils/fqdn_masking.js';
 import { agentInstructions } from '../agent_constants.js';
 
-// New helper for agent upload
 async function uploadAgentInstructions(hostname, content) {
-    // We upload this as agent.txt
     await uploadContextAsFile(content, 'agent.txt', hostname);
 }
 
 function generateAgentDelimiter() {
-    // Generates EOBASHxxx where xxx is 100-999
     const randomNum = Math.floor(Math.random() * 900) + 100;
     return `EOBASH${randomNum}`;
+}
+
+function generateFileDelimiter() {
+    const randomNum = Math.floor(Math.random() * 900) + 100;
+    return `EOFILE${randomNum}`;
 }
 
 export async function getContextFromServer(profile, fromShortcut, hostname) {
@@ -34,8 +36,25 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
     const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
     const contextSizeLimit = profile.contextSizeLimit || 3000000;
     
+    // --- Generate and Store Session Delimiters ---
+    const fileDelimiter = generateFileDelimiter();
+    const sessionState = { fileDelimiter };
+    
+    // Agent Delimiter logic
+    let agentDelimiter = null;
+    if (profile.isAgentModeEnabled) {
+        agentDelimiter = generateAgentDelimiter();
+        sessionState.agentDelimiter = agentDelimiter;
+    }
+
+    // Store in chrome storage per profile
+    const storageKey = `session_state_${profile.id}`;
+    await chrome.storage.local.set({ [storageKey]: sessionState });
+
     const pathParams = paths.map(p => `path=${encodeURIComponent(p)}`).join('&');
-    let endpoint = `${serverUrl}/getcontext?${pathParams}&exclude=${encodeURIComponent(excludePatterns)}&limit=${contextSizeLimit}`;
+    
+    // Pass delimiter to server so it wraps content correctly
+    let endpoint = `${serverUrl}/getcontext?${pathParams}&exclude=${encodeURIComponent(excludePatterns)}&limit=${contextSizeLimit}&delimiter=${fileDelimiter}`;
     
     if (includePatterns) {
         endpoint += `&include=${encodeURIComponent(includePatterns)}`;
@@ -65,14 +84,13 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
         if (!response.ok) throw new Error(`Server error: ${response.status} ${responseText}`);
         
         const fileContextPayload = responseText;
-        const { instructionsBlock, codeBlockDelimiter } = getInstructionsBlock(profile);
+        const { instructionsBlock, codeBlockDelimiter } = getInstructionsBlock(profile, fileDelimiter);
 
         const treeEndIndex = fileContextPayload.indexOf('\n\ncat >');
         const treeString = treeEndIndex !== -1 ? fileContextPayload.substring(0, treeEndIndex) : fileContextPayload;
         const contentString = treeEndIndex !== -1 ? fileContextPayload.substring(treeEndIndex + 2) : fileContextPayload;
 
         // --- PROCESS FUNCTION ---
-        // ORDER MATTERS: Apply Custom Replacements FIRST, then Auto-Masks.
         const process = async (text) => {
             let processed = text;
             if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
@@ -92,14 +110,8 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
         
         // --- Agent Mode Injection Logic ---
         let finalPromptInstructions = instructionsBlock;
-        if (profile.isAgentModeEnabled) {
-            const delimiter = generateAgentDelimiter();
-            
-            // Save the session delimiter specific to this profile
-            await chrome.storage.local.set({ [`agent_state_${profile.id}`]: { delimiter } });
-
-            const specificInstructions = agentInstructions.replace(/{{AGENT_DELIMITER}}/g, delimiter);
-            
+        if (profile.isAgentModeEnabled && agentDelimiter) {
+            const specificInstructions = agentInstructions.replace(/{{AGENT_DELIMITER}}/g, agentDelimiter);
             finalPromptInstructions += `\n\n**AGENT MODE INSTRUCTIONS:**\nSpecial agent instructions are in the attached file \`agent.txt\`.\nYou MUST follow them for tool use.`;
             await uploadAgentInstructions(hostname, specificInstructions);
         }
@@ -119,7 +131,7 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
         const appSettings = await chrome.storage.local.get({ splitContextBySize: false, contextSplitSize: 450 });
 
         if (appSettings.splitContextBySize) {
-            const contentChunks = splitContextPayload(contentString, appSettings.contextSplitSize);
+            const contentChunks = splitContextPayload(contentString, appSettings.contextSplitSize, fileDelimiter);
             const uploadedFiles = [];
             
             for (let i = 0; i < contentChunks.length; i++) {
@@ -193,6 +205,9 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
 }
 
 export async function getExclusionSuggestionFromServer(profile, fromShortcut = false, hostname = null) {
+    // ... (This function remains largely the same, no file delimiter needed for exclusion suggestions) ...
+    // ... Copied context from previous version to ensure file completeness ...
+    
     const paths = profile.projectPaths;
     if (!paths || paths.length === 0 || !paths.some(p => p && p.trim())) {
         return { text: 'Error: Please enter at least one project path.', type: 'error' };
@@ -230,7 +245,6 @@ export async function getExclusionSuggestionFromServer(profile, fromShortcut = f
             profile: profile
         });
         
-        // Sync first, then Mask
         if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
             prompt = applyReplacements(prompt, profile.twoWaySyncRules, 'outgoing');
         }

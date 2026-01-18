@@ -1,17 +1,12 @@
-import { hereDocValue } from '../default_instructions.js';
 import { getFileContent, entryExists } from './fs_helpers.js';
 
-/**
- * Generates an undo script by inspecting the filesystem before changes are made.
- * @param {Array<FileSystemDirectoryHandle>} handles The project's root handles.
- * @param {string} deployScript The deployment script to be executed.
- * @param {object} profile The active user profile.
- * @returns {Promise<string>} The generated undo script.
- */
-export async function generateUndoScript(handles, deployScript, profile) {
+export async function generateUndoScript(handles, deployScript, profile, delimiter = 'EOPROJECTFILE') {
     const lines = deployScript.replace(/\r\n/g, '\n').split('\n');
     const rollbackCmds = [];
     let i = 0;
+
+    const delimiterPattern = delimiter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const catRegex = new RegExp(`^cat >\\s+((?:'.*?'|".*?"|[^\\s'"]+))\\s+<<\\s+'${delimiterPattern}'`);
 
     while (i < lines.length) {
         const line = lines[i].trim();
@@ -20,19 +15,19 @@ export async function generateUndoScript(handles, deployScript, profile) {
 
         try {
             if (line.startsWith('cat >')) {
-                const match = line.match(/^cat >\s+((?:'.*?'|".*?"|[^\s'"]+))\s+<<\s+'EOPROJECTFILE'/);
-                if (!match) continue;
+                const match = line.match(catRegex);
+                if (!match) continue; // Skip if delimiter mismatch
 
                 let filePath = match[1].startsWith("'") ? match[1].slice(1, -1) : match[1];
                 
                 const originalContent = await getFileContent(handles, filePath, profile);
                 if (originalContent !== null) {
-                    rollbackCmds.unshift(`cat > ${filePath} << '${hereDocValue}'\n${originalContent}\n${hereDocValue}`);
+                    rollbackCmds.unshift(`cat > ${filePath} << '${delimiter}'\n${originalContent}\n${delimiter}`);
                 } else {
                     rollbackCmds.unshift(`rm -f ${filePath}`);
                 }
 
-                while (i < lines.length && !lines[i].startsWith(hereDocValue)) {
+                while (i < lines.length && !lines[i].startsWith(delimiter)) {
                     i++;
                 }
                 if (i < lines.length) i++;
@@ -54,7 +49,7 @@ export async function generateUndoScript(handles, deployScript, profile) {
                 const filePath = args.find(a => !a.startsWith('-'));
                 const originalContent = await getFileContent(handles, filePath, profile);
                 if (originalContent !== null) {
-                     rollbackCmds.unshift(`cat > ${filePath} << '${hereDocValue}'\n${originalContent}\n${hereDocValue}`);
+                     rollbackCmds.unshift(`cat > ${filePath} << '${delimiter}'\n${originalContent}\n${delimiter}`);
                 }
             } else if (command === 'rmdir') {
                  const dirPath = args[0];

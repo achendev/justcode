@@ -8,13 +8,6 @@ import { unmaskIPs } from './utils/ip_masking.js';
 import { unmaskEmails } from './utils/email_masking.js';
 import { unmaskFQDNs } from './utils/fqdn_masking.js';
 
-/**
- * Deploys code to the user's project, choosing the appropriate strategy.
- * @param {object} profile The active user profile.
- * @param {boolean} [fromShortcut=false] - True if called from a keyboard shortcut.
- * @param {string|null} [hostname=null] - The hostname of the active tab.
- * @returns {Promise<{text: string, type: 'success'|'error'|'info'}>} A result object.
- */
 export async function deployCode(profile, fromShortcut = false, hostname = null) {
     try {
         let { codeToDeploy, usedFallback } = await extractCodeWithFallback(profile, fromShortcut, hostname);
@@ -23,8 +16,18 @@ export async function deployCode(profile, fromShortcut = false, hostname = null)
             throw new Error('No valid content found on page or in clipboard.');
         }
 
+        // --- RETRIEVE SESSION STATE ---
+        const stateKey = `session_state_${profile.id}`;
+        const sessionState = (await chrome.storage.local.get(stateKey))[stateKey] || {};
+        
+        // Use stored file delimiter or fallback to legacy/generic if not found
+        // Note: For file operations, we don't strictly enforce the session ID in regex matching *here* 
+        // because the parsing logic is deeper in the strategies, but we pass it down.
+        // However, if strictness is required, the executor functions will handle it.
+        const fileDelimiter = sessionState.fileDelimiter || 'EOPROJECTFILE';
+        const agentDelimiter = sessionState.agentDelimiter;
+
         // --- CENTRALIZED INPUT PROCESSING ---
-        // Apply "Incoming" replacements (Unmasking/Restoring) BEFORE any parsing or execution.
         if (profile.autoMaskEmails) {
             codeToDeploy = await unmaskEmails(codeToDeploy);
         }
@@ -39,7 +42,7 @@ export async function deployCode(profile, fromShortcut = false, hostname = null)
         }
 
         if (!profile.useServerBackend) {
-             const successMessage = await handleJsDeployment(profile, fromShortcut, hostname, codeToDeploy);
+             const successMessage = await handleJsDeployment(profile, fromShortcut, hostname, codeToDeploy, fileDelimiter);
              return { text: successMessage, type: 'success' };
         }
 
@@ -48,31 +51,25 @@ export async function deployCode(profile, fromShortcut = false, hostname = null)
         let resultMessages = [];
         const isAgent = profile.isAgentModeEnabled;
 
-        // 1. Check for Done Tag (signals end of loop)
+        // 1. Check for Done Tag
         const hasDoneTag = /<done\b[^>]*\/?>/i.test(codeToDeploy);
         
-        // 2. Check for Bash Commands (Standard Deployment)
+        // 2. Check for Bash Commands
         const VALID_COMMAND_REGEX = /^\s*(cat\s+>|mkdir|rm|rmdir|mv|touch|chmod)/m;
-        // Check if there are any valid file commands in the whole text
         const hasBashCode = VALID_COMMAND_REGEX.test(codeToDeploy);
 
         // 3. Check for Agent Tools (Strict Session Matching)
         let toolMatches = [];
         
         if (isAgent) {
-            const stateKey = `agent_state_${profile.id}`;
-            const agentState = await chrome.storage.local.get(stateKey);
-            const storedDelimiter = agentState[stateKey]?.delimiter;
-            
             let agentCommandRegex;
             
-            if (storedDelimiter) {
-                // Strict: Only match the specific session delimiter found in the prompt
-                agentCommandRegex = new RegExp(`bash\\s*<<\\s*(${storedDelimiter})\\s*([\\s\\S]*?)\\s*\\1`, "gi");
+            if (agentDelimiter) {
+                // Strict: Only match the specific session delimiter
+                agentCommandRegex = new RegExp(`bash\\s*<<\\s*(${agentDelimiter})\\s*([\\s\\S]*?)\\s*\\1`, "gi");
             } else {
-                // Fallback: If no strict session state is found (e.g. storage cleared), 
-                // match any valid EOBASHxxx to allow continuation, but warn.
-                console.warn("JustCode: No active agent session delimiter found in storage. Using generic matching.");
+                // Fallback
+                console.warn("JustCode: No active agent session delimiter found. Using generic matching.");
                 agentCommandRegex = /bash\s*<<\s*(EOBASH\d{3})\s*([\s\S]*?)\s*\1/gi;
             }
             
@@ -85,11 +82,6 @@ export async function deployCode(profile, fromShortcut = false, hostname = null)
 
         // A) Deploy Files First
         if (hasBashCode) {
-            // Optimization for Agent Mode:
-            // If Agent Mode is active, the LLM output is likely mixed text.
-            // We try to extract only the ```bash ... ``` blocks to prevent sending 
-            // conversational text or agent commands to the file deployment endpoint,
-            // which would cause "Unsupported command" errors in the server logs.
             let fileDeployScript = codeToDeploy;
             if (isAgent) {
                 const bashBlockRegex = /```bash\s*([\s\S]*?)\s*```/gi;
@@ -99,32 +91,30 @@ export async function deployCode(profile, fromShortcut = false, hostname = null)
                 }
             }
 
-            // Only deploy if the (potentially filtered) script still contains valid commands
             if (VALID_COMMAND_REGEX.test(fileDeployScript)) {
-                const deployMsg = await handleServerDeployment(profile, fromShortcut, hostname, fileDeployScript);
+                // Pass the specific file delimiter to the server strategy
+                const deployMsg = await handleServerDeployment(profile, fromShortcut, hostname, fileDeployScript, fileDelimiter);
                 resultMessages.push(deployMsg);
             }
         }
 
-        // B) Execute Tools Second (if present)
+        // B) Execute Tools Second
         if (hasTool) {
             const outputs = [];
             for (const match of toolMatches) {
-                const delimiter = match[1]; // Capture group 1: EOBASHxxx
-                const command = match[2].trim(); // Capture group 2: content
+                const delimiter = match[1]; 
+                const command = match[2].trim(); 
                 
                 const result = await executeAgentCommand(profile, command, delimiter);
                 outputs.push(result);
             }
 
-            // If <done /> is present, we do NOT auto-run the next turn.
             const shouldTriggerRun = !hasDoneTag;
             await reportAgentResults(outputs, hostname, shouldTriggerRun);
             
             resultMessages.push(`Executed ${outputs.length} agent command(s).`);
 
         } else if (toolMatches.length > 0 && !isAgent) {
-            // Warn if tool found but Agent Mode disabled
             resultMessages.push("Agent tool detected but Agent Mode is disabled. Tool ignored.");
         }
 
@@ -133,14 +123,11 @@ export async function deployCode(profile, fromShortcut = false, hostname = null)
             resultMessages.push("Task Completed.");
         }
 
-        // --- FEEDBACK CONSTRUCTION ---
-
         if (resultMessages.length === 0) {
-            // If we are in agent mode but found no matching delimiter, provide specific feedback
             if (isAgent) {
                 const genericRegex = /bash\s*<<\s*(EOBASH\d{3})\s*([\s\S]*?)\s*\1/i;
                 if (genericRegex.test(codeToDeploy) && !hasTool) {
-                    return { text: "Agent command ignored: Delimiter mismatch. Expected one from current session.", type: 'warning' };
+                    return { text: "Agent command ignored: Delimiter mismatch.", type: 'warning' };
                 }
             }
             return { text: "No actionable agent commands found.", type: 'info' };

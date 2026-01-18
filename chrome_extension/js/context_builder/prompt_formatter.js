@@ -1,13 +1,14 @@
-import { defaultCriticalInstructions, hereDocValue } from '../default_instructions.js';
+import { defaultCriticalInstructions } from '../default_instructions.js';
 
 /**
  * Builds the content string with cat commands from a list of file paths.
  * @param {Array<FileSystemDirectoryHandle>} handles
  * @param {string[]} paths
  * @param {object} profile
+ * @param {string} delimiter - The dynamic heredoc delimiter (e.g., EOFILE123)
  * @returns {Promise<string>}
  */
-export async function buildFileContentString(handles, paths, profile) {
+export async function buildFileContentString(handles, paths, profile, delimiter) {
     let contentString = '';
     const isMultiProject = handles.length > 1;
 
@@ -46,7 +47,7 @@ export async function buildFileContentString(handles, paths, profile) {
 
             if (content.includes('\u0000')) continue;
 
-            contentString += `cat > ./${path} << '${hereDocValue}'\n${content}\n${hereDocValue}\n\n`;
+            contentString += `cat > ./${path} << '${delimiter}'\n${content}\n${delimiter}\n\n`;
         } catch (e) {
             console.warn(`Could not read file for content string: ${path}`, e);
         }
@@ -57,10 +58,11 @@ export async function buildFileContentString(handles, paths, profile) {
 /**
  * Gets the formatted instructions block and other profile-based settings.
  * @param {object} profile
+ * @param {string} delimiter - The dynamic heredoc delimiter (e.g., EOFILE123)
  * @returns {{instructionsBlock: string, codeBlockDelimiter: string}}
  */
-export function getInstructionsBlock(profile) {
-    const codeBlockDelimiter = profile.codeBlockDelimiter || '~~~';
+export function getInstructionsBlock(profile, delimiter) {
+    const codeBlockDelimiter = profile.codeBlockDelimiter || '```';
     
     const baseInstructions = profile.isCriticalInstructionsEnabled 
         ? profile.criticalInstructions 
@@ -70,10 +72,23 @@ export function getInstructionsBlock(profile) {
         ? `5.  **NO NESTED CODE FENCES:** Inside a file's content, no line can begin with '${codeBlockDelimiter}'. Use indentation instead.`
         : '';
 
-    const instructionsBlock = baseInstructions
+    // If using custom instructions that might not have the new placeholder yet, 
+    // fall back to replacing the old hardcoded string if present, 
+    // otherwise just rely on the placeholder.
+    let instructionsBlock = baseInstructions
         .replace(/\{\{DELIMITER\}\}/g, codeBlockDelimiter)
-        .replace(/\{\{FENCE_RULE\}\}/g, fenceRule);
+        .replace(/\{\{FILE_DELIMITER\}\}/g, delimiter);
+
+    // Legacy support for custom instructions that might still have 'EOPROJECTFILE' hardcoded
+    if (instructionsBlock.includes('EOPROJECTFILE')) {
+        instructionsBlock = instructionsBlock.replace(/EOPROJECTFILE/g, delimiter);
+    }
     
+    // Ensure fence rule is correct if placeholder wasn't used for it
+    if (baseInstructions.includes('{{FENCE_RULE}}')) {
+        instructionsBlock = instructionsBlock.replace(/\{\{FENCE_RULE\}\}/g, fenceRule);
+    }
+
     return { instructionsBlock, codeBlockDelimiter };
 }
 
@@ -82,11 +97,12 @@ export function getInstructionsBlock(profile) {
  * @param {string} treeString - The file tree structure.
  * @param {string} contentString - The string of file contents.
  * @param {object} profile - The active user profile.
+ * @param {string} delimiter - The dynamic heredoc delimiter.
  * @returns {string} The complete prompt to be sent to the LLM.
  */
-export function formatContextPrompt(treeString, contentString, profile) {
+export function formatContextPrompt(treeString, contentString, profile, delimiter) {
     const fileContext = `${treeString}\n\n${contentString}`;
-    const { instructionsBlock, codeBlockDelimiter } = getInstructionsBlock(profile);
+    const { instructionsBlock, codeBlockDelimiter } = getInstructionsBlock(profile, delimiter);
     
     const fileContextBlock = `This is current state of project files:\n${codeBlockDelimiter}bash\n${fileContext}${codeBlockDelimiter}`;
     

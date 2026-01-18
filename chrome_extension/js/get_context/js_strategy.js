@@ -11,6 +11,11 @@ import { maskIPs } from '../utils/ip_masking.js';
 import { maskEmails } from '../utils/email_masking.js';
 import { maskFQDNs } from '../utils/fqdn_masking.js';
 
+function generateFileDelimiter() {
+    const randomNum = Math.floor(Math.random() * 900) + 100;
+    return `EOFILE${randomNum}`;
+}
+
 async function getVerifiedHandles(profile) {
     const folderCount = (profile.jsProjectFolderNames || []).length || 1;
     const allHandles = await getHandles(profile.id, folderCount);
@@ -56,18 +61,26 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
         const totalChars = allFileStats.reduce((acc, f) => acc + f.chars, 0);
 
         if (totalChars > contextSizeLimit) {
+            // Directly call the function defined below in the same scope
             await getExclusionSuggestionFromJS(profile, fromShortcut, hostname);
             return { text: `Context size (~${totalChars.toLocaleString()}) exceeds limit (${contextSizeLimit.toLocaleString()}). Suggestion loaded.`, type: 'error' };
         }
 
+        // --- Generate and Store Session Delimiter ---
+        const fileDelimiter = generateFileDelimiter();
+        const storageKey = `session_state_${profile.id}`;
+        const existingState = (await chrome.storage.local.get(storageKey))[storageKey] || {};
+        await chrome.storage.local.set({ 
+            [storageKey]: { ...existingState, fileDelimiter } 
+        });
+
         const filePaths = allFileStats.map(s => s.path);
         const treeString = buildTree(filePaths);
-        const contentString = await buildFileContentString(handles, filePaths, profile);
+        const contentString = await buildFileContentString(handles, filePaths, profile, fileDelimiter);
         
-        const { instructionsBlock, codeBlockDelimiter } = getInstructionsBlock(profile);
+        const { instructionsBlock, codeBlockDelimiter } = getInstructionsBlock(profile, fileDelimiter);
         
         // --- PROCESS FUNCTION ---
-        // ORDER MATTERS: Apply Custom Replacements FIRST, then Auto-Masks.
         const process = async (text) => {
             let processed = text;
             if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
@@ -86,13 +99,13 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
         };
         
         if (profile.getContextTarget === 'clipboard') {
-            const finalPrompt = formatContextPrompt(treeString, contentString, profile);
+            const finalPrompt = formatContextPrompt(treeString, contentString, profile, fileDelimiter);
             await writeToClipboard(await process(finalPrompt));
             return { text: 'Context copied to clipboard!', type: 'success' };
         }
         
         if (!profile.contextAsFile) {
-            const finalPrompt = formatContextPrompt(treeString, contentString, profile);
+            const finalPrompt = formatContextPrompt(treeString, contentString, profile, fileDelimiter);
             await pasteIntoLLM(await process(finalPrompt), {}, hostname);
             return { text: 'Context loaded successfully!', type: 'success' };
         }
@@ -100,7 +113,7 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
         const appSettings = await chrome.storage.local.get({ splitContextBySize: false, contextSplitSize: 450 });
 
         if (appSettings.splitContextBySize) {
-            const contentChunks = splitContextPayload(contentString, appSettings.contextSplitSize);
+            const contentChunks = splitContextPayload(contentString, appSettings.contextSplitSize, fileDelimiter);
             const uploadedFiles = [];
             
             for (let i = 0; i < contentChunks.length; i++) {
@@ -141,7 +154,7 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
         } else {
             const fileContextPayload = `${treeString}\n\n${contentString}`;
             const fileContextForUpload = `This is current state of project files:\n${codeBlockDelimiter}bash\n${fileContextPayload}${codeBlockDelimiter}`;
-            const finalPrompt = formatContextPrompt(treeString, contentString, profile);
+            const finalPrompt = formatContextPrompt(treeString, contentString, profile, fileDelimiter);
             
             switch (profile.separateInstructions) {
                 case 'include':
