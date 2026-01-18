@@ -36,20 +36,31 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
     const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
     const contextSizeLimit = profile.contextSizeLimit || 3000000;
     
-    // --- Generate and Store Session Delimiters ---
-    const fileDelimiter = generateFileDelimiter();
-    const sessionState = { fileDelimiter };
+    // --- Retrieve or Generate Session Delimiters ---
+    const storageKey = `session_state_${profile.id}`;
+    let sessionState = (await chrome.storage.local.get(storageKey))[storageKey] || {};
+    let needsSave = false;
+
+    let fileDelimiter = sessionState.fileDelimiter;
+    if (!fileDelimiter) {
+        fileDelimiter = generateFileDelimiter();
+        sessionState.fileDelimiter = fileDelimiter;
+        needsSave = true;
+    }
     
     // Agent Delimiter logic
-    let agentDelimiter = null;
+    let agentDelimiter = sessionState.agentDelimiter;
     if (profile.isAgentModeEnabled) {
-        agentDelimiter = generateAgentDelimiter();
-        sessionState.agentDelimiter = agentDelimiter;
+        if (!agentDelimiter) {
+            agentDelimiter = generateAgentDelimiter();
+            sessionState.agentDelimiter = agentDelimiter;
+            needsSave = true;
+        }
     }
 
-    // Store in chrome storage per profile
-    const storageKey = `session_state_${profile.id}`;
-    await chrome.storage.local.set({ [storageKey]: sessionState });
+    if (needsSave) {
+        await chrome.storage.local.set({ [storageKey]: sessionState });
+    }
 
     const pathParams = paths.map(p => `path=${encodeURIComponent(p)}`).join('&');
     
@@ -205,9 +216,6 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
 }
 
 export async function getExclusionSuggestionFromServer(profile, fromShortcut = false, hostname = null) {
-    // ... (This function remains largely the same, no file delimiter needed for exclusion suggestions) ...
-    // ... Copied context from previous version to ensure file completeness ...
-    
     const paths = profile.projectPaths;
     if (!paths || paths.length === 0 || !paths.some(p => p && p.trim())) {
         return { text: 'Error: Please enter at least one project path.', type: 'error' };
@@ -245,6 +253,7 @@ export async function getExclusionSuggestionFromServer(profile, fromShortcut = f
             profile: profile
         });
         
+        // Sync first, then Mask
         if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
             prompt = applyReplacements(prompt, profile.twoWaySyncRules, 'outgoing');
         }

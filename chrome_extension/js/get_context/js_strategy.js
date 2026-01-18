@@ -1,6 +1,6 @@
 import { getHandles, verifyPermission } from '../file_system_manager.js';
 import { scanDirectory } from '../context_builder/file_scanner.js';
-import { buildTree, buildTreeWithCounts } from '../context_builder/tree_builder.js';
+import { buildTree } from '../context_builder/tree_builder.js';
 import { pasteIntoLLM, uploadContextAsFile, uploadInstructionsAsFile } from '../context_builder/llm_interface.js';
 import { formatContextPrompt, buildFileContentString, getInstructionsBlock } from '../context_builder/prompt_formatter.js';
 import { formatExclusionPrompt } from '../exclusion_prompt.js';
@@ -61,18 +61,20 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
         const totalChars = allFileStats.reduce((acc, f) => acc + f.chars, 0);
 
         if (totalChars > contextSizeLimit) {
-            // Directly call the function defined below in the same scope
             await getExclusionSuggestionFromJS(profile, fromShortcut, hostname);
             return { text: `Context size (~${totalChars.toLocaleString()}) exceeds limit (${contextSizeLimit.toLocaleString()}). Suggestion loaded.`, type: 'error' };
         }
 
-        // --- Generate and Store Session Delimiter ---
-        const fileDelimiter = generateFileDelimiter();
+        // --- Retrieve or Generate Session Delimiter ---
         const storageKey = `session_state_${profile.id}`;
-        const existingState = (await chrome.storage.local.get(storageKey))[storageKey] || {};
-        await chrome.storage.local.set({ 
-            [storageKey]: { ...existingState, fileDelimiter } 
-        });
+        let sessionState = (await chrome.storage.local.get(storageKey))[storageKey] || {};
+        
+        let fileDelimiter = sessionState.fileDelimiter;
+        if (!fileDelimiter) {
+            fileDelimiter = generateFileDelimiter();
+            sessionState.fileDelimiter = fileDelimiter;
+            await chrome.storage.local.set({ [storageKey]: sessionState });
+        }
 
         const filePaths = allFileStats.map(s => s.path);
         const treeString = buildTree(filePaths);
