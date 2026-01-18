@@ -11,9 +11,15 @@ import { maskEmails } from '../utils/email_masking.js';
 import { agentInstructions } from '../agent_constants.js';
 
 // New helper for agent upload
-async function uploadAgentInstructions(hostname) {
+async function uploadAgentInstructions(hostname, content) {
     // We upload this as agent.txt
-    await uploadContextAsFile(agentInstructions, 'agent.txt', hostname);
+    await uploadContextAsFile(content, 'agent.txt', hostname);
+}
+
+function generateAgentDelimiter() {
+    // Generates EOBASHxxx where xxx is 100-999
+    const randomNum = Math.floor(Math.random() * 900) + 100;
+    return `EOBASH${randomNum}`;
 }
 
 export async function getContextFromServer(profile, fromShortcut, hostname) {
@@ -83,8 +89,11 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
         // --- Agent Mode Injection Logic ---
         let finalPromptInstructions = instructionsBlock;
         if (profile.isAgentModeEnabled) {
-            finalPromptInstructions += `\n\n**AGENT MODE INSTRUCTIONS:**\nSpecial agent instructions are in the attached file \`agent.txt\`. You MUST follow them for tool use.`;
-            await uploadAgentInstructions(hostname);
+            const delimiter = generateAgentDelimiter();
+            const specificInstructions = agentInstructions.replace(/{{AGENT_DELIMITER}}/g, delimiter);
+            
+            finalPromptInstructions += `\n\n**AGENT MODE INSTRUCTIONS:**\nSpecial agent instructions are in the attached file \`agent.txt\`.\nYou MUST follow them for tool use.`;
+            await uploadAgentInstructions(hostname, specificInstructions);
         }
 
         if (profile.getContextTarget === 'clipboard') {

@@ -4,6 +4,10 @@ import { handleServerError } from './ui_handlers/server_error_handler.js';
 import { extractCodeWithFallback } from './deploy_code/robust_fallback.js';
 import { handleAgentTool } from './deploy_code/agent_strategy.js';
 
+// Regex to capture the command content from the bash heredoc syntax
+// Matches: bash << EOBASHxxx ...content... EOBASHxxx
+const AGENT_COMMAND_REGEX = /bash\s*<<\s*(EOBASH\d{3})\s*([\s\S]*?)\s*\1/i;
+
 /**
  * Deploys code to the user's project, choosing the appropriate strategy.
  * @param {object} profile The active user profile.
@@ -36,13 +40,10 @@ export async function deployCode(profile, fromShortcut = false, hostname = null)
         const VALID_COMMAND_REGEX = /^\s*(cat\s+>|mkdir|rm|rmdir|mv|touch|chmod)/m;
         const hasBashCode = VALID_COMMAND_REGEX.test(codeToDeploy);
 
-        // 3. Check for Agent Tools (Robust Regex)
-        // Matches <tool ... code="command" ... >
-        const toolRegex = /<tool\b[^>]+code=['"]([^'"]*)['"][^>]*>/i;
-        const toolMatch = codeToDeploy.match(toolRegex);
+        // 3. Check for Agent Tools (New Syntax)
+        const toolMatch = codeToDeploy.match(AGENT_COMMAND_REGEX);
         
-        // Only consider it a valid tool execution if profile enables it OR if we want to be lenient.
-        // For security, strictly check isAgent.
+        // Only consider it a valid tool execution if profile enables it AND we found a match.
         const hasTool = isAgent && !!toolMatch;
 
         // --- EXECUTION SEQUENCE ---
@@ -55,7 +56,7 @@ export async function deployCode(profile, fromShortcut = false, hostname = null)
 
         // B) Execute Tool Second (if present)
         if (hasTool) {
-            const command = toolMatch[1];
+            const command = toolMatch[2].trim(); // Capture group 2 is the content
             // If <done /> is present, we do NOT auto-run the next turn.
             const shouldTriggerRun = !hasDoneTag;
             const toolMsg = await handleAgentTool(profile, command, hostname, shouldTriggerRun);

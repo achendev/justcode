@@ -3,8 +3,8 @@ import { prepareForFullAnswerExtraction, revertFullAnswerExtraction } from './ro
 
 // A simple regex to check for the presence of at least one valid command.
 const VALID_COMMAND_REGEX = /^\s*(cat\s+>|mkdir|rm|rmdir|mv|touch|chmod)/m;
-// Regex to check for agent tool usage (Robust: matches <tool ... code="..." ... >)
-const VALID_TOOL_REGEX = /<tool\b[^>]+code=['"][^'"]*['"][^>]*>/i;
+// Regex to check for agent tool usage (Robust: matches bash << EOBASH...)
+const VALID_TOOL_REGEX = /bash\s*<<\s*(EOBASH\d{3})/i;
 // Regex to check for done tag (Robust)
 const DONE_TAG_REGEX = /<done\b[^>]*\/?>/i;
 
