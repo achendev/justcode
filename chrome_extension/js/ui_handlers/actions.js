@@ -183,8 +183,15 @@ export function handleUpdateAppClick(event) {
             }
 
             const response = await fetch(endpoint, { method: 'POST', headers: headers });
-            const resultText = await response.text();
+            let resultText = await response.text();
             if (!response.ok) throw new Error(resultText);
+            
+            // Check if actual update happened
+            if (resultText.includes("Update successful!")) {
+                const extId = chrome.runtime.id;
+                // Add instructions with a dynamic link to the specific extension page
+                resultText += `<br><br>⚠️ <b>Important:</b> You may have to <a href="chrome://extensions/?id=${extId}">reload the extension</a> and use it in a new fresh tab.`;
+            }
             
             await updateAndSaveMessage(id, resultText, 'success');
 
