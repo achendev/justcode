@@ -159,6 +159,17 @@ export function handleAutoMaskEmailsToggle(event) {
     });
 }
 
+export function handleAutoMaskFQDNsToggle(event) {
+    const id = parseInt(event.target.dataset.id);
+    loadData((profiles, activeProfileId, archivedProfiles) => {
+        const profile = profiles.find(p => p.id === id);
+        if (profile) {
+            profile.autoMaskFQDNs = event.target.checked;
+            saveData(profiles, activeProfileId, archivedProfiles);
+        }
+    });
+}
+
 async function setAutoDeployState(enabled) {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab || !tab.id) return;

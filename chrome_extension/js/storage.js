@@ -64,6 +64,7 @@ function migrateProfile(profile) {
     if (profile.twoWaySyncRules === undefined) { profile.twoWaySyncRules = 'StroNgPasWord|password\nmydomain.com|example.com'; changed = true; }
     if (profile.autoMaskIPs === undefined) { profile.autoMaskIPs = false; changed = true; }
     if (profile.autoMaskEmails === undefined) { profile.autoMaskEmails = false; changed = true; }
+    if (profile.autoMaskFQDNs === undefined) { profile.autoMaskFQDNs = false; changed = true; }
     if (profile.autoDeploy === undefined) { profile.autoDeploy = false; changed = true; }
     if (profile.isAgentModeEnabled === undefined) { profile.isAgentModeEnabled = false; changed = true; }
     if (profile.agentReviewPolicy === undefined) { profile.agentReviewPolicy = 'review'; changed = true; }
@@ -111,6 +112,7 @@ export function loadData(callback) {
                 twoWaySyncRules: 'StroNgPasWord|password\nmydomain.com|example.com',
                 autoMaskIPs: false,
                 autoMaskEmails: false,
+                autoMaskFQDNs: false,
                 autoDeploy: false,
                 isAgentModeEnabled: false,
                 agentReviewPolicy: 'review'

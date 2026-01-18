@@ -98,4 +98,9 @@ export function attachSettingsEventListeners(reRenderCallback) {
     document.querySelectorAll('.auto-mask-emails').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => settingsHandlers.handleAutoMaskEmailsToggle(e));
     });
+
+    // --- Auto FQDN Masking ---
+    document.querySelectorAll('.auto-mask-fqdns').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => settingsHandlers.handleAutoMaskFQDNsToggle(e));
+    });
 }

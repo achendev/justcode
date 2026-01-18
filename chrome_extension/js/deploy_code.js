@@ -6,6 +6,7 @@ import { executeAgentCommand, reportAgentResults } from './deploy_code/agent_str
 import { applyReplacements } from './utils/two_way_sync.js';
 import { unmaskIPs } from './utils/ip_masking.js';
 import { unmaskEmails } from './utils/email_masking.js';
+import { unmaskFQDNs } from './utils/fqdn_masking.js';
 
 // Regex to capture the command content from the bash heredoc syntax
 // Matches: bash << EOBASHxxx ...content... EOBASHxxx
@@ -33,6 +34,9 @@ export async function deployCode(profile, fromShortcut = false, hostname = null)
         }
         if (profile.autoMaskIPs) {
             codeToDeploy = await unmaskIPs(codeToDeploy);
+        }
+        if (profile.autoMaskFQDNs) {
+            codeToDeploy = await unmaskFQDNs(codeToDeploy);
         }
         if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
             codeToDeploy = applyReplacements(codeToDeploy, profile.twoWaySyncRules, 'incoming');

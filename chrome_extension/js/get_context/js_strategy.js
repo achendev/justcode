@@ -9,6 +9,7 @@ import { applyReplacements } from '../utils/two_way_sync.js';
 import { splitContextPayload } from './utils.js';
 import { maskIPs } from '../utils/ip_masking.js';
 import { maskEmails } from '../utils/email_masking.js';
+import { maskFQDNs } from '../utils/fqdn_masking.js';
 
 async function getVerifiedHandles(profile) {
     const folderCount = (profile.jsProjectFolderNames || []).length || 1;
@@ -77,6 +78,9 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
             }
             if (profile.autoMaskEmails) {
                 processed = await maskEmails(processed);
+            }
+            if (profile.autoMaskFQDNs) {
+                processed = await maskFQDNs(processed);
             }
             return processed;
         };
@@ -200,7 +204,7 @@ export async function getExclusionSuggestionFromJS(profile, fromShortcut = false
     
     let prompt = formatExclusionPrompt({ treeString, totalChars, profile });
     
-    // Process Exclusion Prompt: Sync first, then Mask
+    // Sync first, then Mask
     if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
         prompt = applyReplacements(prompt, profile.twoWaySyncRules, 'outgoing');
     }
@@ -209,6 +213,9 @@ export async function getExclusionSuggestionFromJS(profile, fromShortcut = false
     }
     if (profile.autoMaskEmails) {
         prompt = await maskEmails(prompt);
+    }
+    if (profile.autoMaskFQDNs) {
+        prompt = await maskFQDNs(prompt);
     }
 
     if (profile.getContextTarget === 'clipboard') {

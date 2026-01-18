@@ -98,6 +98,10 @@ export function getSettingsViewHTML(profile) {
             <label class="form-check-label" for="autoMaskEmails-${profile.id}">Auto-Mask Email Addresses</label>
         </div>
         <div class="form-check mb-2">
+            <input type="checkbox" class="form-check-input auto-mask-fqdns" id="autoMaskFQDNs-${profile.id}" data-id="${profile.id}" ${profile.autoMaskFQDNs ? 'checked' : ''}>
+            <label class="form-check-label" for="autoMaskFQDNs-${profile.id}">Auto-Mask Domains (FQDNs)</label>
+        </div>
+        <div class="form-check mb-2">
             <input type="checkbox" class="form-check-input two-way-sync-enabled" id="twoWaySyncEnabled-${profile.id}" data-id="${profile.id}" ${profile.isTwoWaySyncEnabled ? 'checked' : ''}>
             <label class="form-check-label" for="twoWaySyncEnabled-${profile.id}">Enable Custom Two-Way Replacements</label>
         </div>

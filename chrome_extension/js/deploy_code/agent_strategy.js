@@ -2,6 +2,7 @@ import { pasteIntoLLM } from '../context_builder/llm_interface.js';
 import { applyReplacements } from '../utils/two_way_sync.js';
 import { maskIPs } from '../utils/ip_masking.js';
 import { maskEmails } from '../utils/email_masking.js';
+import { maskFQDNs } from '../utils/fqdn_masking.js';
 
 export async function executeAgentCommand(profile, command, delimiter) {
     if (!profile.useServerBackend) {
@@ -46,6 +47,9 @@ export async function executeAgentCommand(profile, command, delimiter) {
         if (profile.autoMaskEmails) {
             resultText = await maskEmails(resultText);
         }
+        if (profile.autoMaskFQDNs) {
+            resultText = await maskFQDNs(resultText);
+        }
 
         // 2. Process the executed command for display
         // We must reverse the 'incoming' replacements so we don't leak real values back into the context.
@@ -59,6 +63,9 @@ export async function executeAgentCommand(profile, command, delimiter) {
         }
         if (profile.autoMaskEmails) {
             displayCommand = await maskEmails(displayCommand);
+        }
+        if (profile.autoMaskFQDNs) {
+            displayCommand = await maskFQDNs(displayCommand);
         }
 
         return { resultText, displayCommand, delimiter };

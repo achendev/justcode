@@ -8,6 +8,7 @@ import { applyReplacements } from '../utils/two_way_sync.js';
 import { splitContextPayload } from './utils.js';
 import { maskIPs } from '../utils/ip_masking.js';
 import { maskEmails } from '../utils/email_masking.js';
+import { maskFQDNs } from '../utils/fqdn_masking.js';
 import { agentInstructions } from '../agent_constants.js';
 
 // New helper for agent upload
@@ -82,6 +83,9 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
             }
             if (profile.autoMaskEmails) {
                 processed = await maskEmails(processed);
+            }
+            if (profile.autoMaskFQDNs) {
+                processed = await maskFQDNs(processed);
             }
             return processed;
         };
@@ -231,6 +235,9 @@ export async function getExclusionSuggestionFromServer(profile, fromShortcut = f
         }
         if (profile.autoMaskEmails) {
             prompt = await maskEmails(prompt);
+        }
+        if (profile.autoMaskFQDNs) {
+            prompt = await maskFQDNs(prompt);
         }
 
         if (profile.getContextTarget === 'clipboard') {
