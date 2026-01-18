@@ -3,17 +3,9 @@ import { applyReplacements } from '../utils/two_way_sync.js';
 import { maskIPs } from '../utils/ip_masking.js';
 import { maskEmails } from '../utils/email_masking.js';
 
-/**
- * Handles agent tool execution.
- * @param {object} profile The active profile.
- * @param {string} command The command content to execute.
- * @param {string} delimiter The delimiter used (e.g. EOBASH123).
- * @param {string} hostname Hostname of the current tab.
- * @param {boolean} shouldTriggerRun If true, clicks the send button after pasting.
- */
-export async function handleAgentTool(profile, command, delimiter, hostname, shouldTriggerRun = true) {
+export async function executeAgentCommand(profile, command, delimiter) {
     if (!profile.useServerBackend) {
-        return "Error: Agent mode tools require Server Backend.";
+        throw new Error("Agent mode tools require Server Backend.");
     }
 
     const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
@@ -30,8 +22,6 @@ export async function handleAgentTool(profile, command, delimiter, hostname, sho
         }
 
         // Execute Command on Server
-        // Note: The 'command' passed here already has incoming replacements applied (via deployCode.js logic),
-        // so it uses real paths/credentials (e.g. 'admin').
         const response = await fetch(fullEndpoint, {
             method: 'POST',
             headers: headers,
@@ -71,31 +61,34 @@ export async function handleAgentTool(profile, command, delimiter, hostname, sho
             displayCommand = await maskEmails(displayCommand);
         }
 
-        // Reconstruct the heredoc format for the UI log
-        const fullCommandStr = `bash << ${delimiter}\n${displayCommand}\n${delimiter}`;
-
-        // Format result for LLM
-        let reply = `\n<tool_output>\nCOMMAND:\n${fullCommandStr}\n\n${resultText}\n</tool_output>`;
-        
-        if (shouldTriggerRun) {
-            reply += "\n\nProceed with the next step.";
-        } else {
-            reply += "\n\n(Auto-run stopped by <done /> tag or user interruption).";
-        }
-        
-        // Paste into UI
-        await pasteIntoLLM(reply, {}, hostname);
-        
-        // Click Send (Triggering logic) if requested
-        if (shouldTriggerRun) {
-            await clickSendButton(hostname);
-        }
-
-        return `Executed: bash << ${delimiter}`;
+        return { resultText, displayCommand, delimiter };
 
     } catch (error) {
         console.error("Agent execution error:", error);
         throw error;
+    }
+}
+
+export async function reportAgentResults(results, hostname, shouldTriggerRun) {
+    let combinedOutput = '\n<tool_output>';
+    
+    for (const res of results) {
+        const fullCommandStr = `bash << ${res.delimiter}\n${res.displayCommand}\n${res.delimiter}`;
+        combinedOutput += `\nCOMMAND:\n${fullCommandStr}\n\n${res.resultText}\n`;
+    }
+    
+    combinedOutput += '</tool_output>';
+
+    if (shouldTriggerRun) {
+        combinedOutput += "\n\nProceed with the next step.";
+    } else {
+        combinedOutput += "\n\n(Auto-run stopped by <done /> tag or user interruption).";
+    }
+    
+    await pasteIntoLLM(combinedOutput, {}, hostname);
+    
+    if (shouldTriggerRun) {
+        await clickSendButton(hostname);
     }
 }
 
