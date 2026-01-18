@@ -1,16 +1,31 @@
 import subprocess
 import os
+import platform
+import shutil
 
 def execute_shell_command(command, cwd):
     """
     Executes an arbitrary shell command in the given directory.
     """
     try:
+        executable = None
+        wrapped_command = command
+        
+        # Enhancing output for POSIX systems with Bash
+        # This adds a trap to echo commands before execution, simulating a terminal session.
+        # This helps the LLM distinguish which output belongs to which command in the STDOUT block.
+        if platform.system() != "Windows" and shutil.which("bash"):
+            executable = shutil.which("bash")
+            # The trap command echoes "$ " followed by the command being executed ($BASH_COMMAND).
+            # We use single quotes for the trap body to prevent immediate expansion by the shell parsing the trap line.
+            wrapped_command = f"trap 'echo \"$ $BASH_COMMAND\"' DEBUG\n{command}"
+
         # shell=True allows using pipes, redirects, and environment variables
         result = subprocess.run(
-            command, 
+            wrapped_command, 
             cwd=cwd, 
-            shell=True, 
+            shell=True,
+            executable=executable,
             capture_output=True, 
             text=True,
             timeout=120  # 2 minute timeout for safety
