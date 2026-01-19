@@ -27,22 +27,22 @@ export async function deployCode(profile, fromShortcut = false, hostname = null,
         const stateKey = `session_state_${profile.id}`;
         const sessionState = (await chrome.storage.local.get(stateKey))[stateKey] || {};
         
-        // Use stored file delimiter or fallback to legacy/generic if not found
-        // Note: For file operations, we don't strictly enforce the session ID in regex matching *here* 
-        // because the parsing logic is deeper in the strategies, but we pass it down.
-        // However, if strictness is required, the executor functions will handle it.
         const fileDelimiter = sessionState.fileDelimiter || 'EOPROJECTFILE';
         const agentDelimiter = sessionState.agentDelimiter;
 
-        // --- CENTRALIZED INPUT PROCESSING ---
-        if (profile.autoMaskEmails) {
-            codeToDeploy = await unmaskEmails(codeToDeploy);
+        // --- CENTRALIZED INPUT PROCESSING (UNMASKING/INCOMING) ---
+        // CRITICAL: Order must be FQDN -> IP -> Email -> Replacements
+        // FQDN must be unmasked first because Email/IP maskers might have generated fake domains 
+        // that were subsequently masked by the FQDN masker.
+        
+        if (profile.autoMaskFQDNs) {
+            codeToDeploy = await unmaskFQDNs(codeToDeploy);
         }
         if (profile.autoMaskIPs) {
             codeToDeploy = await unmaskIPs(codeToDeploy);
         }
-        if (profile.autoMaskFQDNs) {
-            codeToDeploy = await unmaskFQDNs(codeToDeploy);
+        if (profile.autoMaskEmails) {
+            codeToDeploy = await unmaskEmails(codeToDeploy);
         }
         if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
             codeToDeploy = applyReplacements(codeToDeploy, profile.twoWaySyncRules, 'incoming');
@@ -72,10 +72,8 @@ export async function deployCode(profile, fromShortcut = false, hostname = null,
             let agentCommandRegex;
             
             if (agentDelimiter) {
-                // Strict: Only match the specific session delimiter
                 agentCommandRegex = new RegExp(`bash\\s*<<\\s*(${agentDelimiter})\\s*([\\s\\S]*?)\\s*\\1`, "gi");
             } else {
-                // Fallback
                 console.warn("JustCode: No active agent session delimiter found. Using generic matching.");
                 agentCommandRegex = /bash\s*<<\s*(EOBASH\d{3})\s*([\s\S]*?)\s*\1/gi;
             }
@@ -99,7 +97,6 @@ export async function deployCode(profile, fromShortcut = false, hostname = null,
             }
 
             if (VALID_COMMAND_REGEX.test(fileDeployScript)) {
-                // Pass the specific file delimiter to the server strategy
                 const deployMsg = await handleServerDeployment(profile, fromShortcut, hostname, fileDeployScript, fileDelimiter);
                 resultMessages.push(deployMsg);
             }

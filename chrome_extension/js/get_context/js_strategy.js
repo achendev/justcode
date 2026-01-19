@@ -82,17 +82,18 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
         
         const { instructionsBlock, codeBlockDelimiter } = getInstructionsBlock(profile, fileDelimiter);
         
-        // --- PROCESS FUNCTION ---
+        // --- PROCESS FUNCTION (OUTGOING) ---
         const process = async (text) => {
             let processed = text;
             if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
                 processed = applyReplacements(processed, profile.twoWaySyncRules, 'outgoing');
             }
-            if (profile.autoMaskIPs) {
-                processed = await maskIPs(processed);
-            }
+            // CRITICAL ORDER: Email -> IP -> FQDN
             if (profile.autoMaskEmails) {
                 processed = await maskEmails(processed);
+            }
+            if (profile.autoMaskIPs) {
+                processed = await maskIPs(processed);
             }
             if (profile.autoMaskFQDNs) {
                 processed = await maskFQDNs(processed);
@@ -219,15 +220,15 @@ export async function getExclusionSuggestionFromJS(profile, fromShortcut = false
     
     let prompt = formatExclusionPrompt({ treeString, totalChars, profile });
     
-    // Sync first, then Mask
+    // Process Outgoing: Email -> IP -> FQDN
     if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
         prompt = applyReplacements(prompt, profile.twoWaySyncRules, 'outgoing');
     }
-    if (profile.autoMaskIPs) {
-        prompt = await maskIPs(prompt);
-    }
     if (profile.autoMaskEmails) {
         prompt = await maskEmails(prompt);
+    }
+    if (profile.autoMaskIPs) {
+        prompt = await maskIPs(prompt);
     }
     if (profile.autoMaskFQDNs) {
         prompt = await maskFQDNs(prompt);

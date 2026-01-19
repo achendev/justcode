@@ -32,17 +32,20 @@ export async function applyReplacementsAndPaste(profile, fromShortcut = false, h
             processedText = applyReplacements(processedText, profile.twoWaySyncRules, 'outgoing');
         }
 
-        if (profile.autoMaskIPs) {
-            processedText = await maskIPs(processedText);
-        }
+        // CRITICAL: Masking Order (Specific to General)
+        // 1. Emails (User-specific)
         if (profile.autoMaskEmails) {
             processedText = await maskEmails(processedText);
         }
+        // 2. IPs
+        if (profile.autoMaskIPs) {
+            processedText = await maskIPs(processedText);
+        }
+        // 3. FQDNs (General - might catch fake domains from step 1)
         if (profile.autoMaskFQDNs) {
             processedText = await maskFQDNs(processedText);
         }
         
-        // Pass insertAtCursor: true to prevent overwriting existing text
         await pasteIntoLLM(processedText, { insertAtCursor: true }, hostname);
 
         return { text: "Applied replacements/masking and pasted to UI.", type: 'success' };

@@ -36,16 +36,17 @@ export async function executeAgentCommand(profile, command, delimiter) {
         }
 
         // --- PROCESSING OUTPUT (Privacy & Sync) ---
+        // This is OUTGOING to the LLM (Result) -> Order: Email -> IP -> FQDN
         
         // 1. Process the result from the server (e.g. mask 'admin' -> 'someuser')
         if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
             resultText = applyReplacements(resultText, profile.twoWaySyncRules, 'outgoing');
         }
-        if (profile.autoMaskIPs) {
-            resultText = await maskIPs(resultText);
-        }
         if (profile.autoMaskEmails) {
             resultText = await maskEmails(resultText);
+        }
+        if (profile.autoMaskIPs) {
+            resultText = await maskIPs(resultText);
         }
         if (profile.autoMaskFQDNs) {
             resultText = await maskFQDNs(resultText);
@@ -54,15 +55,17 @@ export async function executeAgentCommand(profile, command, delimiter) {
         // 2. Process the executed command for display
         // We must reverse the 'incoming' replacements so we don't leak real values back into the context.
         // e.g. 'admin' -> 'someuser'
+        // This is OUTGOING to the LLM (Command Echo) -> Order: Email -> IP -> FQDN
         let displayCommand = command;
+        
         if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
             displayCommand = applyReplacements(displayCommand, profile.twoWaySyncRules, 'outgoing');
         }
-        if (profile.autoMaskIPs) {
-            displayCommand = await maskIPs(displayCommand);
-        }
         if (profile.autoMaskEmails) {
             displayCommand = await maskEmails(displayCommand);
+        }
+        if (profile.autoMaskIPs) {
+            displayCommand = await maskIPs(displayCommand);
         }
         if (profile.autoMaskFQDNs) {
             displayCommand = await maskFQDNs(displayCommand);
