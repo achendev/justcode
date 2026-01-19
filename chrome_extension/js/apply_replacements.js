@@ -1,17 +1,23 @@
 import { readFromClipboard } from './utils/clipboard.js';
 import { applyReplacements } from './utils/two_way_sync.js';
 import { pasteIntoLLM } from './context_builder/llm_interface.js';
+import { maskIPs } from './utils/ip_masking.js';
+import { maskEmails } from './utils/email_masking.js';
+import { maskFQDNs } from './utils/fqdn_masking.js';
 
 /**
- * Reads clipboard, applies two-way sync replacements, and pastes into the LLM UI.
+ * Reads clipboard, applies two-way sync replacements and auto-masking, and pastes into the LLM UI.
  * @param {object} profile The active user profile.
  * @param {boolean} [fromShortcut=false] - True if called from a keyboard shortcut.
  * @param {string|null} [hostname=null] - The hostname of the active tab.
  * @returns {Promise<{text: string, type: 'success'|'error'|'info'}>} A result object.
  */
 export async function applyReplacementsAndPaste(profile, fromShortcut = false, hostname = null) {
-    if (!profile.isTwoWaySyncEnabled || !profile.twoWaySyncRules) {
-        return { text: "Error: Two-Way Sync is not enabled or configured.", type: 'error' };
+    const hasSync = profile.isTwoWaySyncEnabled && profile.twoWaySyncRules;
+    const hasAutoMask = profile.autoMaskIPs || profile.autoMaskEmails || profile.autoMaskFQDNs;
+
+    if (!hasSync && !hasAutoMask) {
+        return { text: "Error: No replacements or masking enabled.", type: 'error' };
     }
     
     try {
@@ -20,11 +26,26 @@ export async function applyReplacementsAndPaste(profile, fromShortcut = false, h
             return { text: "Clipboard is empty.", type: 'info' };
         }
 
-        const processedText = applyReplacements(clipboardText, profile.twoWaySyncRules, 'outgoing');
-        
-        await pasteIntoLLM(processedText, {}, hostname);
+        let processedText = clipboardText;
 
-        return { text: "Applied replacements and pasted to UI.", type: 'success' };
+        if (hasSync) {
+            processedText = applyReplacements(processedText, profile.twoWaySyncRules, 'outgoing');
+        }
+
+        if (profile.autoMaskIPs) {
+            processedText = await maskIPs(processedText);
+        }
+        if (profile.autoMaskEmails) {
+            processedText = await maskEmails(processedText);
+        }
+        if (profile.autoMaskFQDNs) {
+            processedText = await maskFQDNs(processedText);
+        }
+        
+        // Pass insertAtCursor: true to prevent overwriting existing text
+        await pasteIntoLLM(processedText, { insertAtCursor: true }, hostname);
+
+        return { text: "Applied replacements/masking and pasted to UI.", type: 'success' };
 
     } catch (error) {
         console.error('JustCode Apply Replacements Error:', error);

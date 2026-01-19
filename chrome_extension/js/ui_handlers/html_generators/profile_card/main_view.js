@@ -1,5 +1,6 @@
 export function getMainViewHTML(profile) {
     const message = profile.lastMessage || { text: '', type: 'info' };
+    const showApplyBtn = profile.isTwoWaySyncEnabled || profile.autoMaskIPs || profile.autoMaskEmails || profile.autoMaskFQDNs;
     
     return `
     <!-- Main View for the profile -->
@@ -92,7 +93,7 @@ export function getMainViewHTML(profile) {
                 <button class="btn btn-outline-secondary undo-code" data-id="${profile.id}" title="Undo (ALT + <) or (⌥<)" disabled><i class="bi bi-arrow-90deg-left"></i></button>
                 <button class="btn btn-outline-secondary redo-code" data-id="${profile.id}" title="Redo (ALT + >) or (⌥>)" disabled><i class="bi bi-arrow-90deg-right"></i></button>
             </div>
-            <button class="btn btn-outline-secondary btn-sm apply-replacements ${!profile.isTwoWaySyncEnabled ? 'd-none' : ''}" data-id="${profile.id}" title="Apply Replacements to Clipboard & Paste (Alt+V)"><i class="bi bi-magic"></i></button>
+            <button class="btn btn-outline-secondary btn-sm apply-replacements ${!showApplyBtn ? 'd-none' : ''}" data-id="${profile.id}" title="Apply Replacements/Masking to Clipboard & Paste (Alt+V)"><i class="bi bi-magic"></i></button>
         </div>
         
         <div class="mb-2 include-patterns-container collapsed" id="includeContainer-${profile.id}">

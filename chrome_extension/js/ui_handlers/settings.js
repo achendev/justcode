@@ -119,14 +119,28 @@ export function handleAgentModeToggle(event, reRenderCallback) {
     });
 }
 
+function updateApplyButtonVisibility(profileId) {
+    const profileCard = document.getElementById(`profile-${profileId}`);
+    if (!profileCard) return;
+
+    const syncEnabled = profileCard.querySelector('.two-way-sync-enabled').checked;
+    const ipsEnabled = profileCard.querySelector('.auto-mask-ips').checked;
+    const emailsEnabled = profileCard.querySelector('.auto-mask-emails').checked;
+    const fqdnsEnabled = profileCard.querySelector('.auto-mask-fqdns').checked;
+
+    const shouldShow = syncEnabled || ipsEnabled || emailsEnabled || fqdnsEnabled;
+    const applyBtn = profileCard.querySelector('.apply-replacements');
+    if (applyBtn) applyBtn.classList.toggle('d-none', !shouldShow);
+}
+
 export function handleTwoWaySyncToggle(event) {
     const id = parseInt(event.target.dataset.id);
     const isChecked = event.target.checked;
     const profileCard = document.getElementById(`profile-${id}`);
     const textarea = profileCard.querySelector('.two-way-sync-rules');
     if (textarea) textarea.disabled = !isChecked;
-    const applyBtn = profileCard.querySelector('.apply-replacements');
-    if (applyBtn) applyBtn.classList.toggle('d-none', !isChecked);
+    
+    updateApplyButtonVisibility(id);
 
     loadData((profiles, activeProfileId, archivedProfiles) => {
         const profile = profiles.find(p => p.id === id);
@@ -139,6 +153,8 @@ export function handleTwoWaySyncToggle(event) {
 
 export function handleAutoMaskIPsToggle(event) {
     const id = parseInt(event.target.dataset.id);
+    updateApplyButtonVisibility(id);
+    
     loadData((profiles, activeProfileId, archivedProfiles) => {
         const profile = profiles.find(p => p.id === id);
         if (profile) {
@@ -150,6 +166,8 @@ export function handleAutoMaskIPsToggle(event) {
 
 export function handleAutoMaskEmailsToggle(event) {
     const id = parseInt(event.target.dataset.id);
+    updateApplyButtonVisibility(id);
+
     loadData((profiles, activeProfileId, archivedProfiles) => {
         const profile = profiles.find(p => p.id === id);
         if (profile) {
@@ -161,6 +179,8 @@ export function handleAutoMaskEmailsToggle(event) {
 
 export function handleAutoMaskFQDNsToggle(event) {
     const id = parseInt(event.target.dataset.id);
+    updateApplyButtonVisibility(id);
+
     loadData((profiles, activeProfileId, archivedProfiles) => {
         const profile = profiles.find(p => p.id === id);
         if (profile) {
