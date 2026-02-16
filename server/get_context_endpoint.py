@@ -103,8 +103,43 @@ def get_context():
         file_contents = (final_tree + "\n\n" + final_content) if final_content else final_tree
         
         if gather_context and context_script:
-            # (Additional context logic remains the same)
-            pass # Simplified for brevity, same block as before
+            main_project_path = project_paths[0]
+            if os.path.isfile(main_project_path): main_project_path = os.path.dirname(main_project_path)
+            try:
+                script_for_display = context_script.replace('\r\n', '\n')
+                commands = [cmd for cmd in script_for_display.split('\n') if cmd.strip()]
+                
+                output_parts = [
+                    "\n\n# Additional context from script:\n",
+                    f"# CWD: {main_project_path}\n",
+                    f"# SCRIPT:\n# ---\n",
+                ]
+                for s_line in script_for_display.split('\n'):
+                    output_parts.append(f"# {s_line}\n")
+                output_parts.append("# ---\n")
+                
+                for command in commands:
+                    output_parts.append("\n")
+                    output_parts.append(f"$ {command}\n")
+
+                    result = subprocess.run(
+                        command, shell=True, cwd=main_project_path,
+                        capture_output=True, text=True, check=False
+                    )
+                    
+                    if result.stdout:
+                        output_parts.append(result.stdout)
+                        if not result.stdout.endswith('\n'): output_parts.append('\n')
+                    if result.stderr:
+                        output_parts.append(result.stderr)
+                        if not result.stderr.endswith('\n'): output_parts.append('\n')
+                
+                additional_context_output = "".join(output_parts)
+                file_contents += additional_context_output
+                
+            except Exception as e:
+                error_output = f"\n\n# --- ERROR EXECUTING ADDITIONAL CONTEXT SCRIPT ---\n# {e}\n# ---\n"
+                file_contents += error_output
         
         return Response(file_contents, mimetype='text/plain')
         
