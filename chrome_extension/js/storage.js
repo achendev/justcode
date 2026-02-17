@@ -66,8 +66,19 @@ function migrateProfile(profile) {
     if (profile.autoMaskEmails === undefined) { profile.autoMaskEmails = false; changed = true; }
     if (profile.autoMaskFQDNs === undefined) { profile.autoMaskFQDNs = false; changed = true; }
     if (profile.autoDeploy === undefined) { profile.autoDeploy = false; changed = true; }
-    if (profile.isAgentModeEnabled === undefined) { profile.isAgentModeEnabled = false; changed = true; }
     if (profile.agentReviewPolicy === undefined) { profile.agentReviewPolicy = 'review'; changed = true; }
+    
+    // Migration: isAgentModeEnabled -> mode ('normal', 'agent', 'mcp')
+    if (profile.mode === undefined) {
+        if (profile.isAgentModeEnabled === true) {
+            profile.mode = 'agent';
+        } else {
+            profile.mode = 'normal';
+        }
+        // We keep isAgentModeEnabled briefly for backward compat inside session but remove from storage logic if cleaner
+        delete profile.isAgentModeEnabled;
+        changed = true;
+    }
     
     return changed;
 }
@@ -95,8 +106,11 @@ export function loadData(callback) {
                 codeBlockDelimiter: '```',
                 tolerateErrors: true,
                 lastMessage: { text: '', type: 'info' },
+                // Mode toggle
                 useServerBackend: false,
+                // JS-specific fields
                 jsProjectFolderNames: [],
+                // Server-specific fields
                 projectPaths: [''],
                 serverUrl: 'http://127.0.0.1:5010',
                 isAuthEnabled: false,
@@ -114,7 +128,7 @@ export function loadData(callback) {
                 autoMaskEmails: false,
                 autoMaskFQDNs: false,
                 autoDeploy: false,
-                isAgentModeEnabled: false,
+                mode: 'normal',
                 agentReviewPolicy: 'review'
             }];
             needsSave = true;
@@ -148,7 +162,6 @@ export function loadData(callback) {
 
 export function saveData(profiles, activeProfileId, archivedProfiles, callback) {
     chrome.storage.local.set({ profiles, activeProfileId, archivedProfiles }, () => {
-        console.log('JustCode: Data saved.');
         if (callback) {
             callback();
         }

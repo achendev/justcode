@@ -2,6 +2,19 @@ export function getMainViewHTML(profile) {
     const message = profile.lastMessage || { text: '', type: 'info' };
     const showApplyBtn = profile.isTwoWaySyncEnabled || profile.autoMaskIPs || profile.autoMaskEmails || profile.autoMaskFQDNs;
     
+    let agentBtnClass = 'btn-outline-secondary';
+    let agentBtnIcon = 'bi-robot';
+    let agentBtnTitle = 'Enable Agent Mode';
+    
+    if (profile.mode === 'agent') {
+        agentBtnClass = 'btn-outline-warning';
+        agentBtnTitle = 'Mode: Agent (Auto-Deploy Enabled)';
+    } else if (profile.mode === 'mcp') {
+        agentBtnClass = 'btn-success'; // Green for connected/active
+        agentBtnIcon = 'bi-lightning-charge-fill';
+        agentBtnTitle = 'Mode: MCP (API Access Enabled)';
+    }
+
     return `
     <!-- Main View for the profile -->
     <div class="profile-main-view">
@@ -72,8 +85,8 @@ export function getMainViewHTML(profile) {
                                 <button class="btn btn-outline-secondary btn-sm backend-toggle-btn" type="button" data-id="${profile.id}" title="Switch to Browser (JS) Backend">
                                     <i class="bi bi-browser-chrome"></i>
                                 </button>
-                                <button class="btn ${profile.isAgentModeEnabled ? 'btn-outline-warning' : 'btn-outline-secondary'} btn-sm agent-mode-toggle-btn" type="button" data-id="${profile.id}" title="${profile.isAgentModeEnabled ? 'Disable Agent Mode' : 'Enable Agent Mode'}">
-                                    <i class="bi bi-robot"></i>
+                                <button class="btn ${agentBtnClass} btn-sm agent-mode-toggle-btn" type="button" data-id="${profile.id}" title="${agentBtnTitle}">
+                                    <i class="bi ${agentBtnIcon}"></i>
                                 </button>
                             ` : ''}
                         </div>

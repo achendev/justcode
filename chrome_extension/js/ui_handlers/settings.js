@@ -88,7 +88,7 @@ export function handleBackendToggle(event, reRenderCallback) {
         if (profile) {
             profile.useServerBackend = !profile.useServerBackend;
             if (!profile.useServerBackend) {
-                profile.isAgentModeEnabled = false;
+                profile.mode = 'normal';
                 profile.autoDeploy = false; 
             }
             saveData(profiles, activeProfileId, archivedProfiles);
@@ -102,17 +102,31 @@ export function handleAgentModeToggle(event, reRenderCallback) {
     loadData((profiles, activeProfileId, archivedProfiles) => {
         const profile = profiles.find(p => p.id === id);
         if (profile) {
-            profile.isAgentModeEnabled = !profile.isAgentModeEnabled;
-            // Sync autoDeploy state with Agent Mode
-            // If Agent Mode is disabled, autoDeploy must be disabled too.
-            // If Agent Mode is enabled, we enable autoDeploy by default.
-            profile.autoDeploy = profile.isAgentModeEnabled;
+            // Cycle: normal -> agent -> mcp -> normal
+            if (profile.mode === 'normal') {
+                profile.mode = 'agent';
+                profile.autoDeploy = true;
+            } else if (profile.mode === 'agent') {
+                profile.mode = 'mcp';
+                profile.autoDeploy = true; 
+            } else {
+                profile.mode = 'normal';
+                profile.autoDeploy = false;
+            }
 
             saveData(profiles, activeProfileId, archivedProfiles);
             
-            // Apply the change immediately to the active tab if this is the active profile
+            // Apply changes
             if (activeProfileId === id) {
-                setAutoDeployState(profile.autoDeploy);
+                setAutoDeployState(profile.mode === 'agent' || profile.mode === 'mcp');
+                
+                // Signal Background script to connect/disconnect WS based on MCP mode
+                chrome.runtime.sendMessage({ 
+                    type: 'mcp_mode_changed', 
+                    enabled: profile.mode === 'mcp',
+                    serverUrl: profile.serverUrl,
+                    profileId: profile.id
+                });
             }
             reRenderCallback(profiles, activeProfileId, archivedProfiles);
         }
@@ -245,5 +259,15 @@ export function handleAutoDeployToggle(event) {
 export function initAutoDeploy(profile) {
     if (profile && profile.autoDeploy) {
         setAutoDeployState(true);
+    }
+    
+    // Initialize MCP Connection if needed
+    if (profile && profile.mode === 'mcp') {
+        chrome.runtime.sendMessage({ 
+            type: 'mcp_mode_changed', 
+            enabled: true,
+            serverUrl: profile.serverUrl,
+            profileId: profile.id
+        });
     }
 }

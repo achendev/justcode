@@ -5,6 +5,7 @@ import { undoCode, redoCode } from './undo_redo.js';
 import { applyReplacementsAndPaste } from './apply_replacements.js';
 import { injectShortcutListener } from './background/shortcuts.js';
 import { extractCodeWithFallback } from './deploy_code/robust_fallback.js';
+import { handleMcpRequest } from './mcp_handler.js';
 
 // --- Default settings ---
 const AppSettings = {
@@ -75,6 +76,83 @@ async function initializeAllTabs() {
             await ensureContentScript(tab.id);
             injectShortcutListener(tab.id);
         }
+    }
+}
+
+// --- WebSocket / MCP Logic ---
+let mcpSocket = null;
+
+function connectMcpSocket(serverUrl, profileId) {
+    if (mcpSocket) {
+        mcpSocket.close();
+        mcpSocket = null;
+    }
+
+    const wsUrl = serverUrl.replace('http', 'ws') + '/ws';
+    console.log(`MCP: Connecting to ${wsUrl}...`);
+
+    try {
+        mcpSocket = new WebSocket(wsUrl);
+
+        mcpSocket.onopen = () => {
+            console.log("MCP: WebSocket Connected.");
+            updateProfileStatus(profileId, "MCP Connected", "success");
+        };
+
+        mcpSocket.onmessage = async (event) => {
+            try {
+                const msg = JSON.parse(event.data);
+                if (msg.type === 'mcp_request') {
+                    console.log("MCP: Received request", msg.id);
+                    
+                    // Fetch profile again to be safe
+                    loadData(async (profiles) => {
+                        const profile = profiles.find(p => p.id === profileId);
+                        if (!profile) return;
+
+                        try {
+                            const answer = await handleMcpRequest(profile, msg.id, msg.prompt);
+                            
+                            // Send response back
+                            mcpSocket.send(JSON.stringify({
+                                type: 'mcp_response',
+                                id: msg.id,
+                                text: answer
+                            }));
+                            console.log("MCP: Sent response.");
+                        } catch (err) {
+                            console.error("MCP Execution Error:", err);
+                            mcpSocket.send(JSON.stringify({
+                                type: 'mcp_response',
+                                id: msg.id,
+                                text: `Error: ${err.message}`
+                            }));
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error("MCP: Error processing message", e);
+            }
+        };
+
+        mcpSocket.onclose = () => {
+            console.log("MCP: WebSocket Closed.");
+            mcpSocket = null;
+        };
+
+        mcpSocket.onerror = (e) => {
+            console.error("MCP: WebSocket Error", e);
+        };
+
+    } catch (e) {
+        console.error("MCP: Connection failed", e);
+    }
+}
+
+function disconnectMcpSocket() {
+    if (mcpSocket) {
+        mcpSocket.close();
+        mcpSocket = null;
     }
 }
 
@@ -266,7 +344,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
-    // 5. Shortcuts
+    // 5. MCP Mode Toggle Signal
+    if (message.type === 'mcp_mode_changed') {
+        if (message.enabled) {
+            connectMcpSocket(message.serverUrl, message.profileId);
+        } else {
+            disconnectMcpSocket();
+        }
+        return true;
+    }
+
+    // 6. Shortcuts
     if (message.type === 'try-execute-command' || message.type === 'execute-command') {
         const execute = async () => {
             const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
@@ -339,11 +427,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     type: 'showNotificationOnPage', notificationId, text: msg, messageType: 'error', showSpinner: false 
                 }).catch(()=>{});
                 
-                // Save error to profile storage
-                // We need to resolve profile ID again, but simpler to skip or do best effort if profile undefined
-                // Ideally, we'd have the profile ID from above block.
-                // Re-fetch data or use variable scope if possible.
-                // For simplicity/robustness, we log to console here as UI update failed.
                 console.error("JustCode Shortcut Error:", e);
             }
         };

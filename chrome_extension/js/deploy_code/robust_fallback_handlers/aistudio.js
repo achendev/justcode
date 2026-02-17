@@ -1,82 +1,119 @@
 // This file contains the self-contained logic for toggling raw mode on AI Studio.
-// It will only toggle if a rendered code block is detected.
 
 /**
  * This function's ENTIRE BODY will be injected and executed on the page.
- * It checks for a rendered code block before attempting to toggle the view.
- * @returns {Promise<boolean>} Returns true if a toggle was performed, false otherwise.
+ * @param {boolean} [force=false] - If true, ensures raw mode is enabled.
+ * @returns {Promise<boolean>} Returns true if the state was CHANGED (toggled on), false otherwise.
  */
-export function prepareForFullAnswerExtraction() {
-    // This self-contained async function is what gets executed in the target tab.
+export function prepareForFullAnswerExtraction(force) {
     return (async () => {
         try {
-            console.log("--- JustCode Fallback: Checking if AI Studio toggle is needed... ---");
-
-            // 1. Find the last model response on the page.
-            const modelResponses = document.querySelectorAll('.chat-turn-container.model');
-            if (modelResponses.length === 0) {
-                console.log("JustCode: No model response found. No toggle action will be taken.");
-                return false; // No toggle was performed.
-            }
-            const lastResponse = modelResponses[modelResponses.length - 1];
-
-            // 2. THE NEW CHECK: Look for a rendered code block.
-            const codeBlock = lastResponse.querySelector('ms-code-block');
-            if (!codeBlock) {
-                console.log("JustCode: No '<ms-code-block>' found in the last response. Assuming raw mode or no code. SKIPPING toggle.");
-                return false; // No toggle was needed or performed.
+            // 1. Check if we even need to inspect the menu (Optimization)
+            if (!force) {
+                const modelResponses = document.querySelectorAll('.chat-turn-container.model');
+                if (modelResponses.length > 0) {
+                    const lastResponse = modelResponses[modelResponses.length - 1];
+                    const codeBlock = lastResponse.querySelector('ms-code-block');
+                    if (!codeBlock) {
+                        // No code block visible, and not forced.
+                        // Assuming safe to read as-is.
+                        return false;
+                    }
+                }
             }
 
-            console.log("JustCode: Found '<ms-code-block>'. A toggle is required. Starting sequence...");
+            console.log("JustCode: Checking Raw Mode state...");
 
-            // 3. Find the menu trigger button inside the last editor.
+            // 2. Open the menu to check status
             const lastEditor = Array.from(document.querySelectorAll('ms-chunk-editor')).pop();
-            if (!lastEditor) { throw new Error("Could not find the last 'ms-chunk-editor'."); }
+            if (!lastEditor) { 
+                console.warn("JustCode: Editor not found."); 
+                return false; 
+            }
             
             const menuTrigger = lastEditor.querySelector('button.mat-mdc-menu-trigger');
-            if (!menuTrigger) { throw new Error("Could not find the menu trigger button."); }
+            if (!menuTrigger) { 
+                console.warn("JustCode: Menu trigger not found."); 
+                return false; 
+            }
             
             menuTrigger.click();
-            await new Promise(resolve => setTimeout(resolve, 100));
+            // Wait for menu animation (Angular Material)
+            await new Promise(resolve => setTimeout(resolve, 200)); 
 
-            // 4. Find and click the toggle button.
-            const toggleButtonSelector = 'div.mat-mdc-menu-panel button.mat-mdc-menu-item.icon-text-button[data-test-raw-mode]';
-            const toggleButton = document.querySelector(toggleButtonSelector);
-            if (!toggleButton) { throw new Error(`Could not find toggle button: "${toggleButtonSelector}"`); }
+            // 3. Find the toggle button in the open menu
+            const toggleButton = document.querySelector('div.mat-mdc-menu-panel button[data-test-raw-mode]');
+            if (!toggleButton) { 
+                console.warn("JustCode: Toggle button not found in menu.");
+                // Try to close menu by clicking backdrop if it exists
+                document.querySelector('.cdk-overlay-backdrop')?.click();
+                return false; 
+            }
 
+            // 4. Check if already enabled (Look for the checkmark span)
+            const isAlreadyEnabled = !!toggleButton.querySelector('span[data-test-raw-mode-checkmark]');
+            
+            if (isAlreadyEnabled) {
+                console.log("JustCode: Raw Mode is ALREADY enabled.");
+                // Close the menu without changing anything
+                const backdrop = document.querySelector('.cdk-overlay-backdrop');
+                if (backdrop) {
+                    backdrop.click();
+                } else {
+                    // Fallback: click trigger again or body
+                    document.body.click(); 
+                }
+                return false; // We did NOT toggle it (it was already good)
+            }
+
+            // 5. Enable it
+            console.log("JustCode: Enabling Raw Mode...");
             toggleButton.click();
-            await new Promise(resolve => setTimeout(resolve, 100));
-
-            console.log("--- JustCode: Toggle sequence complete. ---");
-            return true; // A toggle was successfully performed.
+            
+            // Wait for view to update
+            await new Promise(resolve => setTimeout(resolve, 200));
+            return true; // We successfully toggled it ON
 
         } catch (error) {
-            console.error("JustCode: An error occurred during the toggle sequence:", error.message);
-            return false; // A toggle was attempted but failed.
+            console.error("JustCode: Toggle sequence error:", error);
+            // Try to cleanup menu if open
+            document.querySelector('.cdk-overlay-backdrop')?.click();
+            return false;
         }
     })();
 }
 
 /**
- * This function is also injected to revert the view. It does not need to check state,
- * as it's only called if the prepare function succeeded and returned true.
+ * This function is injected to revert the view.
+ * It assumes prepareForFullAnswerExtraction returned true, meaning we are currently in Raw Mode
+ * and need to toggle it OFF.
  */
 export function revertFullAnswerExtraction() {
      (async () => {
         try {
-            console.log("--- JustCode Fallback: Starting revert toggle sequence... ---");
+            console.log("JustCode: Reverting Raw Mode...");
             const lastEditor = Array.from(document.querySelectorAll('ms-chunk-editor')).pop();
-            if (!lastEditor) { return; }
+            if (!lastEditor) return;
+            
             const menuTrigger = lastEditor.querySelector('button.mat-mdc-menu-trigger');
-            if (!menuTrigger) { return; }
+            if (!menuTrigger) return;
+            
             menuTrigger.click();
-            await new Promise(e => setTimeout(e, 100));
-            const toggleButton = document.querySelector('div.mat-mdc-menu-panel button.mat-mdc-menu-item.icon-text-button[data-test-raw-mode]');
-            if (!toggleButton) { return; }
+            await new Promise(e => setTimeout(e, 200));
+            
+            const toggleButton = document.querySelector('div.mat-mdc-menu-panel button[data-test-raw-mode]');
+            if (!toggleButton) {
+                 document.querySelector('.cdk-overlay-backdrop')?.click();
+                 return;
+            }
+            
+            // We just click it to toggle off
             toggleButton.click();
-            console.log("--- JustCode Fallback: Revert sequence complete. ---");
+            console.log("JustCode: Reverted.");
+            
         } catch (error) {
-            console.error("JustCode: An error occurred during the revert sequence:", error.message);
+            console.error("JustCode: Revert error:", error);
+            document.querySelector('.cdk-overlay-backdrop')?.click();
         }
     })();
 }

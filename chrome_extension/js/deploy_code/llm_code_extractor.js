@@ -5,7 +5,7 @@ import { extractGeminiAnswer } from './answer_extractors/gemini.js';
 import { extractGrokAnswer } from './answer_extractors/grok.js';
 import { extractGrokAnswerX } from './answer_extractors/x_grok.js';
 import { readFromClipboard } from '../utils/clipboard.js';
-import { loadData } from '../storage.js'; // To access profile state if needed inside function without passing it
+import { loadData } from '../storage.js'; 
 
 /**
  * Extracts the deployment script from either the clipboard or the active LLM page.
@@ -52,10 +52,12 @@ export async function extractCodeToDeploy(profile, fromShortcut = false, hostnam
 
     let extractFunc;
     
-    // If agent mode is enabled, we almost always want full extraction to find <tool> tags which might be outside code blocks.
-    // However, the answer_extractors generally return code blocks by default.
-    // We force `shouldExtractFullAnswer` to true if Agent Mode is on to ensure we catch XML tags.
-    const shouldExtractFullAnswer = profile.deployFromFullAnswer || profile.isAgentModeEnabled;
+    // Check mode properly (support both legacy boolean and new string mode)
+    const isAgentOrMcp = profile.mode === 'agent' || profile.mode === 'mcp' || profile.isAgentModeEnabled === true;
+    
+    // Force boolean to avoid "Value is unserializable" error if undefined
+    const shouldExtractFullAnswer = !!(profile.deployFromFullAnswer || isAgentOrMcp);
+    
     let args = [shouldExtractFullAnswer];
 
     if (hostname.includes('aistudio.google.com')) {
