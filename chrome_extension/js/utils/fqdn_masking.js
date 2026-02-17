@@ -11,19 +11,37 @@ const STORAGE_KEY = 'fqdn_masking_map';
 // Logic: Word boundary -> alphanum part -> dot -> ... -> 2+ letter TLD -> Word boundary
 const FQDN_REGEX = /\b((?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63})\b/gi;
 
-// Extensions to strictly ignore if they appear as the "TLD"
-const IGNORED_EXTENSIONS = new Set([
-    'js', 'ts', 'jsx', 'tsx', 'vue', 'py', 'rb', 'php', 'java', 'c', 'cpp', 'h', 'hpp', 'cs', 'go', 'rs', 'lua', 'pl', 'swift', 'kt', 'dart',
-    'html', 'htm', 'css', 'scss', 'sass', 'less', 'json', 'xml', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'conf', 'env',
-    'md', 'txt', 'rtf', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'csv',
-    'png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'webp', 'bmp', 'tiff',
-    'zip', 'tar', 'gz', 'rar', '7z', 'iso', 'bin', 'exe', 'dll', 'so', 'dylib',
-    'log', 'lock', 'map', 'bak', 'tmp', 'swp'
-]);
+/**
+ * A comprehensive whitelist of common TLDs to differentiate actual domains from code properties.
+ * Excludes TLDs that conflict with common file extensions (e.g., .py, .rs, .sh, .md, .pl) to prevent false positives,
+ * unless explicitly requested.
+ */
+const KNOWN_TLDS = new Set([
+    // --- Originals & Most Common ---
+    'com', 'net', 'org', 'edu', 'gov', 'mil', 'io', 'co', 'info', 'biz', 'ai', 'app', 'dev', 'xyz',
+    'club', 'space', 'casino', 'ru', 'de', 'uk', 'ca', 'jp', 'fr', 'au', 'us', 'ch', 'it', 'nl',
+    'se', 'no', 'es', 'br', 'cn', 'in', 'me', 'tv', 'cc', 'asia', 'cloud', 'website', 'link',
+    'top', 'work', 'rocks', 'vip', 'pro', 'shop', 'store', 'online', 'tech', 'site', 'win',
+    'life', 'live', 'world', 'news', 'today', 'guru', 'solutions', 'services', 'agency', 'center',
+    'digital', 'studio', 'systems', 'design', 'blog', 'social', 'bio', 'ltd', 'inc', 'llc',
 
-// Common TLDs to explicitly allow even if they look like extensions (though overlap is minimal with above list)
-const COMMON_TLDS = new Set([
-    'com', 'net', 'org', 'edu', 'gov', 'mil', 'io', 'co', 'info', 'biz', 'ai', 'app', 'dev', 'uk', 'ca', 'de', 'jp', 'fr', 'au', 'us', 'ru', 'ch', 'it', 'nl', 'se', 'no', 'es', 'br'
+    // --- Extended List ---
+    'alsace', 'army', 'bar', 'bayern', 'bond', 'bot', 'bzh', 'cab', 'cafe', 'cam', 'care', 'case',
+    'cat', 'chat', 'claims', 'click', 'clinic', 'codes', 'cymru', 'cyou', 'dealer', 'dental',
+    'desi', 'email', 'energy', 'eus', 'farm', 'forum', 'frl', 'gal', 'game', 'games', 'giving',
+    'gop', 'hair', 'help', 'host', 'icu', 'insure', 'irish', 'juegos', 'kiwi', 'krd', 'lat',
+    'law', 'legal', 'limo', 'locker', 'lotto', 'meme', 'mobi', 'navy', 'nexus', 'nowruz', 'nrw',
+    'onl', 'ovh', 'page', 'post', 'quebec', 'quest', 'realty', 'repair', 'rest', 'rio', 'ruhr',
+    'ryukyu', 'salon', 'sbs', 'scot', 'select', 'solar', 'stream', 'supply', 'swiss', 'tatar',
+    'tattoo', 'tax', 'taxi', 'tel', 'tirol', 'tours', 'trade', 'trust', 'tube', 'vote', 'voting',
+    'voto', 'wales', 'webcam',
+
+    // --- Other Common Country Codes ---
+    'eu', 'be', 'at', 'dk', 'fi', 'cz', 'gr', 'ro', 'hu', 'tr', 'th', 'vn', 'id', 'my', 'ph',
+    'sg', 'hk', 'tw', 'kr', 'za', 'ar', 'cl', 'pe', 've', 'mx', 'nz', 'ie', 'pt', 'ua', 'il',
+
+    // --- Infrastructure / Special ---
+    'arpa', 'local', 'test', 'example', 'localhost'
 ]);
 
 /**
@@ -63,10 +81,10 @@ function getOrGenerateMask(domain, state) {
     }
 
     const parts = lowerDomain.split('.');
-    if (parts.length < 2) return domain; // Should be caught by regex, but safety check
+    if (parts.length < 2) return domain;
 
     // 2. Identify Root Domain (heuristic: last 2 parts, e.g. example.com)
-    // This keeps google.co.uk as 'dom-x.uk', which is acceptable consistency.
+    // This keeps google.co.uk as 'dom-x.uk' (uk is TLD, co is SLD), which is acceptable consistency.
     const tld = parts[parts.length - 1];
     const sld = parts[parts.length - 2];
     const rootDomain = `${sld}.${tld}`;
@@ -145,8 +163,9 @@ export async function maskFQDNs(text) {
         const parts = match.split('.');
         const lastPart = parts[parts.length - 1].toLowerCase();
 
-        // Filter out code files
-        if (IGNORED_EXTENSIONS.has(lastPart) && !COMMON_TLDS.has(lastPart)) {
+        // Strict TLD check to avoid masking code properties (e.g., object.property or file.ext)
+        // If the suffix isn't a known TLD, we treat it as code/text and skip masking.
+        if (!KNOWN_TLDS.has(lastPart)) {
             return match;
         }
 
