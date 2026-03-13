@@ -7,6 +7,7 @@ let currentProfileId = null;
 let currentContextSizeLimit = 3000000;
 let currentCharsPerToken = 3.75;
 let isInitialized = false;
+let lastCheckedNode = null; // Track the last clicked checkbox for Shift-Click functionality
 
 // Token calculation heuristics constants
 const FILE_WRAPPER_OVERHEAD = 50; // cat > file << EOF\n\n
@@ -196,54 +197,68 @@ function initListeners() {
                 childrenDiv.style.display = isHidden ? 'block' : 'none';
                 e.target.classList.replace(isHidden ? 'bi-chevron-right' : 'bi-chevron-down', isHidden ? 'bi-chevron-down' : 'bi-chevron-right');
             }
-        }
-    });
-
-    document.getElementById('cmTreeContainer').addEventListener('change', (e) => {
-        if (e.target.classList.contains('node-check')) {
+        } else if (e.target.classList.contains('node-check')) {
             const statsEl = document.getElementById('cmTotalStats');
             if (statsEl) {
                 statsEl.textContent = "Computing...";
             }
 
-            // Yield to main thread so checkbox updates instantly
+            const checkboxes = Array.from(document.querySelectorAll('#cmTreeContainer .node-check'));
+            const currentIndex = checkboxes.indexOf(e.target);
+            let nodesToProcess = [e.target];
+            const targetState = e.target.checked; // The state we want to apply
+
+            // Handle Shift-Click
+            if (e.shiftKey && lastCheckedNode) {
+                const lastIndex = checkboxes.indexOf(lastCheckedNode);
+                if (lastIndex !== -1 && lastIndex !== currentIndex) {
+                    const start = Math.min(currentIndex, lastIndex);
+                    const end = Math.max(currentIndex, lastIndex);
+                    nodesToProcess = checkboxes.slice(start, end + 1);
+                    
+                    // Visually update immediately
+                    nodesToProcess.forEach(cb => { cb.checked = targetState; });
+                }
+            }
+            
+            lastCheckedNode = e.target;
+
+            // Yield to main thread for UI responsiveness
             setTimeout(() => {
-                const isDir = e.target.dataset.isdir === 'true';
-                const pathNoSlash = e.target.dataset.path;
-                const pathToCheck = isDir ? `${pathNoSlash}/` : pathNoSlash;
-                
                 let excludes = exInput.value.split(',').map(s=>s.trim()).filter(Boolean);
                 let includes = inInput.value.split(',').map(s=>s.trim()).filter(Boolean);
 
-                if (!e.target.checked) {
-                    // User wants to EXCLUDE
-                    includes = includes.filter(p => p !== pathToCheck && p !== pathNoSlash);
+                nodesToProcess.forEach(cb => {
+                    const isDir = cb.dataset.isdir === 'true';
+                    const pathNoSlash = cb.dataset.path;
+                    const pathToCheck = isDir ? `${pathNoSlash}/` : pathNoSlash;
                     
-                    const inherentlyIncluded = isMatch(pathNoSlash, includes) || (isDir && isMatch(pathToCheck, includes));
-                    const inherentlyExcluded = isMatch(pathNoSlash, excludes) || (isDir && isMatch(pathToCheck, excludes));
-                    
-                    // Only add to exclude if it's not forced to be included by a parent, 
-                    // and not already excluded by a parent (prevents redundant entries)
-                    if (!inherentlyIncluded && !inherentlyExcluded) {
-                        excludes.push(pathToCheck);
-                    }
-                } else {
-                    // User wants to INCLUDE
-                    excludes = excludes.filter(p => p !== pathToCheck && p !== pathNoSlash);
-                    
-                    const inherentlyExcluded = isMatch(pathNoSlash, excludes) || (isDir && isMatch(pathToCheck, excludes));
-                    const inherentlyIncluded = isMatch(pathNoSlash, includes) || (isDir && isMatch(pathToCheck, includes));
+                    if (!targetState) {
+                        // User wants to EXCLUDE
+                        includes = includes.filter(p => p !== pathToCheck && p !== pathNoSlash);
+                        
+                        const inherentlyIncluded = isMatch(pathNoSlash, includes) || (isDir && isMatch(pathToCheck, includes));
+                        const inherentlyExcluded = isMatch(pathNoSlash, excludes) || (isDir && isMatch(pathToCheck, excludes));
+                        
+                        if (!inherentlyIncluded && !inherentlyExcluded) {
+                            excludes.push(pathToCheck);
+                        }
+                    } else {
+                        // User wants to INCLUDE
+                        excludes = excludes.filter(p => p !== pathToCheck && p !== pathNoSlash);
+                        
+                        const inherentlyExcluded = isMatch(pathNoSlash, excludes) || (isDir && isMatch(pathToCheck, excludes));
+                        const inherentlyIncluded = isMatch(pathNoSlash, includes) || (isDir && isMatch(pathToCheck, includes));
 
-                    // Only add to include if a parent is actively excluding it,
-                    // and it's not already covered by another include rule
-                    if (inherentlyExcluded && !inherentlyIncluded) {
-                        includes.push(pathToCheck);
+                        if (inherentlyExcluded && !inherentlyIncluded) {
+                            includes.push(pathToCheck);
+                        }
                     }
-                }
-                
+                });
+
                 exInput.value = [...new Set(excludes)].join(',');
                 inInput.value = [...new Set(includes)].join(',');
-                updateProfileInputs(); // Includes evaluateTreeUI execution
+                updateProfileInputs(); // Triggers UI re-evaluation
             }, 10);
         }
     });
@@ -309,6 +324,7 @@ async function loadTree(profile) {
 export function openContextManager(event) {
     initListeners();
     currentProfileId = parseInt(event.currentTarget.dataset.id);
+    lastCheckedNode = null; // Reset shift-click tracker on open
     
     expandWindow();
     
