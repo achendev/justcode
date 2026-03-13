@@ -7,6 +7,12 @@ let currentProfileId = null;
 let currentContextSizeLimit = 3000000;
 let isInitialized = false;
 
+// Token calculation heuristics
+// Gemini's tokenizer is highly efficient, averaging ~3.74 characters per token for typical codebases.
+const CHARS_PER_TOKEN = 3.74; 
+const FILE_WRAPPER_OVERHEAD = 50; // cat > file << EOF\n\n
+const PROMPT_BASE_OVERHEAD = 1500; // Base instructions block size
+
 function buildTreeData(stats) {
     const root = { name: '.', path: '', isDir: true, chars: 0, lines: 0, children: {} };
     for (const stat of stats) {
@@ -43,6 +49,8 @@ function renderTreeNode(node, depth = 0) {
         return childB.chars - childA.chars;
     });
 
+    const tokens = Math.ceil(node.chars / CHARS_PER_TOKEN);
+
     let html = '';
     if (depth !== 0) {
         const padding = (depth - 1) * 15;
@@ -52,7 +60,7 @@ function renderTreeNode(node, depth = 0) {
             <i class="bi bi-chevron-right toggle-collapse" style="cursor: pointer; width: 16px; display: inline-block; text-align: center; visibility: ${chevronVisibility};"></i>
             <input type="checkbox" class="form-check-input node-check m-0 me-2" data-path="${node.path}" data-isdir="${node.isDir}">
             <span class="fw-bold me-2">${node.name}${node.isDir ? '/' : ''}</span>
-            <span class="text-muted" style="font-size: 0.75rem;">(${node.chars.toLocaleString()} c, ${node.lines.toLocaleString()} l)</span>
+            <span class="text-muted" style="font-size: 0.75rem;">(~${tokens.toLocaleString()} t, ${node.chars.toLocaleString()} c, ${node.lines.toLocaleString()} l)</span>
         </div>
         <div class="tree-children" style="display: none;">`;
     } else {
@@ -60,7 +68,7 @@ function renderTreeNode(node, depth = 0) {
         <div class="tree-item" style="padding-left: 0px; cursor: default;">
             <i class="bi bi-folder2-open" style="width: 16px; display: inline-block; text-align: center;"></i>
             <span class="fw-bold ms-2 me-2">.</span>
-            <span class="text-muted" style="font-size: 0.75rem;">(${node.chars.toLocaleString()} c, ${node.lines.toLocaleString()} l)</span>
+            <span class="text-muted" style="font-size: 0.75rem;">(~${tokens.toLocaleString()} t, ${node.chars.toLocaleString()} c, ${node.lines.toLocaleString()} l)</span>
         </div>`;
     }
 
@@ -75,6 +83,7 @@ export function evaluateTreeUI(excludeStr, includeStr) {
 
     let totalChars = 0;
     let totalLines = 0;
+    let fileCount = 0;
 
     document.querySelectorAll('#cmTreeContainer .tree-item[data-path]').forEach(item => {
         const path = item.dataset.path;
@@ -98,13 +107,18 @@ export function evaluateTreeUI(excludeStr, includeStr) {
             if (!isDir) {
                 totalChars += chars;
                 totalLines += lines;
+                fileCount += 1;
             }
         }
     });
 
     const statsEl = document.getElementById('cmTotalStats');
     if (statsEl) {
-        statsEl.textContent = `Context: ${totalChars.toLocaleString()} c, ${totalLines.toLocaleString()} l`;
+        // Calculate estimated tokens incorporating heredoc and base prompt overhead
+        const estimatedPromptChars = totalChars + (fileCount * FILE_WRAPPER_OVERHEAD) + PROMPT_BASE_OVERHEAD;
+        const totalTokens = Math.ceil(estimatedPromptChars / CHARS_PER_TOKEN);
+        
+        statsEl.textContent = `Context: ~${totalTokens.toLocaleString()} t, ${totalChars.toLocaleString()} c, ${totalLines.toLocaleString()} l`;
         statsEl.style.display = 'inline-block';
         if (totalChars > currentContextSizeLimit) {
             statsEl.classList.remove('bg-secondary');
@@ -113,7 +127,7 @@ export function evaluateTreeUI(excludeStr, includeStr) {
         } else {
             statsEl.classList.remove('bg-danger');
             statsEl.classList.add('bg-secondary');
-            statsEl.title = `Total context size`;
+            statsEl.title = `Total context size (t = estimated tokens)`;
         }
     }
 }
