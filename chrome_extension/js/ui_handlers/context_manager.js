@@ -124,17 +124,36 @@ function initListeners() {
     document.getElementById('cmTreeContainer').addEventListener('change', (e) => {
         if (e.target.classList.contains('node-check')) {
             const isDir = e.target.dataset.isdir === 'true';
-            const pathStr = isDir ? `${e.target.dataset.path}/` : e.target.dataset.path;
+            const pathNoSlash = e.target.dataset.path;
+            const pathToCheck = isDir ? `${pathNoSlash}/` : pathNoSlash;
             
             let excludes = exInput.value.split(',').map(s=>s.trim()).filter(Boolean);
             let includes = inInput.value.split(',').map(s=>s.trim()).filter(Boolean);
 
             if (!e.target.checked) {
-                excludes.push(pathStr);
-                includes = includes.filter(p => p !== pathStr);
+                // User wants to EXCLUDE
+                includes = includes.filter(p => p !== pathToCheck && p !== pathNoSlash);
+                
+                const inherentlyIncluded = isMatch(pathNoSlash, includes) || (isDir && isMatch(pathToCheck, includes));
+                const inherentlyExcluded = isMatch(pathNoSlash, excludes) || (isDir && isMatch(pathToCheck, excludes));
+                
+                // Only add to exclude if it's not forced to be included by a parent, 
+                // and not already excluded by a parent (prevents redundant entries)
+                if (!inherentlyIncluded && !inherentlyExcluded) {
+                    excludes.push(pathToCheck);
+                }
             } else {
-                includes.push(pathStr);
-                excludes = excludes.filter(p => p !== pathStr);
+                // User wants to INCLUDE
+                excludes = excludes.filter(p => p !== pathToCheck && p !== pathNoSlash);
+                
+                const inherentlyExcluded = isMatch(pathNoSlash, excludes) || (isDir && isMatch(pathToCheck, excludes));
+                const inherentlyIncluded = isMatch(pathNoSlash, includes) || (isDir && isMatch(pathToCheck, includes));
+
+                // Only add to include if a parent is actively excluding it,
+                // and it's not already covered by another include rule
+                if (inherentlyExcluded && !inherentlyIncluded) {
+                    includes.push(pathToCheck);
+                }
             }
             
             exInput.value = [...new Set(excludes)].join(',');
