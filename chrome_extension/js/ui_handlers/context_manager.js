@@ -1,6 +1,7 @@
 import { isMatch, scanDirectory } from '../context_builder/file_scanner.js';
 import { loadData, saveData } from '../storage.js';
 import { getHandles, verifyPermission } from '../file_system_manager.js';
+import { expandWindow } from '../popup/view.js';
 
 let currentProfileId = null;
 let isInitialized = false;
@@ -223,6 +224,8 @@ async function loadTree(profile) {
 export function openContextManager(event) {
     initListeners();
     currentProfileId = parseInt(event.currentTarget.dataset.id);
+    
+    expandWindow();
     
     document.getElementById('mainView').style.display = 'none';
     document.getElementById('contextManagerView').style.display = 'flex';

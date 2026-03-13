@@ -74,5 +74,45 @@ export function initializeViews() {
     closeContextManagerButton.addEventListener('click', () => {
         mainView.style.display = 'block';
         contextManagerView.style.display = 'none';
+        restoreWindow();
     });
+}
+
+let originalWindowWidth = null;
+let originalWindowHeight = null;
+
+export async function expandWindow() {
+    const isDetached = new URLSearchParams(window.location.search).get('view') === 'window';
+    if (isDetached) {
+        const win = await chrome.windows.getCurrent();
+        originalWindowWidth = win.width;
+        originalWindowHeight = win.height;
+        await chrome.windows.update(win.id, {
+            width: Math.max(win.width * 2, 750),
+            height: Math.max(win.height, 800)
+        });
+    } else {
+        // Expand the standard popup to near maximum allowed limits (800x600)
+        document.body.style.width = '780px';
+        document.body.style.height = '600px';
+    }
+}
+
+export async function restoreWindow() {
+    const isDetached = new URLSearchParams(window.location.search).get('view') === 'window';
+    if (isDetached) {
+        if (originalWindowWidth && originalWindowHeight) {
+            const win = await chrome.windows.getCurrent();
+            await chrome.windows.update(win.id, {
+                width: originalWindowWidth,
+                height: originalWindowHeight
+            });
+            originalWindowWidth = null;
+            originalWindowHeight = null;
+        }
+    } else {
+        // Revert to CSS defaults (auto-resizes back to standard dimensions)
+        document.body.style.width = '';
+        document.body.style.height = '';
+    }
 }
