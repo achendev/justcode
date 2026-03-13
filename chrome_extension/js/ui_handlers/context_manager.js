@@ -78,16 +78,17 @@ function renderTreeNode(node, depth = 0) {
             <i class="bi bi-chevron-right toggle-collapse" style="cursor: pointer; width: 16px; display: inline-block; text-align: center; visibility: ${chevronVisibility};"></i>
             <input type="checkbox" class="form-check-input node-check m-0 me-2" data-path="${node.path}" data-isdir="${node.isDir}">
             <span class="fw-bold me-2">${node.name}${node.isDir ? '/' : ''}</span>
-            <span class="text-muted" style="font-size: 0.75rem;">(~${tokens.toLocaleString()} t, ${node.chars.toLocaleString()} c, ${node.lines.toLocaleString()} l)</span>
+            <span class="node-stats text-muted" style="font-size: 0.75rem;">(~${tokens.toLocaleString()} t, ${node.chars.toLocaleString()} c, ${node.lines.toLocaleString()} l)</span>
         </div>
         <div class="tree-children" style="display: none;">`;
     } else {
-        html += `<div class="tree-children" style="display: block;">
-        <div class="tree-item" style="padding-left: 0px; cursor: default;">
+        html += `
+        <div class="tree-item root-item" data-chars="${node.chars}" data-lines="${node.lines}" style="padding-left: 0px; cursor: default;">
             <i class="bi bi-folder2-open" style="width: 16px; display: inline-block; text-align: center;"></i>
             <span class="fw-bold ms-2 me-2">.</span>
-            <span class="text-muted" style="font-size: 0.75rem;">(~${tokens.toLocaleString()} t, ${node.chars.toLocaleString()} c, ${node.lines.toLocaleString()} l)</span>
-        </div>`;
+            <span class="node-stats text-muted" style="font-size: 0.75rem;">(~${tokens.toLocaleString()} t, ${node.chars.toLocaleString()} c, ${node.lines.toLocaleString()} l)</span>
+        </div>
+        <div class="tree-children" style="display: block;">`;
     }
 
     for (const key of childrenKeys) html += renderTreeNode(node.children[key], depth + 1);
@@ -136,29 +137,37 @@ export function evaluateTreeUI(excludeStr, includeStr) {
         }
     });
 
-    // PASS 2: Bottom-Up Directory State Pass (Indeterminate Logic)
+    // PASS 2: Bottom-Up Directory State Pass (Indeterminate Logic & Subtotals)
     function updateDirStates(container) {
         let allChecked = true;
         let allUnchecked = true;
         let count = 0;
+        let sumChars = 0;
+        let sumLines = 0;
 
         const items = Array.from(container.children).filter(el => el.classList.contains('tree-item'));
 
         for (const item of items) {
             const checkbox = item.querySelector('.node-check');
-            if (!checkbox) continue; // Skip root node which lacks a checkbox
+            if (!checkbox) continue; // Skip if no checkbox
             
             count++;
             const isDir = checkbox.dataset.isdir === 'true';
-            let itemState; // 1 = checked, 0 = unchecked, 2 = indeterminate
+            let itemState;
+            let childChars = 0;
+            let childLines = 0;
 
             if (isDir) {
                 const childrenContainer = item.nextElementSibling;
+                let dirResult = { state: 0, chars: 0, lines: 0 };
+                
                 if (childrenContainer && childrenContainer.classList.contains('tree-children')) {
-                    itemState = updateDirStates(childrenContainer);
-                } else {
-                    itemState = 0; // Empty dir
+                    dirResult = updateDirStates(childrenContainer);
                 }
+                
+                itemState = dirResult.state;
+                childChars = dirResult.chars;
+                childLines = dirResult.lines;
 
                 if (itemState === 1) {
                     checkbox.checked = true;
@@ -173,9 +182,29 @@ export function evaluateTreeUI(excludeStr, includeStr) {
                     checkbox.indeterminate = true;
                     item.classList.remove('excluded'); // Keep indeterminate parent visually active
                 }
+
+                // Update UI stats for this directory
+                const statsSpan = item.querySelector('.node-stats');
+                if (statsSpan) {
+                    let displayChars = childChars;
+                    let displayLines = childLines;
+                    if (itemState === 0) { // fully excluded, show original total
+                        displayChars = parseInt(item.dataset.chars, 10) || 0;
+                        displayLines = parseInt(item.dataset.lines, 10) || 0;
+                    }
+                    const tokens = Math.ceil(displayChars / currentCharsPerToken);
+                    statsSpan.textContent = `(~${tokens.toLocaleString()} t, ${displayChars.toLocaleString()} c, ${displayLines.toLocaleString()} l)`;
+                }
             } else {
                 itemState = checkbox.checked ? 1 : 0;
+                if (itemState === 1) {
+                    childChars = parseInt(item.dataset.chars, 10) || 0;
+                    childLines = parseInt(item.dataset.lines, 10) || 0;
+                }
             }
+
+            sumChars += childChars;
+            sumLines += childLines;
 
             if (itemState === 1) allUnchecked = false;
             else if (itemState === 0) allChecked = false;
@@ -185,15 +214,36 @@ export function evaluateTreeUI(excludeStr, includeStr) {
             }
         }
 
-        if (count === 0) return 0;
-        if (allChecked) return 1;
-        if (allUnchecked) return 0;
-        return 2; // Indeterminate
+        if (count === 0) return { state: 0, chars: 0, lines: 0 };
+        
+        let finalState = 2; // indeterminate
+        if (allChecked) finalState = 1;
+        if (allUnchecked) finalState = 0;
+
+        return { state: finalState, chars: sumChars, lines: sumLines };
     }
 
+    const rootItem = document.querySelector('#cmTreeContainer > .root-item');
     const rootContainer = document.querySelector('#cmTreeContainer > .tree-children');
+    
     if (rootContainer) {
-        updateDirStates(rootContainer);
+        const rootResult = updateDirStates(rootContainer);
+        if (rootItem) {
+            const statsSpan = rootItem.querySelector('.node-stats');
+            if (statsSpan) {
+                let displayChars = rootResult.chars;
+                let displayLines = rootResult.lines;
+                if (rootResult.state === 0) { // if the whole project is excluded
+                    displayChars = parseInt(rootItem.dataset.chars, 10) || 0;
+                    displayLines = parseInt(rootItem.dataset.lines, 10) || 0;
+                    rootItem.classList.add('excluded');
+                } else {
+                    rootItem.classList.remove('excluded');
+                }
+                const tokens = Math.ceil(displayChars / currentCharsPerToken);
+                statsSpan.textContent = `(~${tokens.toLocaleString()} t, ${displayChars.toLocaleString()} c, ${displayLines.toLocaleString()} l)`;
+            }
+        }
     }
 
     // PASS 3: Update Stats Display
