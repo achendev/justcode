@@ -106,12 +106,11 @@ export function evaluateTreeUI(excludeStr, includeStr) {
     let totalLines = 0;
     let fileCount = 0;
 
+    // PASS 1: Regex evaluation for all items
     document.querySelectorAll('#cmTreeContainer .tree-item[data-path]').forEach(item => {
         const path = item.dataset.path;
         const checkbox = item.querySelector('.node-check');
         const isDir = checkbox.dataset.isdir === 'true';
-        const chars = parseInt(item.dataset.chars, 10) || 0;
-        const lines = parseInt(item.dataset.lines, 10) || 0;
         
         const pathWithSlash = isDir ? path + '/' : path;
         
@@ -122,12 +121,14 @@ export function evaluateTreeUI(excludeStr, includeStr) {
         if (!isDir && !isIncluded) isIncluded = fastMatch(path.split('/').pop(), compiledIncludes);
 
         if (isExcluded && !isIncluded) {
-            if (checkbox.checked) checkbox.checked = false; // Only update DOM if changed
-            if (!item.classList.contains('excluded')) item.classList.add('excluded');
+            checkbox.checked = false;
+            item.classList.add('excluded');
         } else {
-            if (!checkbox.checked) checkbox.checked = true;
-            if (item.classList.contains('excluded')) item.classList.remove('excluded');
+            checkbox.checked = true;
+            item.classList.remove('excluded');
             if (!isDir) {
+                const chars = parseInt(item.dataset.chars, 10) || 0;
+                const lines = parseInt(item.dataset.lines, 10) || 0;
                 totalChars += chars;
                 totalLines += lines;
                 fileCount += 1;
@@ -135,6 +136,67 @@ export function evaluateTreeUI(excludeStr, includeStr) {
         }
     });
 
+    // PASS 2: Bottom-Up Directory State Pass (Indeterminate Logic)
+    function updateDirStates(container) {
+        let allChecked = true;
+        let allUnchecked = true;
+        let count = 0;
+
+        const items = Array.from(container.children).filter(el => el.classList.contains('tree-item'));
+
+        for (const item of items) {
+            const checkbox = item.querySelector('.node-check');
+            if (!checkbox) continue; // Skip root node which lacks a checkbox
+            
+            count++;
+            const isDir = checkbox.dataset.isdir === 'true';
+            let itemState; // 1 = checked, 0 = unchecked, 2 = indeterminate
+
+            if (isDir) {
+                const childrenContainer = item.nextElementSibling;
+                if (childrenContainer && childrenContainer.classList.contains('tree-children')) {
+                    itemState = updateDirStates(childrenContainer);
+                } else {
+                    itemState = 0; // Empty dir
+                }
+
+                if (itemState === 1) {
+                    checkbox.checked = true;
+                    checkbox.indeterminate = false;
+                    item.classList.remove('excluded');
+                } else if (itemState === 0) {
+                    checkbox.checked = false;
+                    checkbox.indeterminate = false;
+                    item.classList.add('excluded');
+                } else {
+                    checkbox.checked = false;
+                    checkbox.indeterminate = true;
+                    item.classList.remove('excluded'); // Keep indeterminate parent visually active
+                }
+            } else {
+                itemState = checkbox.checked ? 1 : 0;
+            }
+
+            if (itemState === 1) allUnchecked = false;
+            else if (itemState === 0) allChecked = false;
+            else {
+                allChecked = false;
+                allUnchecked = false;
+            }
+        }
+
+        if (count === 0) return 0;
+        if (allChecked) return 1;
+        if (allUnchecked) return 0;
+        return 2; // Indeterminate
+    }
+
+    const rootContainer = document.querySelector('#cmTreeContainer > .tree-children');
+    if (rootContainer) {
+        updateDirStates(rootContainer);
+    }
+
+    // PASS 3: Update Stats Display
     const statsEl = document.getElementById('cmTotalStats');
     if (statsEl) {
         // Calculate estimated tokens incorporating heredoc and base prompt overhead
@@ -236,7 +298,10 @@ function initListeners() {
                     nodesToProcess = checkboxes.slice(start, end + 1);
                     
                     // Visually update immediately
-                    nodesToProcess.forEach(cb => { cb.checked = targetState; });
+                    nodesToProcess.forEach(cb => { 
+                        cb.checked = targetState; 
+                        cb.indeterminate = false; 
+                    });
                 }
             }
             

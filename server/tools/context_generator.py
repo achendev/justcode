@@ -201,8 +201,6 @@ def generate_tree_with_char_counts(project_path, include_patterns, exclude_patte
 def get_all_file_stats(project_path, path_prefix=None):
     stats = []
     for dirpath, dirnames, filenames in os.walk(project_path):
-        if '.git' in dirnames:
-            dirnames.remove('.git')
         for filename in filenames:
             full_path = os.path.join(dirpath, filename)
             if is_binary(full_path): continue

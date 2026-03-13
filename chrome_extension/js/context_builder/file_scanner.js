@@ -44,8 +44,6 @@ export async function scanDirectory(directoryHandle, options, internalState = {}
     });
 
     for (const entry of entries) {
-        if (entry.name === '.git') continue; // Hard safety to prevent massive hangs
-        
         const path = currentPath ? `${currentPath}/${entry.name}` : entry.name;
 
         if (entry.kind === 'directory') {
