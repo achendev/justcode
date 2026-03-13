@@ -7,10 +7,23 @@
 function isMatch(str, patterns) {
     if (!patterns || patterns.length === 0) return false;
 
-    for (const pattern of patterns) {
+    for (let pattern of patterns) {
         if (typeof pattern !== 'string' || !pattern) continue;
-        const regexPattern = '^' + pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+        
+        // Append wildcard for directory matching
+        if (pattern.endsWith('/')) {
+            pattern += '*';
+        }
+        
+        // 1. Escape special regex characters EXCEPT the glob '*'
+        let regexStr = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+        // 2. Convert glob '*' to regex '.*'
+        regexStr = regexStr.replace(/\*/g, '.*');
+        
+        // 3. Anchor to start and end to perfectly mimic Python's fnmatch
+        const regexPattern = '^' + regexStr + '$';
         const regex = new RegExp(regexPattern);
+        
         if (regex.test(str)) {
             return true;
         }
@@ -40,20 +53,39 @@ export async function scanDirectory(directoryHandle, options, internalState = {}
 
     for (const entry of entries) {
         const path = currentPath ? `${currentPath}/${entry.name}` : entry.name;
-        
-        if (isMatch(path, options.excludePatterns)) {
-            continue;
-        }
 
         if (entry.kind === 'directory') {
-            const subStats = await scanDirectory(entry, options, { ...internalState, currentPath: path });
-            stats = stats.concat(subStats);
-        } else if (entry.kind === 'file') {
-             if (options.includePatterns.length > 0) {
-                if (!isMatch(entry.name, options.includePatterns)) {
+            const pathWithSlash = path + '/';
+            const isExcluded = isMatch(path, options.excludePatterns) || isMatch(pathWithSlash, options.excludePatterns);
+            const isIncluded = isMatch(path, options.includePatterns) || isMatch(pathWithSlash, options.includePatterns);
+
+            // If excluded, only dive in if there's an explicit include pattern that targets something inside
+            if (isExcluded && !isIncluded) {
+                let hasIncludeInside = false;
+                for (const p of options.includePatterns) {
+                    // Support standard prefixes like "folder/subfolder" overriding excluded "folder/"
+                    if (p.startsWith(pathWithSlash) || p.startsWith('*' + pathWithSlash)) {
+                        hasIncludeInside = true;
+                        break;
+                    }
+                }
+                if (!hasIncludeInside) {
                     continue;
                 }
-             }
+            }
+            
+            const subStats = await scanDirectory(entry, options, { ...internalState, currentPath: path });
+            stats = stats.concat(subStats);
+            
+        } else if (entry.kind === 'file') {
+            const isExcluded = isMatch(path, options.excludePatterns);
+            const isIncluded = isMatch(path, options.includePatterns) || isMatch(entry.name, options.includePatterns);
+
+            // The file is ignored if it's excluded and NOT specifically included
+            if (isExcluded && !isIncluded) {
+                continue;
+            }
+            
             try {
                 const file = await entry.getFile();
                 const content = await file.text();

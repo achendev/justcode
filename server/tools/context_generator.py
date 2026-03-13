@@ -32,14 +32,26 @@ def generate_context_from_path(project_path, include_patterns, exclude_patterns,
 
     matching_files = []
     processed_exclude_patterns = [p + '*' if p.endswith('/') else p for p in exclude_patterns]
+    processed_include_patterns = [p + '*' if p.endswith('/') else p for p in include_patterns]
 
     for dirpath, dirnames, filenames in os.walk(project_path, topdown=True):
         excluded_dirs = []
         for d in dirnames:
             dir_rel_path = os.path.relpath(os.path.join(dirpath, d), project_path)
-            dir_rel_path_norm = dir_rel_path.replace('\\', '/')
-            if any(fnmatch.fnmatch(dir_rel_path_norm, pat) for pat in processed_exclude_patterns):
-                excluded_dirs.append(d)
+            dir_rel_path_norm = dir_rel_path.replace('\\', '/') + '/'
+            
+            is_excluded = any(fnmatch.fnmatch(dir_rel_path_norm, pat) or fnmatch.fnmatch(dir_rel_path_norm.rstrip('/'), pat) for pat in processed_exclude_patterns)
+            is_included = any(fnmatch.fnmatch(dir_rel_path_norm, pat) or fnmatch.fnmatch(dir_rel_path_norm.rstrip('/'), pat) for pat in processed_include_patterns)
+            
+            if is_excluded and not is_included:
+                has_include_inside = False
+                for p in include_patterns:
+                    if p.startswith(dir_rel_path_norm):
+                        has_include_inside = True
+                        break
+                if not has_include_inside:
+                    excluded_dirs.append(d)
+                    
         for d in excluded_dirs: dirnames.remove(d)
 
         for filename in filenames:
@@ -49,8 +61,10 @@ def generate_context_from_path(project_path, include_patterns, exclude_patterns,
             file_rel_path = os.path.relpath(file_full_path, project_path)
             file_rel_path_norm = file_rel_path.replace('\\', '/')
             
-            if any(fnmatch.fnmatch(file_rel_path_norm, pat) for pat in processed_exclude_patterns): continue
-            if include_patterns and not any(fnmatch.fnmatch(filename, pat) for pat in include_patterns): continue
+            is_excluded = any(fnmatch.fnmatch(file_rel_path_norm, pat) for pat in processed_exclude_patterns)
+            is_included = any(fnmatch.fnmatch(file_rel_path_norm, pat) or fnmatch.fnmatch(filename, pat) for pat in processed_include_patterns)
+            
+            if is_excluded and not is_included: continue
             
             matching_files.append(file_rel_path_norm)
 
@@ -105,14 +119,26 @@ def generate_tree_with_char_counts(project_path, include_patterns, exclude_patte
     # ... (Copied for completeness) ...
     matching_files_data = []
     processed_exclude_patterns = [p + '*' if p.endswith('/') else p for p in exclude_patterns]
+    processed_include_patterns = [p + '*' if p.endswith('/') else p for p in include_patterns]
 
     for dirpath, dirnames, filenames in os.walk(project_path, topdown=True):
         excluded_dirs = []
         for d in dirnames:
             dir_rel_path = os.path.relpath(os.path.join(dirpath, d), project_path)
-            dir_rel_path_norm = dir_rel_path.replace('\\', '/')
-            if any(fnmatch.fnmatch(dir_rel_path_norm, pat) for pat in processed_exclude_patterns):
-                excluded_dirs.append(d)
+            dir_rel_path_norm = dir_rel_path.replace('\\', '/') + '/'
+            
+            is_excluded = any(fnmatch.fnmatch(dir_rel_path_norm, pat) or fnmatch.fnmatch(dir_rel_path_norm.rstrip('/'), pat) for pat in processed_exclude_patterns)
+            is_included = any(fnmatch.fnmatch(dir_rel_path_norm, pat) or fnmatch.fnmatch(dir_rel_path_norm.rstrip('/'), pat) for pat in processed_include_patterns)
+            
+            if is_excluded and not is_included:
+                has_include_inside = False
+                for p in include_patterns:
+                    if p.startswith(dir_rel_path_norm):
+                        has_include_inside = True
+                        break
+                if not has_include_inside:
+                    excluded_dirs.append(d)
+                    
         for d in excluded_dirs: dirnames.remove(d)
 
         for filename in filenames:
@@ -122,8 +148,10 @@ def generate_tree_with_char_counts(project_path, include_patterns, exclude_patte
             file_rel_path = os.path.relpath(file_full_path, project_path)
             file_rel_path_norm = file_rel_path.replace('\\', '/')
             
-            if any(fnmatch.fnmatch(file_rel_path_norm, pat) for pat in processed_exclude_patterns): continue
-            if include_patterns and not any(fnmatch.fnmatch(filename, pat) for pat in include_patterns): continue
+            is_excluded = any(fnmatch.fnmatch(file_rel_path_norm, pat) for pat in processed_exclude_patterns)
+            is_included = any(fnmatch.fnmatch(file_rel_path_norm, pat) or fnmatch.fnmatch(filename, pat) for pat in processed_include_patterns)
+            
+            if is_excluded and not is_included: continue
             
             try:
                 with open(file_full_path, 'r', encoding='utf-8', errors='ignore') as f:
