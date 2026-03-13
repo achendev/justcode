@@ -8,6 +8,7 @@ let currentContextSizeLimit = 3000000;
 let currentCharsPerToken = 3.75;
 let isInitialized = false;
 let lastCheckedNode = null; // Track the last clicked checkbox for Shift-Click functionality
+let saveTimeout = null; // Debouncer for saving
 
 // Token calculation heuristics constants
 const FILE_WRAPPER_OVERHEAD = 50; // cat > file << EOF\n\n
@@ -163,11 +164,29 @@ function initListeners() {
     const charsPerTokenInput = document.getElementById('cmCharsPerToken');
 
     const updateProfileInputs = () => {
+        const exVal = exInput.value;
+        const inVal = inInput.value;
+        
+        // Update main UI instantly without dispatching 'change' events to avoid async data races
         const mainEx = document.getElementById(`excludePatterns-${currentProfileId}`);
         const mainIn = document.getElementById(`includePatterns-${currentProfileId}`);
-        if (mainEx) { mainEx.value = exInput.value; mainEx.dispatchEvent(new Event('change')); }
-        if (mainIn) { mainIn.value = inInput.value; mainIn.dispatchEvent(new Event('change')); }
-        evaluateTreeUI(exInput.value, inInput.value);
+        if (mainEx) mainEx.value = exVal;
+        if (mainIn) mainIn.value = inVal;
+
+        evaluateTreeUI(exVal, inVal);
+
+        // Debounce storage save to prevent race conditions during rapid clicking/typing
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(() => {
+            loadData((profiles, activeProfileId, archivedProfiles) => {
+                const profile = profiles.find(p => p.id === currentProfileId);
+                if (profile) {
+                    profile.excludePatterns = exVal;
+                    profile.includePatterns = inVal;
+                    saveData(profiles, activeProfileId, archivedProfiles);
+                }
+            });
+        }, 300);
     };
 
     exInput.addEventListener('input', updateProfileInputs);
@@ -258,7 +277,7 @@ function initListeners() {
 
                 exInput.value = [...new Set(excludes)].join(',');
                 inInput.value = [...new Set(includes)].join(',');
-                updateProfileInputs(); // Triggers UI re-evaluation
+                updateProfileInputs(); // Triggers UI re-evaluation and saves to storage
             }, 10);
         }
     });
