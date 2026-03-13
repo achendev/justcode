@@ -210,6 +210,8 @@ def get_all_file_stats(project_path, path_prefix=None):
             
             try:
                 size = os.path.getsize(full_path)
-                stats.append({"path": rel_path, "chars": size, "lines": size // 35})
+                # Ensure math matches JS: Math.ceil(size / 35)
+                lines = (size + 34) // 35 if size > 0 else 0
+                stats.append({"path": rel_path, "chars": size, "lines": lines})
             except OSError: pass
     return stats

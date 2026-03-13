@@ -23,6 +23,22 @@ export function isMatch(str, patterns) {
 }
 
 /**
+ * Checks if a file is binary by scanning the first 1024 bytes for a null character.
+ * @param {File} file 
+ * @returns {Promise<boolean>}
+ */
+async function isBinaryFile(file) {
+    if (file.size === 0) return false;
+    const slice = file.slice(0, 1024);
+    const buffer = await slice.arrayBuffer();
+    const view = new Uint8Array(buffer);
+    for (let i = 0; i < view.length; i++) {
+        if (view[i] === 0) return true;
+    }
+    return false;
+}
+
+/**
  * Recursively walks a directory, returning stats for all valid files.
  * @param {FileSystemDirectoryHandle} directoryHandle
  * @param {object} options - Contains includePatterns and excludePatterns.
@@ -85,6 +101,11 @@ export async function scanDirectory(directoryHandle, options, internalState = {}
             try {
                 const file = await entry.getFile();
                 
+                // Skip binary files safely and quickly before trying to decode massive files
+                if (await isBinaryFile(file)) {
+                    continue;
+                }
+
                 // Fast path for UI tree generation (File size matches chars close enough)
                 if (forceAll) {
                     stats.push({ path: path, chars: file.size, lines: Math.ceil(file.size / 35) });
@@ -92,7 +113,6 @@ export async function scanDirectory(directoryHandle, options, internalState = {}
                 }
 
                 const content = await file.text();
-                if (content.includes('\u0000')) continue; // Skip binary files
 
                 stats.push({
                     path: path,
