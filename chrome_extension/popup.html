@@ -51,6 +51,10 @@
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 class="mb-0">Context Manager</h5>
                 <div class="d-flex gap-2 align-items-center">
+                    <div class="input-group input-group-sm" style="width: 135px;" title="Average characters per token for estimation">
+                        <span class="input-group-text py-0" style="font-size: 0.7rem;">Chars/Token</span>
+                        <input type="number" id="cmCharsPerToken" class="form-control form-control-sm py-0" style="font-size: 0.70rem; min-height: 1.4rem;" step="0.01" min="1">
+                    </div>
                     <span id="cmTotalStats" class="badge bg-secondary" style="font-size: 0.8rem; font-weight: normal; display: none; white-space: nowrap;"></span>
                     <button id="cmRefresh" class="btn btn-outline-secondary btn-sm" title="Refresh Tree"><i class="bi bi-arrow-clockwise"></i></button>
                     <button id="closeContextManager" type="button" class="btn-close" aria-label="Close"></button>

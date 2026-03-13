@@ -5,13 +5,29 @@ import { expandWindow } from '../popup/view.js';
 
 let currentProfileId = null;
 let currentContextSizeLimit = 3000000;
+let currentCharsPerToken = 3.75;
 let isInitialized = false;
 
-// Token calculation heuristics
-// Gemini's tokenizer is highly efficient, averaging ~3.74 characters per token for typical codebases.
-const CHARS_PER_TOKEN = 3.74; 
+// Token calculation heuristics constants
 const FILE_WRAPPER_OVERHEAD = 50; // cat > file << EOF\n\n
 const PROMPT_BASE_OVERHEAD = 1500; // Base instructions block size
+
+// Helper for fast regex compilation and evaluation to prevent blocking UI
+function compilePatterns(patterns) {
+    return patterns.map(p => {
+        let pat = p;
+        if (pat.endsWith('/')) pat += '*';
+        const regexPattern = '^' + pat.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$';
+        return new RegExp(regexPattern);
+    });
+}
+
+function fastMatch(str, compiledRegexes) {
+    for (const regex of compiledRegexes) {
+        if (regex.test(str)) return true;
+    }
+    return false;
+}
 
 function buildTreeData(stats) {
     const root = { name: '.', path: '', isDir: true, chars: 0, lines: 0, children: {} };
@@ -49,7 +65,7 @@ function renderTreeNode(node, depth = 0) {
         return childB.chars - childA.chars;
     });
 
-    const tokens = Math.ceil(node.chars / CHARS_PER_TOKEN);
+    const tokens = Math.ceil(node.chars / currentCharsPerToken);
 
     let html = '';
     if (depth !== 0) {
@@ -81,6 +97,9 @@ export function evaluateTreeUI(excludeStr, includeStr) {
     const excludes = excludeStr.split(',').map(s=>s.trim()).filter(Boolean);
     const includes = includeStr.split(',').map(s=>s.trim()).filter(Boolean);
 
+    const compiledExcludes = compilePatterns(excludes);
+    const compiledIncludes = compilePatterns(includes);
+
     let totalChars = 0;
     let totalLines = 0;
     let fileCount = 0;
@@ -93,17 +112,19 @@ export function evaluateTreeUI(excludeStr, includeStr) {
         const lines = parseInt(item.dataset.lines, 10) || 0;
         
         const pathWithSlash = isDir ? path + '/' : path;
-        const isExcluded = isMatch(path, excludes) || (isDir && isMatch(pathWithSlash, excludes));
-        let isIncluded = isMatch(path, includes) || (isDir && isMatch(pathWithSlash, includes));
         
-        if (!isDir && !isIncluded) isIncluded = isMatch(path.split('/').pop(), includes);
+        // Fast evaluation using pre-compiled regex
+        const isExcluded = fastMatch(path, compiledExcludes) || (isDir && fastMatch(pathWithSlash, compiledExcludes));
+        let isIncluded = fastMatch(path, compiledIncludes) || (isDir && fastMatch(pathWithSlash, compiledIncludes));
+        
+        if (!isDir && !isIncluded) isIncluded = fastMatch(path.split('/').pop(), compiledIncludes);
 
         if (isExcluded && !isIncluded) {
-            checkbox.checked = false;
-            item.classList.add('excluded');
+            if (checkbox.checked) checkbox.checked = false; // Only update DOM if changed
+            if (!item.classList.contains('excluded')) item.classList.add('excluded');
         } else {
-            checkbox.checked = true;
-            item.classList.remove('excluded');
+            if (!checkbox.checked) checkbox.checked = true;
+            if (item.classList.contains('excluded')) item.classList.remove('excluded');
             if (!isDir) {
                 totalChars += chars;
                 totalLines += lines;
@@ -116,7 +137,7 @@ export function evaluateTreeUI(excludeStr, includeStr) {
     if (statsEl) {
         // Calculate estimated tokens incorporating heredoc and base prompt overhead
         const estimatedPromptChars = totalChars + (fileCount * FILE_WRAPPER_OVERHEAD) + PROMPT_BASE_OVERHEAD;
-        const totalTokens = Math.ceil(estimatedPromptChars / CHARS_PER_TOKEN);
+        const totalTokens = Math.ceil(estimatedPromptChars / currentCharsPerToken);
         
         statsEl.textContent = `Context: ~${totalTokens.toLocaleString()} t, ${totalChars.toLocaleString()} c, ${totalLines.toLocaleString()} l`;
         statsEl.style.display = 'inline-block';
@@ -138,6 +159,7 @@ function initListeners() {
 
     const exInput = document.getElementById('cmExcludeInput');
     const inInput = document.getElementById('cmIncludeInput');
+    const charsPerTokenInput = document.getElementById('cmCharsPerToken');
 
     const updateProfileInputs = () => {
         const mainEx = document.getElementById(`excludePatterns-${currentProfileId}`);
@@ -149,6 +171,22 @@ function initListeners() {
 
     exInput.addEventListener('input', updateProfileInputs);
     inInput.addEventListener('input', updateProfileInputs);
+    
+    charsPerTokenInput.addEventListener('change', (e) => {
+        let val = parseFloat(e.target.value);
+        if (isNaN(val) || val <= 0) val = 3.75;
+        currentCharsPerToken = val;
+        e.target.value = val;
+        
+        loadData((profiles, activeProfileId, archivedProfiles) => {
+            const profile = profiles.find(p => p.id === currentProfileId);
+            if (profile) {
+                profile.charsPerToken = val;
+                saveData(profiles, activeProfileId, archivedProfiles);
+            }
+        });
+        evaluateTreeUI(exInput.value, inInput.value);
+    });
 
     document.getElementById('cmTreeContainer').addEventListener('click', (e) => {
         if (e.target.classList.contains('toggle-collapse')) {
@@ -163,42 +201,50 @@ function initListeners() {
 
     document.getElementById('cmTreeContainer').addEventListener('change', (e) => {
         if (e.target.classList.contains('node-check')) {
-            const isDir = e.target.dataset.isdir === 'true';
-            const pathNoSlash = e.target.dataset.path;
-            const pathToCheck = isDir ? `${pathNoSlash}/` : pathNoSlash;
-            
-            let excludes = exInput.value.split(',').map(s=>s.trim()).filter(Boolean);
-            let includes = inInput.value.split(',').map(s=>s.trim()).filter(Boolean);
-
-            if (!e.target.checked) {
-                // User wants to EXCLUDE
-                includes = includes.filter(p => p !== pathToCheck && p !== pathNoSlash);
-                
-                const inherentlyIncluded = isMatch(pathNoSlash, includes) || (isDir && isMatch(pathToCheck, includes));
-                const inherentlyExcluded = isMatch(pathNoSlash, excludes) || (isDir && isMatch(pathToCheck, excludes));
-                
-                // Only add to exclude if it's not forced to be included by a parent, 
-                // and not already excluded by a parent (prevents redundant entries)
-                if (!inherentlyIncluded && !inherentlyExcluded) {
-                    excludes.push(pathToCheck);
-                }
-            } else {
-                // User wants to INCLUDE
-                excludes = excludes.filter(p => p !== pathToCheck && p !== pathNoSlash);
-                
-                const inherentlyExcluded = isMatch(pathNoSlash, excludes) || (isDir && isMatch(pathToCheck, excludes));
-                const inherentlyIncluded = isMatch(pathNoSlash, includes) || (isDir && isMatch(pathToCheck, includes));
-
-                // Only add to include if a parent is actively excluding it,
-                // and it's not already covered by another include rule
-                if (inherentlyExcluded && !inherentlyIncluded) {
-                    includes.push(pathToCheck);
-                }
+            const statsEl = document.getElementById('cmTotalStats');
+            if (statsEl) {
+                statsEl.textContent = "Computing...";
             }
-            
-            exInput.value = [...new Set(excludes)].join(',');
-            inInput.value = [...new Set(includes)].join(',');
-            updateProfileInputs();
+
+            // Yield to main thread so checkbox updates instantly
+            setTimeout(() => {
+                const isDir = e.target.dataset.isdir === 'true';
+                const pathNoSlash = e.target.dataset.path;
+                const pathToCheck = isDir ? `${pathNoSlash}/` : pathNoSlash;
+                
+                let excludes = exInput.value.split(',').map(s=>s.trim()).filter(Boolean);
+                let includes = inInput.value.split(',').map(s=>s.trim()).filter(Boolean);
+
+                if (!e.target.checked) {
+                    // User wants to EXCLUDE
+                    includes = includes.filter(p => p !== pathToCheck && p !== pathNoSlash);
+                    
+                    const inherentlyIncluded = isMatch(pathNoSlash, includes) || (isDir && isMatch(pathToCheck, includes));
+                    const inherentlyExcluded = isMatch(pathNoSlash, excludes) || (isDir && isMatch(pathToCheck, excludes));
+                    
+                    // Only add to exclude if it's not forced to be included by a parent, 
+                    // and not already excluded by a parent (prevents redundant entries)
+                    if (!inherentlyIncluded && !inherentlyExcluded) {
+                        excludes.push(pathToCheck);
+                    }
+                } else {
+                    // User wants to INCLUDE
+                    excludes = excludes.filter(p => p !== pathToCheck && p !== pathNoSlash);
+                    
+                    const inherentlyExcluded = isMatch(pathNoSlash, excludes) || (isDir && isMatch(pathToCheck, excludes));
+                    const inherentlyIncluded = isMatch(pathNoSlash, includes) || (isDir && isMatch(pathToCheck, includes));
+
+                    // Only add to include if a parent is actively excluding it,
+                    // and it's not already covered by another include rule
+                    if (inherentlyExcluded && !inherentlyIncluded) {
+                        includes.push(pathToCheck);
+                    }
+                }
+                
+                exInput.value = [...new Set(excludes)].join(',');
+                inInput.value = [...new Set(includes)].join(',');
+                updateProfileInputs(); // Includes evaluateTreeUI execution
+            }, 10);
         }
     });
 
@@ -275,6 +321,8 @@ export function openContextManager(event) {
         const profile = profiles.find(p => p.id === currentProfileId);
         if (profile) {
             currentContextSizeLimit = profile.contextSizeLimit || 3000000;
+            currentCharsPerToken = profile.charsPerToken || 3.75;
+            document.getElementById('cmCharsPerToken').value = currentCharsPerToken;
             document.getElementById('cmExcludeInput').value = profile.excludePatterns || '';
             document.getElementById('cmIncludeInput').value = profile.includePatterns || '';
             loadTree(profile);

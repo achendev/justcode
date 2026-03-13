@@ -67,6 +67,7 @@ function migrateProfile(profile) {
     if (profile.autoMaskFQDNs === undefined) { profile.autoMaskFQDNs = false; changed = true; }
     if (profile.autoDeploy === undefined) { profile.autoDeploy = false; changed = true; }
     if (profile.agentReviewPolicy === undefined) { profile.agentReviewPolicy = 'review'; changed = true; }
+    if (profile.charsPerToken === undefined) { profile.charsPerToken = 3.75; changed = true; }
     
     // Migration: isAgentModeEnabled -> mode ('normal', 'agent', 'mcp')
     if (profile.mode === undefined) {
@@ -129,7 +130,8 @@ export function loadData(callback) {
                 autoMaskFQDNs: false,
                 autoDeploy: false,
                 mode: 'normal',
-                agentReviewPolicy: 'review'
+                agentReviewPolicy: 'review',
+                charsPerToken: 3.75
             }];
             needsSave = true;
         }
