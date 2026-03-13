@@ -111,7 +111,10 @@ export function getMainViewHTML(profile) {
         
         <div class="mb-2 include-patterns-container collapsed" id="includeContainer-${profile.id}">
             <label for="includePatterns-${profile.id}" class="form-label">Include Patterns (comma-separated):</label>
-            <input type="text" class="form-control form-control-sm include-patterns" id="includePatterns-${profile.id}" placeholder="*.py,*.js,*.html" value="${profile.includePatterns || ''}">
+            <div class="input-group input-group-sm">
+                <input type="text" class="form-control include-patterns" id="includePatterns-${profile.id}" placeholder="*.py,*.js,*.html" value="${profile.includePatterns || ''}">
+                <button class="btn btn-outline-secondary open-context-manager" type="button" data-id="${profile.id}" title="Open Context Manager"><i class="bi bi-diagram-3"></i></button>
+            </div>
         </div>
 
         <!-- Input Controls Wrapper -->

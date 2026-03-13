@@ -107,3 +107,21 @@ body.dark-theme .copy-profile.btn-outline-secondary.shift-pressed:hover {
     background-color: #ff6b6b;
     color: #212529;
 }
+
+/* Context Manager Tree Styles */
+.tree-item {
+    display: flex;
+    align-items: center;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    transition: background-color 0.1s;
+}
+.tree-item:hover {
+    background-color: rgba(0,0,0,0.05);
+}
+body.dark-theme .tree-item:hover {
+    background-color: rgba(255,255,255,0.05);
+}
+.tree-item.excluded {
+    opacity: 0.4;
+}

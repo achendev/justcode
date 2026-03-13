@@ -115,8 +115,6 @@ def generate_context_from_path(project_path, include_patterns, exclude_patterns,
     return "".join(output_parts)
 
 def generate_tree_with_char_counts(project_path, include_patterns, exclude_patterns, path_prefix=None):
-    # Implementation matches previous one, logic unaffected by delimiter
-    # ... (Copied for completeness) ...
     matching_files_data = []
     processed_exclude_patterns = [p + '*' if p.endswith('/') else p for p in exclude_patterns]
     processed_include_patterns = [p + '*' if p.endswith('/') else p for p in include_patterns]
@@ -199,3 +197,21 @@ def generate_tree_with_char_counts(project_path, include_patterns, exclude_patte
                 
     build_tree_str(tree_dict)
     return "\n".join(tree_lines), total_chars
+
+def get_all_file_stats(project_path, path_prefix=None):
+    stats = []
+    for dirpath, dirnames, filenames in os.walk(project_path):
+        if '.git' in dirnames:
+            dirnames.remove('.git')
+        for filename in filenames:
+            full_path = os.path.join(dirpath, filename)
+            if is_binary(full_path): continue
+            
+            rel_path = os.path.relpath(full_path, project_path).replace('\\', '/')
+            if path_prefix: rel_path = f"{path_prefix}/{rel_path}"
+            
+            try:
+                size = os.path.getsize(full_path)
+                stats.append({"path": rel_path, "chars": size, "lines": size // 35})
+            except OSError: pass
+    return stats

@@ -5,10 +5,11 @@ import subprocess
 import shlex
 import re
 from flask import request, Response
-from .tools.context_generator import generate_context_from_path, generate_tree_with_char_counts, get_file_stats
+from .tools.context_generator import generate_context_from_path, generate_tree_with_char_counts, get_file_stats, get_all_file_stats
 from .tools.utils import here_doc_value
 
 def get_context():
+    action = request.args.get('action', '')
     paths = request.args.getlist('path')
     exclude_str = request.args.get('exclude', '')
     include_str = request.args.get('include', '')
@@ -37,6 +38,16 @@ def get_context():
     include_patterns = [p.strip() for p in include_str.split(',') if p.strip()]
 
     try:
+        if action == 'get_all_file_stats':
+            all_stats = []
+            for i, p_path in enumerate(project_paths):
+                if os.path.isdir(p_path):
+                    prefix = None
+                    if not is_single_path:
+                        prefix = f"{i}" if use_numeric_prefixes else f"{os.path.basename(p_path)}"
+                    all_stats.extend(get_all_file_stats(p_path, path_prefix=prefix))
+            return Response(json.dumps(all_stats), mimetype='application/json')
+
         all_trees_with_counts = []
         all_trees_for_context = []
         all_contents_for_script = []

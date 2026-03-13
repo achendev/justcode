@@ -3,10 +3,12 @@ export function initializeViews() {
     const mainView = document.getElementById('mainView');
     const archiveView = document.getElementById('archiveView');
     const appSettingsView = document.getElementById('appSettingsView');
+    const contextManagerView = document.getElementById('contextManagerView');
     const archiveButton = document.getElementById('archiveButton');
     const closeArchiveButton = document.getElementById('closeArchive');
     const appSettingsButton = document.getElementById('appSettingsButton');
     const closeAppSettingsButton = document.getElementById('closeAppSettings');
+    const closeContextManagerButton = document.getElementById('closeContextManager');
 
     // --- View Mode & Detach Logic ---
     const urlParams = new URLSearchParams(window.location.search);
@@ -39,6 +41,7 @@ export function initializeViews() {
         mainView.style.display = 'none';
         archiveView.style.display = 'block';
         appSettingsView.style.display = 'none';
+        contextManagerView.style.display = 'none';
 
         const searchInput = document.getElementById('archiveSearchInput');
         if (searchInput) {
@@ -51,17 +54,25 @@ export function initializeViews() {
         mainView.style.display = 'block';
         archiveView.style.display = 'none';
         appSettingsView.style.display = 'none';
+        contextManagerView.style.display = 'none';
     });
     
     appSettingsButton.addEventListener('click', () => {
         mainView.style.display = 'none';
         archiveView.style.display = 'none';
         appSettingsView.style.display = 'block';
+        contextManagerView.style.display = 'none';
     });
 
     closeAppSettingsButton.addEventListener('click', () => {
         mainView.style.display = 'block';
         archiveView.style.display = 'none';
         appSettingsView.style.display = 'none';
+        contextManagerView.style.display = 'none';
+    });
+
+    closeContextManagerButton.addEventListener('click', () => {
+        mainView.style.display = 'block';
+        contextManagerView.style.display = 'none';
     });
 }

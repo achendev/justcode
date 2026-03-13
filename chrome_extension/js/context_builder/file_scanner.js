@@ -4,26 +4,17 @@
  * @param {string[]} patterns An array of glob patterns.
  * @returns {boolean} True if the string matches any pattern.
  */
-function isMatch(str, patterns) {
+export function isMatch(str, patterns) {
     if (!patterns || patterns.length === 0) return false;
 
     for (let pattern of patterns) {
         if (typeof pattern !== 'string' || !pattern) continue;
         
-        // Append wildcard for directory matching
         if (pattern.endsWith('/')) {
             pattern += '*';
         }
-        
-        // 1. Escape special regex characters EXCEPT the glob '*'
-        let regexStr = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
-        // 2. Convert glob '*' to regex '.*'
-        regexStr = regexStr.replace(/\*/g, '.*');
-        
-        // 3. Anchor to start and end to perfectly mimic Python's fnmatch
-        const regexPattern = '^' + regexStr + '$';
+        const regexPattern = '^' + pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$';
         const regex = new RegExp(regexPattern);
-        
         if (regex.test(str)) {
             return true;
         }
@@ -40,6 +31,7 @@ function isMatch(str, patterns) {
  */
 export async function scanDirectory(directoryHandle, options, internalState = {}) {
     const currentPath = internalState.currentPath || '';
+    const forceAll = options.forceAll === true;
     let stats = [];
 
     const entries = [];
@@ -52,25 +44,29 @@ export async function scanDirectory(directoryHandle, options, internalState = {}
     });
 
     for (const entry of entries) {
+        if (entry.name === '.git') continue; // Hard safety to prevent massive hangs
+        
         const path = currentPath ? `${currentPath}/${entry.name}` : entry.name;
 
         if (entry.kind === 'directory') {
-            const pathWithSlash = path + '/';
-            const isExcluded = isMatch(path, options.excludePatterns) || isMatch(pathWithSlash, options.excludePatterns);
-            const isIncluded = isMatch(path, options.includePatterns) || isMatch(pathWithSlash, options.includePatterns);
+            if (!forceAll) {
+                const pathWithSlash = path + '/';
+                const isExcluded = isMatch(path, options.excludePatterns) || isMatch(pathWithSlash, options.excludePatterns);
+                const isIncluded = isMatch(path, options.includePatterns) || isMatch(pathWithSlash, options.includePatterns);
 
-            // If excluded, only dive in if there's an explicit include pattern that targets something inside
-            if (isExcluded && !isIncluded) {
-                let hasIncludeInside = false;
-                for (const p of options.includePatterns) {
-                    // Support standard prefixes like "folder/subfolder" overriding excluded "folder/"
-                    if (p.startsWith(pathWithSlash) || p.startsWith('*' + pathWithSlash)) {
-                        hasIncludeInside = true;
-                        break;
+                // If excluded, only dive in if there's an explicit include pattern that targets something inside
+                if (isExcluded && !isIncluded) {
+                    let hasIncludeInside = false;
+                    for (const p of options.includePatterns) {
+                        // Support standard prefixes like "folder/subfolder" overriding excluded "folder/"
+                        if (p.startsWith(pathWithSlash) || p.startsWith('*' + pathWithSlash)) {
+                            hasIncludeInside = true;
+                            break;
+                        }
                     }
-                }
-                if (!hasIncludeInside) {
-                    continue;
+                    if (!hasIncludeInside) {
+                        continue;
+                    }
                 }
             }
             
@@ -78,16 +74,25 @@ export async function scanDirectory(directoryHandle, options, internalState = {}
             stats = stats.concat(subStats);
             
         } else if (entry.kind === 'file') {
-            const isExcluded = isMatch(path, options.excludePatterns);
-            const isIncluded = isMatch(path, options.includePatterns) || isMatch(entry.name, options.includePatterns);
+            if (!forceAll) {
+                const isExcluded = isMatch(path, options.excludePatterns);
+                const isIncluded = isMatch(path, options.includePatterns) || isMatch(entry.name, options.includePatterns);
 
-            // The file is ignored if it's excluded and NOT specifically included
-            if (isExcluded && !isIncluded) {
-                continue;
+                // The file is ignored if it's excluded and NOT specifically included
+                if (isExcluded && !isIncluded) {
+                    continue;
+                }
             }
             
             try {
                 const file = await entry.getFile();
+                
+                // Fast path for UI tree generation (File size matches chars close enough)
+                if (forceAll) {
+                    stats.push({ path: path, chars: file.size, lines: Math.ceil(file.size / 35) });
+                    continue;
+                }
+
                 const content = await file.text();
                 if (content.includes('\u0000')) continue; // Skip binary files
 

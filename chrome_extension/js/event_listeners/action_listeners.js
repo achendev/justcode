@@ -1,4 +1,5 @@
 import * as actionHandlers from '../ui_handlers/actions.js';
+import { openContextManager } from '../ui_handlers/context_manager.js';
 
 export function attachActionEventListeners() {
     // --- Main action buttons ---
@@ -24,5 +25,9 @@ export function attachActionEventListeners() {
     });
     document.querySelectorAll('.apply-replacements').forEach(button => {
         button.addEventListener('click', (e) => actionHandlers.handleApplyReplacementsClick(e));
+    });
+
+    document.querySelectorAll('.open-context-manager').forEach(button => {
+        button.addEventListener('click', (e) => openContextManager(e));
     });
 }
