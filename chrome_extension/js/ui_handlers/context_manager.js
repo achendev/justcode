@@ -4,6 +4,7 @@ import { getHandles, verifyPermission } from '../file_system_manager.js';
 import { expandWindow } from '../popup/view.js';
 
 let currentProfileId = null;
+let currentContextSizeLimit = 3000000;
 let isInitialized = false;
 
 function buildTreeData(stats) {
@@ -47,7 +48,7 @@ function renderTreeNode(node, depth = 0) {
         const padding = (depth - 1) * 15;
         const chevronVisibility = node.isDir && childrenKeys.length > 0 ? 'visible' : 'hidden';
         html += `
-        <div class="tree-item" data-path="${node.path}" style="padding-left: ${padding}px;">
+        <div class="tree-item" data-path="${node.path}" data-chars="${node.chars}" data-lines="${node.lines}" style="padding-left: ${padding}px;">
             <i class="bi bi-chevron-right toggle-collapse" style="cursor: pointer; width: 16px; display: inline-block; text-align: center; visibility: ${chevronVisibility};"></i>
             <input type="checkbox" class="form-check-input node-check m-0 me-2" data-path="${node.path}" data-isdir="${node.isDir}">
             <span class="fw-bold me-2">${node.name}${node.isDir ? '/' : ''}</span>
@@ -72,10 +73,15 @@ export function evaluateTreeUI(excludeStr, includeStr) {
     const excludes = excludeStr.split(',').map(s=>s.trim()).filter(Boolean);
     const includes = includeStr.split(',').map(s=>s.trim()).filter(Boolean);
 
+    let totalChars = 0;
+    let totalLines = 0;
+
     document.querySelectorAll('#cmTreeContainer .tree-item[data-path]').forEach(item => {
         const path = item.dataset.path;
         const checkbox = item.querySelector('.node-check');
         const isDir = checkbox.dataset.isdir === 'true';
+        const chars = parseInt(item.dataset.chars, 10) || 0;
+        const lines = parseInt(item.dataset.lines, 10) || 0;
         
         const pathWithSlash = isDir ? path + '/' : path;
         const isExcluded = isMatch(path, excludes) || (isDir && isMatch(pathWithSlash, excludes));
@@ -89,8 +95,27 @@ export function evaluateTreeUI(excludeStr, includeStr) {
         } else {
             checkbox.checked = true;
             item.classList.remove('excluded');
+            if (!isDir) {
+                totalChars += chars;
+                totalLines += lines;
+            }
         }
     });
+
+    const statsEl = document.getElementById('cmTotalStats');
+    if (statsEl) {
+        statsEl.textContent = `Context: ${totalChars.toLocaleString()} c, ${totalLines.toLocaleString()} l`;
+        statsEl.style.display = 'inline-block';
+        if (totalChars > currentContextSizeLimit) {
+            statsEl.classList.remove('bg-secondary');
+            statsEl.classList.add('bg-danger');
+            statsEl.title = `Exceeds limit of ${currentContextSizeLimit.toLocaleString()} chars`;
+        } else {
+            statsEl.classList.remove('bg-danger');
+            statsEl.classList.add('bg-secondary');
+            statsEl.title = `Total context size`;
+        }
+    }
 }
 
 function initListeners() {
@@ -235,6 +260,7 @@ export function openContextManager(event) {
     loadData(profiles => {
         const profile = profiles.find(p => p.id === currentProfileId);
         if (profile) {
+            currentContextSizeLimit = profile.contextSizeLimit || 3000000;
             document.getElementById('cmExcludeInput').value = profile.excludePatterns || '';
             document.getElementById('cmIncludeInput').value = profile.includePatterns || '';
             loadTree(profile);

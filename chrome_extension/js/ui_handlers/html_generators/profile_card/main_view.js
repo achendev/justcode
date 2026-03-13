@@ -98,6 +98,7 @@ export function getMainViewHTML(profile) {
         <div class="d-flex align-items-end gap-2 mb-2">
             <div class="flex-grow-1">
                 <div class="input-group input-group-sm">
+                    <button class="btn btn-outline-secondary open-context-manager" type="button" data-id="${profile.id}" title="Open Context Manager"><i class="bi bi-diagram-3"></i></button>
                     <input type="text" class="form-control exclude-patterns" id="excludePatterns-${profile.id}" placeholder=".git/,venv/,.env,log/" value="${profile.excludePatterns || ''}">
                     <button class="btn btn-outline-secondary get-exclusion-prompt" type="button" data-id="${profile.id}" title="Get AI-suggestion for exclude patterns"><i class="bi bi-funnel"></i></button>
                 </div>
@@ -113,7 +114,6 @@ export function getMainViewHTML(profile) {
             <label for="includePatterns-${profile.id}" class="form-label">Include Patterns (comma-separated):</label>
             <div class="input-group input-group-sm">
                 <input type="text" class="form-control include-patterns" id="includePatterns-${profile.id}" placeholder="*.py,*.js,*.html" value="${profile.includePatterns || ''}">
-                <button class="btn btn-outline-secondary open-context-manager" type="button" data-id="${profile.id}" title="Open Context Manager"><i class="bi bi-diagram-3"></i></button>
             </div>
         </div>
 
