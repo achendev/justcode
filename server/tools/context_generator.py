@@ -46,9 +46,17 @@ def generate_context_from_path(project_path, include_patterns, exclude_patterns,
             if is_excluded and not is_included:
                 has_include_inside = False
                 for p in include_patterns:
-                    if p.startswith(dir_rel_path_norm):
+                    # If pattern starts with wildcard, it can match anywhere.
+                    if p.startswith('*'):
                         has_include_inside = True
                         break
+                    
+                    # Check if the folder is a prefix of the include pattern, or vice versa
+                    prefix = p.split('*')[0]
+                    if dir_rel_path_norm.startswith(prefix) or prefix.startswith(dir_rel_path_norm):
+                        has_include_inside = True
+                        break
+                        
                 if not has_include_inside:
                     excluded_dirs.append(d)
                     
@@ -131,9 +139,17 @@ def generate_tree_with_char_counts(project_path, include_patterns, exclude_patte
             if is_excluded and not is_included:
                 has_include_inside = False
                 for p in include_patterns:
-                    if p.startswith(dir_rel_path_norm):
+                    # If pattern starts with wildcard, it can match anywhere.
+                    if p.startswith('*'):
                         has_include_inside = True
                         break
+                    
+                    # Check if the folder is a prefix of the include pattern, or vice versa
+                    prefix = p.split('*')[0]
+                    if dir_rel_path_norm.startswith(prefix) or prefix.startswith(dir_rel_path_norm):
+                        has_include_inside = True
+                        break
+                        
                 if not has_include_inside:
                     excluded_dirs.append(d)
                     

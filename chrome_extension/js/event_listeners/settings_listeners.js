@@ -57,7 +57,7 @@ export function attachSettingsEventListeners(reRenderCallback) {
     
     // --- Server-mode settings inside settings view ---
     document.querySelectorAll('.server-url').forEach(input => {
-        input.addEventListener('input', (e) => inputHandlers.handleInputChange(e, 'serverUrl', 'http://127.0.0.1:5010'));
+        input.addEventListener('input', (e) => settingsHandlers.handleServerUrlChange(e));
     });
     document.querySelectorAll('.auth-enabled').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => inputHandlers.handleCheckboxChange(e, 'isAuthEnabled'));
