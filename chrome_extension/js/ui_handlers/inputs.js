@@ -12,7 +12,7 @@ export function handleInputChange(event, fieldName, defaultValue = '') {
     });
 }
 
-export function handleProjectPathChange(event) {
+export function handleProjectPathInput(event) {
     const id = parseInt(event.target.dataset.id);
     const index = parseInt(event.target.dataset.index);
     const newValue = event.target.value.trim();
@@ -22,6 +22,15 @@ export function handleProjectPathChange(event) {
         if (profile && profile.projectPaths && profile.projectPaths[index] !== undefined) {
             profile.projectPaths[index] = newValue;
             saveData(profiles, activeProfileId, archivedProfiles);
+        }
+    });
+}
+
+export function handleProjectPathChange(event) {
+    const id = parseInt(event.target.dataset.id);
+    loadData((profiles, activeProfileId, archivedProfiles) => {
+        const profile = profiles.find(p => p.id === id);
+        if (profile) {
             refreshUndoRedoCounts(profile);
         }
     });

@@ -55,7 +55,7 @@ export function attachProfileEventListeners(reRenderCallback) {
     });
 
     document.querySelectorAll('.profile-name-input').forEach(input => {
-        input.addEventListener('change', (e) => profileHandlers.handleProfileNameChange(e, reRenderCallback));
+        input.addEventListener('input', (e) => profileHandlers.handleProfileNameChange(e));
     });
 
     document.querySelectorAll('.copy-profile').forEach(button => {

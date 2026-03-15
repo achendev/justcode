@@ -8,7 +8,6 @@ let currentContextSizeLimit = 3000000;
 let currentCharsPerToken = 3.75;
 let isInitialized = false;
 let lastCheckedNode = null; // Track the last clicked checkbox for Shift-Click functionality
-let saveTimeout = null; // Debouncer for saving
 
 // Token calculation heuristics constants
 const FILE_WRAPPER_OVERHEAD = 50; // cat > file << EOF\n\n
@@ -123,9 +122,11 @@ export function evaluateTreeUI(excludeStr, includeStr) {
 
         if (isExcluded && !isIncluded) {
             checkbox.checked = false;
+            checkbox.dataset.indeterminate = 'false';
             item.classList.add('excluded');
         } else {
             checkbox.checked = true;
+            checkbox.dataset.indeterminate = 'false';
             item.classList.remove('excluded');
             if (!isDir) {
                 const chars = parseInt(item.dataset.chars, 10) || 0;
@@ -172,14 +173,17 @@ export function evaluateTreeUI(excludeStr, includeStr) {
                 if (itemState === 1) {
                     checkbox.checked = true;
                     checkbox.indeterminate = false;
+                    checkbox.dataset.indeterminate = 'false';
                     item.classList.remove('excluded');
                 } else if (itemState === 0) {
                     checkbox.checked = false;
                     checkbox.indeterminate = false;
+                    checkbox.dataset.indeterminate = 'false';
                     item.classList.add('excluded');
                 } else {
                     checkbox.checked = false;
                     checkbox.indeterminate = true;
+                    checkbox.dataset.indeterminate = 'true';
                     item.classList.remove('excluded'); // Keep indeterminate parent visually active
                 }
 
@@ -287,18 +291,15 @@ function initListeners() {
 
         evaluateTreeUI(exVal, inVal);
 
-        // Debounce storage save to prevent race conditions during rapid clicking/typing
-        clearTimeout(saveTimeout);
-        saveTimeout = setTimeout(() => {
-            loadData((profiles, activeProfileId, archivedProfiles) => {
-                const profile = profiles.find(p => p.id === currentProfileId);
-                if (profile) {
-                    profile.excludePatterns = exVal;
-                    profile.includePatterns = inVal;
-                    saveData(profiles, activeProfileId, archivedProfiles);
-                }
-            });
-        }, 300);
+        // Immediate save on input event to prevent data loss on sudden popup closure
+        loadData((profiles, activeProfileId, archivedProfiles) => {
+            const profile = profiles.find(p => p.id === currentProfileId);
+            if (profile) {
+                profile.excludePatterns = exVal;
+                profile.includePatterns = inVal;
+                saveData(profiles, activeProfileId, archivedProfiles);
+            }
+        });
     };
 
     exInput.addEventListener('input', updateProfileInputs);
@@ -337,7 +338,14 @@ function initListeners() {
             const checkboxes = Array.from(document.querySelectorAll('#cmTreeContainer .node-check'));
             const currentIndex = checkboxes.indexOf(e.target);
             let nodesToProcess = [e.target];
-            const targetState = e.target.checked; // The state we want to apply
+            let targetState = e.target.checked; // The state we want to apply
+
+            // If the checkbox was indeterminate (visually a minus '-'), 
+            // the user explicitly clicked it to exclude the folder.
+            if (e.target.dataset.indeterminate === 'true') {
+                targetState = false;
+                e.target.checked = false;
+            }
 
             // Handle Shift-Click
             if (e.shiftKey && lastCheckedNode) {
@@ -351,6 +359,7 @@ function initListeners() {
                     nodesToProcess.forEach(cb => { 
                         cb.checked = targetState; 
                         cb.indeterminate = false; 
+                        cb.dataset.indeterminate = 'false';
                     });
                 }
             }

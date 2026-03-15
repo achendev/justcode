@@ -84,13 +84,23 @@ export async function handleAddProfile(reRenderCallback) {
     });
 }
 
-export function handleProfileNameChange(event, reRenderCallback) {
+export function handleProfileNameChange(event) {
     const id = parseInt(event.target.dataset.id);
+    const newName = event.target.value || 'Unnamed';
+    
+    // 1. Inline DOM update to prevent the input from losing cursor focus
+    const tabLink = document.querySelector(`.nav-link[data-id="${id}"]`);
+    if (tabLink) {
+        tabLink.textContent = newName;
+    }
+
+    // 2. Save Data Asynchronously
     loadData((profiles, activeProfileId, archivedProfiles) => {
         const profile = profiles.find(p => p.id === id);
-        profile.name = event.target.value.trim() || 'Unnamed';
-        saveData(profiles, activeProfileId, archivedProfiles);
-        reRenderCallback(profiles, activeProfileId, archivedProfiles);
+        if (profile) {
+            profile.name = event.target.value.trim() || 'Unnamed';
+            saveData(profiles, activeProfileId, archivedProfiles);
+        }
     });
 }
 

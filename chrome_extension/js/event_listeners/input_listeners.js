@@ -18,6 +18,7 @@ export function attachInputEventListeners(reRenderCallback) {
 
     // --- Server Mode ---
      document.querySelectorAll('.project-path').forEach(input => {
+        input.addEventListener('input', (e) => inputHandlers.handleProjectPathInput(e));
         input.addEventListener('change', (e) => inputHandlers.handleProjectPathChange(e));
     });
     document.querySelectorAll('.add-project-path').forEach(button => {
@@ -29,12 +30,12 @@ export function attachInputEventListeners(reRenderCallback) {
 
     // --- Common ---
     document.querySelectorAll('.exclude-patterns').forEach(input => {
-        input.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'excludePatterns', '.git/,venv/,.env,log/,*logs/,tmp/'));
+        input.addEventListener('input', (e) => inputHandlers.handleInputChange(e, 'excludePatterns', '.git/,venv/,.env,log/,*logs/,tmp/'));
         input.addEventListener('focus', inputHandlers.handleExcludeFocus);
     });
 
     document.querySelectorAll('.include-patterns').forEach(input => {
-        input.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'includePatterns'));
+        input.addEventListener('input', (e) => inputHandlers.handleInputChange(e, 'includePatterns'));
     });
     
     document.querySelectorAll('.get-context-target').forEach(radio => {

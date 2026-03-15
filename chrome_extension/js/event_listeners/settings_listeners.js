@@ -43,7 +43,7 @@ export function attachSettingsEventListeners(reRenderCallback) {
         select.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'separateInstructions'));
     });
     document.querySelectorAll('.critical-instructions').forEach(textarea => {
-        textarea.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'criticalInstructions'));
+        textarea.addEventListener('input', (e) => inputHandlers.handleInputChange(e, 'criticalInstructions'));
     });
     
     // --- Auto Deploy Toggle ---
@@ -57,28 +57,28 @@ export function attachSettingsEventListeners(reRenderCallback) {
     
     // --- Server-mode settings inside settings view ---
     document.querySelectorAll('.server-url').forEach(input => {
-        input.addEventListener('change', (e) => settingsHandlers.handleServerUrlChange(e));
+        input.addEventListener('input', (e) => inputHandlers.handleInputChange(e, 'serverUrl', 'http://127.0.0.1:5010'));
     });
     document.querySelectorAll('.auth-enabled').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => inputHandlers.handleCheckboxChange(e, 'isAuthEnabled'));
     });
     document.querySelectorAll('.username').forEach(input => {
-        input.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'username'));
+        input.addEventListener('input', (e) => inputHandlers.handleInputChange(e, 'username'));
     });
     document.querySelectorAll('.password').forEach(input => {
-        input.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'password'));
+        input.addEventListener('input', (e) => inputHandlers.handleInputChange(e, 'password'));
     });
     document.querySelectorAll('.gather-additional-context').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => settingsHandlers.handleGatherAdditionalContextToggle(e));
     });
     document.querySelectorAll('.additional-context-script').forEach(textarea => {
-        textarea.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'additionalContextScript'));
+        textarea.addEventListener('input', (e) => inputHandlers.handleInputChange(e, 'additionalContextScript'));
     });
     document.querySelectorAll('.run-script-on-deploy').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => settingsHandlers.handleRunScriptOnDeployToggle(e));
     });
     document.querySelectorAll('.post-deploy-script').forEach(textarea => {
-        textarea.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'postDeployScript'));
+        textarea.addEventListener('input', (e) => inputHandlers.handleInputChange(e, 'postDeployScript'));
     });
 
     // --- Two-way sync settings ---
@@ -86,7 +86,7 @@ export function attachSettingsEventListeners(reRenderCallback) {
         checkbox.addEventListener('change', (e) => settingsHandlers.handleTwoWaySyncToggle(e));
     });
     document.querySelectorAll('.two-way-sync-rules').forEach(textarea => {
-        textarea.addEventListener('change', (e) => inputHandlers.handleInputChange(e, 'twoWaySyncRules'));
+        textarea.addEventListener('input', (e) => inputHandlers.handleInputChange(e, 'twoWaySyncRules'));
     });
 
     // --- Auto IP Masking ---
