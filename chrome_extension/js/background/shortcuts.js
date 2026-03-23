@@ -41,7 +41,7 @@ export function injectShortcutListener(tabId, unusedSettings) {
             switch (event.code) {
                 case 'Comma': command = 'undo-code-shortcut'; break;
                 case 'Period': command = 'redo-code-shortcut'; break;
-                case 'KeyV': command = 'apply-replacements-shortcut'; break;
+                case 'KeyV': command = event.shiftKey ? 'reverse-replacements-shortcut' : 'apply-replacements-shortcut'; break;
             }
 
             if (command) {

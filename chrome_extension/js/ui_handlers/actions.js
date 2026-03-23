@@ -207,5 +207,5 @@ export function handleUpdateAppClick(event) {
 }
 
 export function handleApplyReplacementsClick(event) {
-    performAction(event, applyReplacementsAndPaste, false);
+    performAction(event, applyReplacementsAndPaste, false, event.shiftKey === true);
 }

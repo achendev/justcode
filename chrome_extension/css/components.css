@@ -49,7 +49,7 @@
 }
 
 /* Custom Scrollbar Styling (body and message text) */
-body::-webkit-scrollbar {
+::-webkit-scrollbar {
     width: 8px;
 }
 
@@ -58,12 +58,12 @@ body::-webkit-scrollbar {
     width: 6px;
 }
 
-body::-webkit-scrollbar-track,
+::-webkit-scrollbar-track,
 .message-text::-webkit-scrollbar-track {
     background: transparent;
 }
 
-body::-webkit-scrollbar-thumb,
+::-webkit-scrollbar-thumb,
 .message-text::-webkit-scrollbar-thumb {
     border-radius: 10px;
     border: 2px solid transparent;
@@ -88,22 +88,27 @@ body.dark-theme::-webkit-scrollbar-thumb:hover,
 body.dark-theme .message-text::-webkit-scrollbar-thumb:hover {
     background-color: rgba(248, 249, 250, 0.4);
 }
-/* Style for shift-key press on copy button */
-.copy-profile.btn-outline-secondary.shift-pressed {
+
+/* Style for shift-key press on copy button and apply replacements button */
+.copy-profile.btn-outline-secondary.shift-pressed,
+.apply-replacements.btn-outline-secondary.shift-pressed {
     border-color: #dc3545; /* Bootstrap danger color */
     background-color: rgba(220, 53, 69, 0.1); /* Light red background */
     color: #dc3545;
 }
-body.dark-theme .copy-profile.btn-outline-secondary.shift-pressed {
+body.dark-theme .copy-profile.btn-outline-secondary.shift-pressed,
+body.dark-theme .apply-replacements.btn-outline-secondary.shift-pressed {
     border-color: #ff6b6b;
     background-color: rgba(255, 107, 107, 0.15);
     color: #ff6b6b;
 }
-.copy-profile.btn-outline-secondary.shift-pressed:hover {
+.copy-profile.btn-outline-secondary.shift-pressed:hover,
+.apply-replacements.btn-outline-secondary.shift-pressed:hover {
     background-color: #dc3545;
     color: white;
 }
-body.dark-theme .copy-profile.btn-outline-secondary.shift-pressed:hover {
+body.dark-theme .copy-profile.btn-outline-secondary.shift-pressed:hover,
+body.dark-theme .apply-replacements.btn-outline-secondary.shift-pressed:hover {
     background-color: #ff6b6b;
     color: #212529;
 }

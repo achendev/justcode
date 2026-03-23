@@ -41,6 +41,10 @@ export function initializeListeners(reRender) {
             document.querySelectorAll('.profile-card.active .archive-profile').forEach(btn => btn.style.display = 'none');
             document.querySelectorAll('.profile-card.active .permanent-delete-direct').forEach(btn => btn.style.display = 'inline-block');
             document.querySelectorAll('.profile-card.active .copy-profile').forEach(btn => btn.classList.add('shift-pressed'));
+            document.querySelectorAll('.profile-card.active .apply-replacements').forEach(btn => {
+                btn.classList.add('shift-pressed');
+                btn.title = "Reverse Replacements/Unmasking & Copy to Clipboard (Shift+Click)";
+            });
         }
     });
     document.addEventListener('keyup', (e) => {
@@ -49,13 +53,17 @@ export function initializeListeners(reRender) {
             document.querySelectorAll('.profile-card.active .archive-profile').forEach(btn => btn.style.display = 'inline-block');
             document.querySelectorAll('.profile-card.active .permanent-delete-direct').forEach(btn => btn.style.display = 'none');
             document.querySelectorAll('.profile-card.active .copy-profile').forEach(btn => btn.classList.remove('shift-pressed'));
+            document.querySelectorAll('.profile-card.active .apply-replacements').forEach(btn => {
+                btn.classList.remove('shift-pressed');
+                btn.title = "Apply Replacements/Masking to Clipboard & Paste (Alt+V)";
+            });
         }
     });
 
     // --- Key Listeners for shortcuts ---
     document.addEventListener('keydown', (event) => {
         // Check for Alt key without other modifiers
-        if (event.altKey && !event.metaKey && !event.ctrlKey && !event.shiftKey) {
+        if (event.altKey && !event.metaKey && !event.ctrlKey) {
             let actionTaken = false;
             const activeCard = document.querySelector('.profile-card.active');
             if (!activeCard) return;
@@ -64,7 +72,7 @@ export function initializeListeners(reRender) {
                 const btn = activeCard.querySelector(selector);
                 // Check for disabled state and visibility (d-none class)
                 if (btn && !btn.disabled && !btn.classList.contains('d-none')) {
-                    const mockEvent = { currentTarget: btn };
+                    const mockEvent = { currentTarget: btn, shiftKey: event.shiftKey };
                     handler(mockEvent);
                     return true;
                 }
@@ -79,9 +87,11 @@ export function initializeListeners(reRender) {
                     actionTaken = clickButton('.get-context', handleGetContextClick);
                     break;
                 case ',': // Corresponds to Alt + <
+                case '<':
                     actionTaken = clickButton('.undo-code', handleUndoCodeClick);
                     break;
                 case '.': // Corresponds to Alt + >
+                case '>':
                     actionTaken = clickButton('.redo-code', handleRedoCodeClick);
                     break;
             }

@@ -1,18 +1,19 @@
-import { readFromClipboard } from './utils/clipboard.js';
+import { readFromClipboard, writeToClipboard } from './utils/clipboard.js';
 import { applyReplacements } from './utils/two_way_sync.js';
 import { pasteIntoLLM } from './context_builder/llm_interface.js';
-import { maskIPs } from './utils/ip_masking.js';
-import { maskEmails } from './utils/email_masking.js';
-import { maskFQDNs } from './utils/fqdn_masking.js';
+import { maskIPs, unmaskIPs } from './utils/ip_masking.js';
+import { maskEmails, unmaskEmails } from './utils/email_masking.js';
+import { maskFQDNs, unmaskFQDNs } from './utils/fqdn_masking.js';
 
 /**
  * Reads clipboard, applies two-way sync replacements and auto-masking, and pastes into the LLM UI.
  * @param {object} profile The active user profile.
  * @param {boolean} [fromShortcut=false] - True if called from a keyboard shortcut.
+ * @param {boolean} [isReverse=false] - True if reversing replacements/masking.
  * @param {string|null} [hostname=null] - The hostname of the active tab.
  * @returns {Promise<{text: string, type: 'success'|'error'|'info'}>} A result object.
  */
-export async function applyReplacementsAndPaste(profile, fromShortcut = false, hostname = null) {
+export async function applyReplacementsAndPaste(profile, fromShortcut = false, isReverse = false, hostname = null) {
     const hasSync = profile.isTwoWaySyncEnabled && profile.twoWaySyncRules;
     const hasAutoMask = profile.autoMaskIPs || profile.autoMaskEmails || profile.autoMaskFQDNs;
 
@@ -28,27 +29,49 @@ export async function applyReplacementsAndPaste(profile, fromShortcut = false, h
 
         let processedText = clipboardText;
 
-        if (hasSync) {
-            processedText = applyReplacements(processedText, profile.twoWaySyncRules, 'outgoing');
-        }
+        if (isReverse) {
+            // UNMASKING (Reverse order of masking, incoming order)
+            // Order: FQDN -> IP -> Email -> Sync
+            if (profile.autoMaskFQDNs) {
+                processedText = await unmaskFQDNs(processedText);
+            }
+            if (profile.autoMaskIPs) {
+                processedText = await unmaskIPs(processedText);
+            }
+            if (profile.autoMaskEmails) {
+                processedText = await unmaskEmails(processedText);
+            }
+            if (hasSync) {
+                processedText = applyReplacements(processedText, profile.twoWaySyncRules, 'incoming');
+            }
 
-        // CRITICAL: Masking Order (Specific to General)
-        // 1. Emails (User-specific)
-        if (profile.autoMaskEmails) {
-            processedText = await maskEmails(processedText);
-        }
-        // 2. IPs
-        if (profile.autoMaskIPs) {
-            processedText = await maskIPs(processedText);
-        }
-        // 3. FQDNs (General - might catch fake domains from step 1)
-        if (profile.autoMaskFQDNs) {
-            processedText = await maskFQDNs(processedText);
-        }
-        
-        await pasteIntoLLM(processedText, { insertAtCursor: true }, hostname);
+            await writeToClipboard(processedText);
+            return { text: "Reversed replacements and copied to clipboard.", type: 'success' };
+            
+        } else {
+            // MASKING (Outgoing order)
+            if (hasSync) {
+                processedText = applyReplacements(processedText, profile.twoWaySyncRules, 'outgoing');
+            }
 
-        return { text: "Applied replacements/masking and pasted to UI.", type: 'success' };
+            // CRITICAL: Masking Order (Specific to General)
+            // 1. Emails (User-specific)
+            if (profile.autoMaskEmails) {
+                processedText = await maskEmails(processedText);
+            }
+            // 2. IPs
+            if (profile.autoMaskIPs) {
+                processedText = await maskIPs(processedText);
+            }
+            // 3. FQDNs (General - might catch fake domains from step 1)
+            if (profile.autoMaskFQDNs) {
+                processedText = await maskFQDNs(processedText);
+            }
+            
+            await pasteIntoLLM(processedText, { insertAtCursor: true }, hostname);
+
+            return { text: "Applied replacements/masking and pasted to UI.", type: 'success' };
+        }
 
     } catch (error) {
         console.error('JustCode Apply Replacements Error:', error);

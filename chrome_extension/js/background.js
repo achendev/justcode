@@ -59,7 +59,7 @@ async function ensureContentScript(tabId) {
 
         await chrome.scripting.executeScript({
             target: { tabId: tabId },
-            files: [
+            files:[
                 "js/content_script/notification_dom.js",
                 "js/content_script/notification_manager.js",
                 "js/content_script/notification_timer.js",
@@ -369,7 +369,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 case "deploy-code-shortcut": actionFunc = deployCode; progressText = 'Deploying code...'; break;
                 case "undo-code-shortcut": actionFunc = undoCode; progressText = 'Undoing last action...'; break;
                 case "redo-code-shortcut": actionFunc = redoCode; progressText = 'Redoing last undo...'; break;
-                case "apply-replacements-shortcut": actionFunc = applyReplacementsAndPaste; progressText = 'Applying replacements...'; break;
+                case "apply-replacements-shortcut": 
+                    actionFunc = (p, fromSc, hn) => applyReplacementsAndPaste(p, fromSc, false, hn); 
+                    progressText = 'Applying replacements...'; 
+                    break;
+                case "reverse-replacements-shortcut": 
+                    actionFunc = (p, fromSc, hn) => applyReplacementsAndPaste(p, fromSc, true, hn); 
+                    progressText = 'Reversing replacements...'; 
+                    break;
                 default: return;
             }
 
@@ -384,7 +391,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 else if (command === 'deploy-code-shortcut') isEnabled = settings.isDeployCodeShortcutEnabled;
                 else if (command === 'undo-code-shortcut') isEnabled = settings.isUndoShortcutEnabled;
                 else if (command === 'redo-code-shortcut') isEnabled = settings.isRedoShortcutEnabled;
-                else if (command === 'apply-replacements-shortcut') isEnabled = settings.isApplyReplacementsShortcutEnabled;
+                else if (command === 'apply-replacements-shortcut' || command === 'reverse-replacements-shortcut') isEnabled = settings.isApplyReplacementsShortcutEnabled;
                 if (!isEnabled) return;
             }
 
