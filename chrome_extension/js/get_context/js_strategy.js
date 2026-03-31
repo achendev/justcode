@@ -5,7 +5,7 @@ import { pasteIntoLLM, uploadContextAsFile, uploadInstructionsAsFile } from '../
 import { formatContextPrompt, buildFileContentString, getInstructionsBlock } from '../context_builder/prompt_formatter.js';
 import { formatExclusionPrompt } from '../exclusion_prompt.js';
 import { writeToClipboard } from '../utils/clipboard.js';
-import { applyReplacements } from '../utils/two_way_sync.js';
+import { applyReplacements, applyOneWayReplacements } from '../utils/two_way_sync.js';
 import { splitContextPayload } from './utils.js';
 import { maskIPs } from '../utils/ip_masking.js';
 import { maskEmails } from '../utils/email_masking.js';
@@ -85,6 +85,9 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
         // --- PROCESS FUNCTION (OUTGOING) ---
         const process = async (text) => {
             let processed = text;
+            if (profile.isOutgoingSyncEnabled && profile.outgoingSyncRules) {
+                processed = applyOneWayReplacements(processed, profile.outgoingSyncRules);
+            }
             if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
                 processed = applyReplacements(processed, profile.twoWaySyncRules, 'outgoing');
             }
@@ -220,7 +223,10 @@ export async function getExclusionSuggestionFromJS(profile, fromShortcut = false
     
     let prompt = formatExclusionPrompt({ treeString, totalChars, profile });
     
-    // Process Outgoing: Email -> IP -> FQDN
+    // Process Outgoing: Replacements -> Email -> IP -> FQDN
+    if (profile.isOutgoingSyncEnabled && profile.outgoingSyncRules) {
+        prompt = applyOneWayReplacements(prompt, profile.outgoingSyncRules);
+    }
     if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
         prompt = applyReplacements(prompt, profile.twoWaySyncRules, 'outgoing');
     }

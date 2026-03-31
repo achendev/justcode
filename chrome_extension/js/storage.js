@@ -62,6 +62,10 @@ function migrateProfile(profile) {
     if (profile.useNumericPrefixesForMultiProject === undefined) { profile.useNumericPrefixesForMultiProject = false; changed = true; }
     if (profile.isTwoWaySyncEnabled === undefined) { profile.isTwoWaySyncEnabled = false; changed = true; }
     if (profile.twoWaySyncRules === undefined) { profile.twoWaySyncRules = 'StroNgPasWord|password\nmydomain.com|example.com'; changed = true; }
+    if (profile.isIncomingSyncEnabled === undefined) { profile.isIncomingSyncEnabled = false; changed = true; }
+    if (profile.incomingSyncRules === undefined) { profile.incomingSyncRules = ''; changed = true; }
+    if (profile.isOutgoingSyncEnabled === undefined) { profile.isOutgoingSyncEnabled = false; changed = true; }
+    if (profile.outgoingSyncRules === undefined) { profile.outgoingSyncRules = ''; changed = true; }
     if (profile.autoMaskIPs === undefined) { profile.autoMaskIPs = false; changed = true; }
     if (profile.autoMaskEmails === undefined) { profile.autoMaskEmails = false; changed = true; }
     if (profile.autoMaskFQDNs === undefined) { profile.autoMaskFQDNs = false; changed = true; }
@@ -125,6 +129,10 @@ export function loadData(callback) {
                 useNumericPrefixesForMultiProject: false,
                 isTwoWaySyncEnabled: false,
                 twoWaySyncRules: 'StroNgPasWord|password\nmydomain.com|example.com',
+                isIncomingSyncEnabled: false,
+                incomingSyncRules: '',
+                isOutgoingSyncEnabled: false,
+                outgoingSyncRules: '',
                 autoMaskIPs: false,
                 autoMaskEmails: false,
                 autoMaskFQDNs: false,

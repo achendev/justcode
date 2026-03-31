@@ -138,11 +138,13 @@ function updateApplyButtonVisibility(profileId) {
     if (!profileCard) return;
 
     const syncEnabled = profileCard.querySelector('.two-way-sync-enabled').checked;
+    const inEnabled = profileCard.querySelector('.incoming-sync-enabled').checked;
+    const outEnabled = profileCard.querySelector('.outgoing-sync-enabled').checked;
     const ipsEnabled = profileCard.querySelector('.auto-mask-ips').checked;
     const emailsEnabled = profileCard.querySelector('.auto-mask-emails').checked;
     const fqdnsEnabled = profileCard.querySelector('.auto-mask-fqdns').checked;
 
-    const shouldShow = syncEnabled || ipsEnabled || emailsEnabled || fqdnsEnabled;
+    const shouldShow = syncEnabled || inEnabled || outEnabled || ipsEnabled || emailsEnabled || fqdnsEnabled;
     const applyBtn = profileCard.querySelector('.apply-replacements');
     if (applyBtn) applyBtn.classList.toggle('d-none', !shouldShow);
 }
@@ -160,6 +162,42 @@ export function handleTwoWaySyncToggle(event) {
         const profile = profiles.find(p => p.id === id);
         if (profile) {
             profile.isTwoWaySyncEnabled = isChecked;
+            saveData(profiles, activeProfileId, archivedProfiles);
+        }
+    });
+}
+
+export function handleIncomingSyncToggle(event) {
+    const id = parseInt(event.target.dataset.id);
+    const isChecked = event.target.checked;
+    const profileCard = document.getElementById(`profile-${id}`);
+    const textarea = profileCard.querySelector('.incoming-sync-rules');
+    if (textarea) textarea.disabled = !isChecked;
+    
+    updateApplyButtonVisibility(id);
+
+    loadData((profiles, activeProfileId, archivedProfiles) => {
+        const profile = profiles.find(p => p.id === id);
+        if (profile) {
+            profile.isIncomingSyncEnabled = isChecked;
+            saveData(profiles, activeProfileId, archivedProfiles);
+        }
+    });
+}
+
+export function handleOutgoingSyncToggle(event) {
+    const id = parseInt(event.target.dataset.id);
+    const isChecked = event.target.checked;
+    const profileCard = document.getElementById(`profile-${id}`);
+    const textarea = profileCard.querySelector('.outgoing-sync-rules');
+    if (textarea) textarea.disabled = !isChecked;
+    
+    updateApplyButtonVisibility(id);
+
+    loadData((profiles, activeProfileId, archivedProfiles) => {
+        const profile = profiles.find(p => p.id === id);
+        if (profile) {
+            profile.isOutgoingSyncEnabled = isChecked;
             saveData(profiles, activeProfileId, archivedProfiles);
         }
     });

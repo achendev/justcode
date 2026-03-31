@@ -1,5 +1,5 @@
 import { readFromClipboard, writeToClipboard } from './utils/clipboard.js';
-import { applyReplacements } from './utils/two_way_sync.js';
+import { applyReplacements, applyOneWayReplacements } from './utils/two_way_sync.js';
 import { pasteIntoLLM } from './context_builder/llm_interface.js';
 import { maskIPs, unmaskIPs } from './utils/ip_masking.js';
 import { maskEmails, unmaskEmails } from './utils/email_masking.js';
@@ -14,10 +14,12 @@ import { maskFQDNs, unmaskFQDNs } from './utils/fqdn_masking.js';
  * @returns {Promise<{text: string, type: 'success'|'error'|'info'}>} A result object.
  */
 export async function applyReplacementsAndPaste(profile, fromShortcut = false, isReverse = false, hostname = null) {
-    const hasSync = profile.isTwoWaySyncEnabled && profile.twoWaySyncRules;
+    const hasTwoWay = profile.isTwoWaySyncEnabled && profile.twoWaySyncRules;
+    const hasIncoming = profile.isIncomingSyncEnabled && profile.incomingSyncRules;
+    const hasOutgoing = profile.isOutgoingSyncEnabled && profile.outgoingSyncRules;
     const hasAutoMask = profile.autoMaskIPs || profile.autoMaskEmails || profile.autoMaskFQDNs;
 
-    if (!hasSync && !hasAutoMask) {
+    if (!hasTwoWay && !hasIncoming && !hasOutgoing && !hasAutoMask) {
         return { text: "Error: No replacements or masking enabled.", type: 'error' };
     }
     
@@ -31,7 +33,7 @@ export async function applyReplacementsAndPaste(profile, fromShortcut = false, i
 
         if (isReverse) {
             // UNMASKING (Reverse order of masking, incoming order)
-            // Order: FQDN -> IP -> Email -> Sync
+            // Order: FQDN -> IP -> Email -> Incoming One-way -> Two-Way Sync
             if (profile.autoMaskFQDNs) {
                 processedText = await unmaskFQDNs(processedText);
             }
@@ -41,7 +43,10 @@ export async function applyReplacementsAndPaste(profile, fromShortcut = false, i
             if (profile.autoMaskEmails) {
                 processedText = await unmaskEmails(processedText);
             }
-            if (hasSync) {
+            if (hasIncoming) {
+                processedText = applyOneWayReplacements(processedText, profile.incomingSyncRules);
+            }
+            if (hasTwoWay) {
                 processedText = applyReplacements(processedText, profile.twoWaySyncRules, 'incoming');
             }
 
@@ -50,7 +55,10 @@ export async function applyReplacementsAndPaste(profile, fromShortcut = false, i
             
         } else {
             // MASKING (Outgoing order)
-            if (hasSync) {
+            if (hasOutgoing) {
+                processedText = applyOneWayReplacements(processedText, profile.outgoingSyncRules);
+            }
+            if (hasTwoWay) {
                 processedText = applyReplacements(processedText, profile.twoWaySyncRules, 'outgoing');
             }
 

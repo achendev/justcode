@@ -89,6 +89,21 @@ export function attachSettingsEventListeners(reRenderCallback) {
         textarea.addEventListener('input', (e) => inputHandlers.handleInputChange(e, 'twoWaySyncRules'));
     });
 
+    // --- One-way sync settings ---
+    document.querySelectorAll('.incoming-sync-enabled').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => settingsHandlers.handleIncomingSyncToggle(e));
+    });
+    document.querySelectorAll('.incoming-sync-rules').forEach(textarea => {
+        textarea.addEventListener('input', (e) => inputHandlers.handleInputChange(e, 'incomingSyncRules'));
+    });
+
+    document.querySelectorAll('.outgoing-sync-enabled').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => settingsHandlers.handleOutgoingSyncToggle(e));
+    });
+    document.querySelectorAll('.outgoing-sync-rules').forEach(textarea => {
+        textarea.addEventListener('input', (e) => inputHandlers.handleInputChange(e, 'outgoingSyncRules'));
+    });
+
     // --- Auto IP Masking ---
     document.querySelectorAll('.auto-mask-ips').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => settingsHandlers.handleAutoMaskIPsToggle(e));

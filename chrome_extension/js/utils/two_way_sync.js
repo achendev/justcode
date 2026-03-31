@@ -60,7 +60,45 @@ function transferCasing(match, target) {
 }
 
 /**
- * Applies replacements to a given text based on the provided rules and direction.
+ * Applies ONE-WAY replacements to a given text based on provided rules.
+ * 
+ * @param {string} text The text to process.
+ * @param {string} rulesString The raw string of rules.
+ * @returns {string} The processed text.
+ */
+export function applyOneWayReplacements(text, rulesString) {
+    const rules = parseRules(rulesString);
+    if (rules.length === 0) return text;
+
+    let processedText = text;
+    
+    // Sort rules by length of the target to find (descending) to avoid partial replacements
+    const sortedRules = [...rules].sort((a, b) => b.local.length - a.local.length);
+
+    for (const rule of sortedRules) {
+        const from = rule.local;
+        const to = rule.placeholder;
+        
+        // CHECK BOTH SIDES: If either side has uppercase, use strict mode.
+        const isStrictRule = (from !== from.toLowerCase()) || (to !== to.toLowerCase());
+
+        if (isStrictRule) {
+            // Strict replacement: Case-Sensitive, Exact Replace
+            const regex = new RegExp(escapeRegExp(from), 'g');
+            processedText = processedText.replace(regex, to);
+        } else {
+            // Smart replacement: Case-Insensitive, Smart Casing
+            const regex = new RegExp(escapeRegExp(from), 'gi');
+            processedText = processedText.replace(regex, (match) => {
+                return transferCasing(match, to);
+            });
+        }
+    }
+    return processedText;
+}
+
+/**
+ * Applies TWO-WAY replacements to a given text based on the provided rules and direction.
  * 
  * Logic:
  * 1. If a rule (either local OR placeholder) contains any uppercase letters, it is treated as STRICT.

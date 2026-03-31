@@ -88,7 +88,7 @@ export function getSettingsViewHTML(profile) {
         </div>
 
         <hr>
-        <!-- Privacy -->
+        <!-- Privacy & Replacements -->
         <div class="form-check mb-2">
             <input type="checkbox" class="form-check-input auto-mask-ips" id="autoMaskIPs-${profile.id}" data-id="${profile.id}" ${profile.autoMaskIPs ? 'checked' : ''}>
             <label class="form-check-label" for="autoMaskIPs-${profile.id}">Auto-Mask IP Addresses</label>
@@ -106,8 +106,26 @@ export function getSettingsViewHTML(profile) {
             <label class="form-check-label" for="twoWaySyncEnabled-${profile.id}">Enable Custom Two-Way Replacements</label>
         </div>
         <div class="mb-3">
-            <label for="twoWaySyncRules-${profile.id}" class="form-label">Replacement Rules:</label>
-            <textarea class="form-control form-control-sm two-way-sync-rules" id="twoWaySyncRules-${profile.id}" rows="4" data-id="${profile.id}" ${!profile.isTwoWaySyncEnabled ? 'disabled' : ''}>${profile.twoWaySyncRules}</textarea>
+            <label for="twoWaySyncRules-${profile.id}" class="form-label" style="font-size: 0.8rem; margin-bottom: 0.2rem;">Replacement Rules:</label>
+            <textarea class="form-control form-control-sm two-way-sync-rules" id="twoWaySyncRules-${profile.id}" rows="2" data-id="${profile.id}" ${!profile.isTwoWaySyncEnabled ? 'disabled' : ''}>${profile.twoWaySyncRules}</textarea>
+        </div>
+        
+        <div class="form-check mb-2">
+            <input type="checkbox" class="form-check-input incoming-sync-enabled" id="incomingSyncEnabled-${profile.id}" data-id="${profile.id}" ${profile.isIncomingSyncEnabled ? 'checked' : ''}>
+            <label class="form-check-label" for="incomingSyncEnabled-${profile.id}">Enable Incoming Replacements (From LLM / Deploy)</label>
+        </div>
+        <div class="mb-3">
+            <label for="incomingSyncRules-${profile.id}" class="form-label text-muted" style="font-size: 0.75rem; margin-bottom: 0.2rem;">Replace|With (e.g. if[|if [):</label>
+            <textarea class="form-control form-control-sm incoming-sync-rules" id="incomingSyncRules-${profile.id}" rows="2" data-id="${profile.id}" ${!profile.isIncomingSyncEnabled ? 'disabled' : ''}>${profile.incomingSyncRules}</textarea>
+        </div>
+
+        <div class="form-check mb-2">
+            <input type="checkbox" class="form-check-input outgoing-sync-enabled" id="outgoingSyncEnabled-${profile.id}" data-id="${profile.id}" ${profile.isOutgoingSyncEnabled ? 'checked' : ''}>
+            <label class="form-check-label" for="outgoingSyncEnabled-${profile.id}">Enable Outgoing Replacements (To LLM / Context)</label>
+        </div>
+        <div class="mb-3">
+            <label for="outgoingSyncRules-${profile.id}" class="form-label text-muted" style="font-size: 0.75rem; margin-bottom: 0.2rem;">Replace|With:</label>
+            <textarea class="form-control form-control-sm outgoing-sync-rules" id="outgoingSyncRules-${profile.id}" rows="2" data-id="${profile.id}" ${!profile.isOutgoingSyncEnabled ? 'disabled' : ''}>${profile.outgoingSyncRules}</textarea>
         </div>
         <hr>
         
