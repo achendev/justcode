@@ -8,6 +8,36 @@ from flask import request, Response
 from .tools.context_generator import generate_context_from_path, generate_tree_with_char_counts, get_file_stats, get_all_file_stats
 from .tools.utils import here_doc_value
 
+def _filter_patterns(patterns, current_prefix, all_prefixes):
+    """
+    Filters patterns to be relevant for a specific project prefix.
+    """
+    if not current_prefix or not all_prefixes:
+        return patterns
+
+    other_prefixes = [p for p in all_prefixes if p != current_prefix]
+    filtered_patterns = []
+
+    for pattern in patterns:
+        # Check if the pattern is explicitly for another project
+        is_for_other = any(pattern == p or pattern.startswith(p + '/') for p in other_prefixes)
+        if is_for_other:
+            continue
+        
+        # If the pattern is exactly the current project prefix, wildcard it
+        if pattern == current_prefix or pattern == current_prefix + '/':
+            filtered_patterns.append('*')
+        # If it's inside the current project, strip the prefix
+        elif pattern.startswith(current_prefix + '/'):
+            stripped = pattern[len(current_prefix)+1:]
+            filtered_patterns.append('*' if stripped == '' else stripped)
+        else:
+            # If it's not prefixed for any known project, it's global
+            filtered_patterns.append(pattern)
+    
+    return filtered_patterns
+
+
 def get_context():
     action = request.args.get('action', '')
     paths = request.args.getlist('path')
@@ -26,13 +56,19 @@ def get_context():
     project_paths = [os.path.abspath(p.strip()) for p in paths if p.strip()]
     is_single_path = len(project_paths) == 1
 
-    if not use_numeric_prefixes and not is_single_path:
-        names_to_check = []
-        for p in project_paths:
-            if os.path.isdir(p): names_to_check.append(os.path.basename(p))
-            elif os.path.isfile(p): names_to_check.append(f"{os.path.basename(os.path.dirname(p))}/{os.path.basename(p)}")
-        if len(names_to_check) != len(set(names_to_check)):
-            return Response("Error: Multiple project paths result in the same name. Enable 'Name by order number' in profile settings.", status=400)
+    all_prefixes = []
+    if not is_single_path:
+        for i, p_path in enumerate(project_paths):
+            if use_numeric_prefixes:
+                all_prefixes.append(str(i))
+            else:
+                if os.path.isdir(p_path):
+                    all_prefixes.append(os.path.basename(p_path))
+                elif os.path.isfile(p_path):
+                    all_prefixes.append(f"{os.path.basename(os.path.dirname(p_path))}/{os.path.basename(p_path)}")
+        if len(all_prefixes) != len(set(all_prefixes)):
+             return Response("Error: Multiple project paths result in the same name. Enable 'Name by order number' in profile settings.", status=400)
+
 
     exclude_patterns = [p.strip() for p in exclude_str.split(',') if p.strip()]
     include_patterns = [p.strip() for p in include_str.split(',') if p.strip()]
@@ -44,7 +80,7 @@ def get_context():
                 if os.path.isdir(p_path):
                     prefix = None
                     if not is_single_path:
-                        prefix = f"{i}" if use_numeric_prefixes else f"{os.path.basename(p_path)}"
+                        prefix = all_prefixes[i]
                     all_stats.extend(get_all_file_stats(p_path, path_prefix=prefix))
             return Response(json.dumps(all_stats), mimetype='application/json')
 
@@ -54,17 +90,22 @@ def get_context():
         total_size = 0
 
         for i, p_path in enumerate(project_paths):
+            prefix = None
+            display_prefix = None
+            
+            if not is_single_path:
+                prefix = all_prefixes[i]
+                display_prefix = f"./{prefix}"
+            
+            local_exclude_patterns = _filter_patterns(exclude_patterns, prefix, all_prefixes)
+            local_include_patterns = _filter_patterns(include_patterns, prefix, all_prefixes)
+
             if os.path.isdir(p_path):
-                prefix = None
-                if not is_single_path:
-                    prefix = f"./{i}" if use_numeric_prefixes else f"./{os.path.basename(p_path)}"
-                
-                tree_with_stats, size = generate_tree_with_char_counts(p_path, include_patterns, exclude_patterns, path_prefix=prefix)
+                tree_with_stats, size = generate_tree_with_char_counts(p_path, local_include_patterns, local_exclude_patterns, path_prefix=display_prefix)
                 all_trees_with_counts.append(tree_with_stats)
                 total_size += size
                 
-                # Pass delimiter to generator
-                full_context_for_path = generate_context_from_path(p_path, include_patterns, exclude_patterns, path_prefix=prefix, delimiter=delimiter)
+                full_context_for_path = generate_context_from_path(p_path, local_include_patterns, local_exclude_patterns, path_prefix=display_prefix, delimiter=delimiter)
                 
                 parts = re.split(r'\n\n(?=cat >)', full_context_for_path, 1)
                 if len(parts) == 2:
@@ -82,13 +123,8 @@ def get_context():
                 filename = os.path.basename(p_path)
                 def format_stats(s_chars, s_lines): return f"({s_chars:,} chars, {s_lines:,} lines)"
                 
-                if is_single_path:
-                    tree_line = f"./{filename} {format_stats(size, lines)}"
-                    path_in_script = f"./{filename}"
-                else:
-                    prefix_part = str(i) if use_numeric_prefixes else f"{os.path.basename(os.path.dirname(p_path))}/{filename}"
-                    tree_line = f"./{prefix_part} {format_stats(size, lines)}"
-                    path_in_script = f"./{prefix_part}"
+                tree_line = f"{display_prefix or './' + filename} {format_stats(size, lines)}"
+                path_in_script = display_prefix or f"./{filename}"
                 
                 all_trees_with_counts.append(tree_line)
                 all_trees_for_context.append(tree_line)

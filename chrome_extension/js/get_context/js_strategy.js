@@ -1,6 +1,6 @@
 import { getHandles, verifyPermission } from '../file_system_manager.js';
 import { scanDirectory } from '../context_builder/file_scanner.js';
-import { buildTree } from '../context_builder/tree_builder.js';
+import { buildTree, buildTreeWithCounts } from '../context_builder/tree_builder.js';
 import { pasteIntoLLM, uploadContextAsFile, uploadInstructionsAsFile } from '../context_builder/llm_interface.js';
 import { formatContextPrompt, buildFileContentString, getInstructionsBlock } from '../context_builder/prompt_formatter.js';
 import { formatExclusionPrompt } from '../exclusion_prompt.js';
@@ -17,7 +17,7 @@ function generateFileDelimiter() {
 }
 
 async function getVerifiedHandles(profile) {
-    const folderCount = (profile.jsProjectFolderNames || []).length || 1;
+    const folderCount = (profile.jsProjectFolderNames ||[]).length || 1;
     const allHandles = await getHandles(profile.id, folderCount);
     const verifiedHandles = [];
     for (const handle of allHandles) {
@@ -26,6 +26,40 @@ async function getVerifiedHandles(profile) {
         }
     }
     return verifiedHandles;
+}
+
+/**
+ * Filters a list of patterns to only include those relevant to the current project prefix.
+ * @param {string[]} patterns The full list of patterns.
+ * @param {string|null} currentPrefix The prefix for the current project being scanned.
+ * @param {string[]} allPrefixes A list of all project prefixes.
+ * @returns {string[]} A filtered and transformed list of patterns.
+ */
+function _filterPatternsForPrefix(patterns, currentPrefix, allPrefixes) {
+    if (!currentPrefix || !allPrefixes || allPrefixes.length === 0) return patterns;
+
+    const otherPrefixes = allPrefixes.filter(p => p !== currentPrefix);
+
+    return patterns.flatMap(pattern => {
+        // If the pattern exactly matches another project's prefix, drop it
+        if (otherPrefixes.some(p => pattern === p || pattern.startsWith(p + '/'))) {
+            return[];
+        }
+
+        // If the pattern matches the current project's prefix exactly, exclude everything inside
+        if (pattern === currentPrefix || pattern === currentPrefix + '/') {
+            return ['*'];
+        }
+
+        // If it's for the current project, strip the prefix
+        if (pattern.startsWith(currentPrefix + '/')) {
+            const stripped = pattern.substring(currentPrefix.length + 1);
+            return [stripped === '' ? '*' : stripped];
+        }
+
+        // It does not match any prefix exactly or as a path, so it must be global
+        return [pattern];
+    });
 }
 
 export async function getContextFromJS(profile, fromShortcut, hostname) {
@@ -47,7 +81,16 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
         const includePatterns = (profile.includePatterns || '').split(',').map(p => p.trim()).filter(Boolean);
         const contextSizeLimit = profile.contextSizeLimit || 3000000;
 
-        const scanResults = await Promise.all(handles.map(h => scanDirectory(h, { excludePatterns, includePatterns })));
+        const allPrefixes = isMultiProject ? handles.map((h, index) => profile.useNumericPrefixesForMultiProject ? String(index) : h.name) : [];
+        
+        const scanPromises = handles.map((h, index) => {
+            const prefix = isMultiProject ? allPrefixes[index] : null;
+            const localExcludePatterns = _filterPatternsForPrefix(excludePatterns, prefix, allPrefixes);
+            const localIncludePatterns = _filterPatternsForPrefix(includePatterns, prefix, allPrefixes);
+            return scanDirectory(h, { excludePatterns: localExcludePatterns, includePatterns: localIncludePatterns });
+        });
+
+        const scanResults = await Promise.all(scanPromises);
         
         const allFileStats = scanResults.flatMap((stats, index) => {
             if (!isMultiProject) return stats;
@@ -208,8 +251,17 @@ export async function getExclusionSuggestionFromJS(profile, fromShortcut = false
 
     const excludePatterns = (profile.excludePatterns || '').split(',').map(p => p.trim()).filter(Boolean);
     const includePatterns = (profile.includePatterns || '').split(',').map(p => p.trim()).filter(Boolean);
+    const allPrefixes = isMultiProject ? handles.map((h, index) => profile.useNumericPrefixesForMultiProject ? String(index) : h.name) : [];
 
-    const scanResults = await Promise.all(handles.map(h => scanDirectory(h, { excludePatterns, includePatterns })));
+    const scanPromises = handles.map((h, index) => {
+        const prefix = isMultiProject ? allPrefixes[index] : null;
+        const localExcludePatterns = _filterPatternsForPrefix(excludePatterns, prefix, allPrefixes);
+        const localIncludePatterns = _filterPatternsForPrefix(includePatterns, prefix, allPrefixes);
+        return scanDirectory(h, { excludePatterns: localExcludePatterns, includePatterns: localIncludePatterns });
+    });
+    
+    const scanResults = await Promise.all(scanPromises);
+
     const allFileStats = scanResults.flatMap((stats, index) => {
         if (!isMultiProject) return stats;
         const prefix = profile.useNumericPrefixesForMultiProject ? index : handles[index].name;
