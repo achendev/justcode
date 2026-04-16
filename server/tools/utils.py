@@ -1,5 +1,6 @@
 import os
 import re
+import hashlib
 
 # Default fallback if no delimiter is provided
 here_doc_value = 'EOPROJECTFILE'
@@ -25,4 +26,13 @@ def get_project_id(project_path_or_paths):
         path_string = os.path.abspath(project_path_or_paths)
         
     sanitized_path = re.sub(r'[^a-zA-Z0-9_.-]', '_', path_string)
+    
+    # Filesystems typically limit directory names to 255 characters.
+    # To prevent 'OSError: [Errno 36] File name too long' on multi-project or deep paths,
+    # we truncate the name and append an MD5 hash of the original path string if it exceeds 100 characters.
+    # MD5 is 32 chars, meaning the total length will be safely 100 + 1 + 32 = 133 chars.
+    if len(sanitized_path) > 100:
+        hashed = hashlib.md5(path_string.encode('utf-8')).hexdigest()
+        return f"{sanitized_path[:100]}_{hashed}"
+        
     return sanitized_path
