@@ -5,6 +5,21 @@ import hashlib
 # Default fallback if no delimiter is provided
 here_doc_value = 'EOPROJECTFILE'
 
+# In-memory cache for file stats (Context Manager)
+# Key: project_id (hash of absolute paths)
+# Value: { 'non_excluded_stats': list, 'excluded_stats': list, 'status': str, 'exclude_hash': str }
+STATS_CACHE = {}
+
+def invalidate_stats_cache(project_paths):
+    """Invalidates the context manager file stats cache for the given project paths."""
+    try:
+        project_id = get_project_id(project_paths)
+        if project_id in STATS_CACHE:
+            del STATS_CACHE[project_id]
+            print(f"Stats cache invalidated for project: {project_id}")
+    except Exception as e:
+        print(f"Error invalidating stats cache: {e}")
+
 def is_safe_path(base_dir, target_path):
     """
     Checks if a target path is safely within a base directory to prevent path traversal.

@@ -231,3 +231,90 @@ def get_all_file_stats(project_path, path_prefix=None):
                 stats.append({"path": rel_path, "chars": size, "lines": lines})
             except OSError: pass
     return stats
+
+def get_all_file_stats_filtered(project_path, include_patterns, exclude_patterns, path_prefix=None):
+    """
+    Returns file stats ONLY for non-excluded files.
+    This function avoids descending into excluded directories, making it extremely fast.
+    """
+    stats = []
+    processed_exclude_patterns = [p + '*' if p.endswith('/') else p for p in exclude_patterns]
+    processed_include_patterns = [p + '*' if p.endswith('/') else p for p in include_patterns]
+
+    for dirpath, dirnames, filenames in os.walk(project_path, topdown=True):
+        excluded_dirs = []
+        for d in dirnames:
+            dir_rel_path = os.path.relpath(os.path.join(dirpath, d), project_path)
+            dir_rel_path_norm = dir_rel_path.replace('\\', '/') + '/'
+            
+            is_excluded = any(fnmatch.fnmatch(dir_rel_path_norm, pat) or fnmatch.fnmatch(dir_rel_path_norm.rstrip('/'), pat) for pat in processed_exclude_patterns)
+            is_included = any(fnmatch.fnmatch(dir_rel_path_norm, pat) or fnmatch.fnmatch(dir_rel_path_norm.rstrip('/'), pat) for pat in processed_include_patterns)
+            
+            if is_excluded and not is_included:
+                has_include_inside = False
+                for p in include_patterns:
+                    if p.startswith('*'):
+                        has_include_inside = True
+                        break
+                    prefix = p.split('*')[0]
+                    if dir_rel_path_norm.startswith(prefix) or prefix.startswith(dir_rel_path_norm):
+                        has_include_inside = True
+                        break
+                        
+                if not has_include_inside:
+                    excluded_dirs.append(d)
+
+        # Prune excluded directories to avoid scanning them
+        for d in excluded_dirs:
+            dirnames.remove(d)
+
+        for filename in filenames:
+            file_full_path = os.path.join(dirpath, filename)
+            if is_binary(file_full_path):
+                continue
+
+            file_rel_path = os.path.relpath(file_full_path, project_path)
+            file_rel_path_norm = file_rel_path.replace('\\', '/')
+            
+            is_excluded = any(fnmatch.fnmatch(file_rel_path_norm, pat) for pat in processed_exclude_patterns)
+            is_included = any(fnmatch.fnmatch(file_rel_path_norm, pat) or fnmatch.fnmatch(filename, pat) for pat in processed_include_patterns)
+            
+            if is_excluded and not is_included:
+                continue
+            
+            display_path = f"{path_prefix}/{file_rel_path_norm}" if path_prefix else file_rel_path_norm
+
+            try:
+                size = os.path.getsize(file_full_path)
+                lines = (size + 34) // 35 if size > 0 else 0
+                stats.append({"path": display_path, "chars": size, "lines": lines})
+            except OSError:
+                pass
+                
+    return stats
+
+def scan_excluded_files_background(project_path, non_excluded_paths, path_prefix=None):
+    """
+    Scans the entire directory in the background, collecting stats only for files
+    that are NOT in the non_excluded_paths set.
+    """
+    excluded_stats = []
+    non_excluded_set = set(non_excluded_paths)
+    
+    for dirpath, dirnames, filenames in os.walk(project_path):
+        for filename in filenames:
+            file_full_path = os.path.join(dirpath, filename)
+            if is_binary(file_full_path):
+                continue
+            
+            file_rel_path_norm = os.path.relpath(file_full_path, project_path).replace('\\', '/')
+            display_path = f"{path_prefix}/{file_rel_path_norm}" if path_prefix else file_rel_path_norm
+                
+            if display_path not in non_excluded_set:
+                try:
+                    size = os.path.getsize(file_full_path)
+                    lines = (size + 34) // 35 if size > 0 else 0
+                    excluded_stats.append({"path": display_path, "chars": size, "lines": lines})
+                except OSError:
+                    pass
+    return excluded_stats

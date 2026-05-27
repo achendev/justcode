@@ -420,7 +420,14 @@ async function fetchStatsServer(profile) {
     
     const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
     const pathParams = paths.map(p => `path=${encodeURIComponent(p)}`).join('&');
-    let endpoint = `${serverUrl}/getcontext?${pathParams}&action=get_all_file_stats`;
+    
+    const excludePatterns = profile.excludePatterns || '';
+    const includePatterns = profile.includePatterns || '';
+    
+    let endpoint = `${serverUrl}/getcontext?${pathParams}&action=get_all_file_stats` +
+                   `&exclude=${encodeURIComponent(excludePatterns)}` +
+                   `&include=${encodeURIComponent(includePatterns)}`;
+                   
     if (profile.useNumericPrefixesForMultiProject) endpoint += `&useNumericPrefixes=true`;
 
     const headers = {};
@@ -467,7 +474,7 @@ async function loadTree(profile) {
 export function openContextManager(event) {
     initListeners();
     currentProfileId = parseInt(event.currentTarget.dataset.id);
-    lastCheckedNode = null; // Reset shift-click tracker on open
+    lastCheckedNode = null; // Track the last clicked checkbox for Shift-Click tracker on open
     
     expandWindow();
     

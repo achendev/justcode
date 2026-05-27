@@ -4,9 +4,18 @@ import json
 import subprocess
 import shlex
 import re
+import hashlib
+import threading
 from flask import request, Response
-from .tools.context_generator import generate_context_from_path, generate_tree_with_char_counts, get_file_stats, get_all_file_stats
-from .tools.utils import here_doc_value
+from .tools.context_generator import (
+    generate_context_from_path, 
+    generate_tree_with_char_counts, 
+    get_file_stats, 
+    get_all_file_stats,
+    get_all_file_stats_filtered,
+    scan_excluded_files_background
+)
+from .tools.utils import here_doc_value, get_project_id, STATS_CACHE, invalidate_stats_cache
 
 def _filter_patterns(patterns, current_prefix, all_prefixes):
     """
@@ -37,6 +46,30 @@ def _filter_patterns(patterns, current_prefix, all_prefixes):
     
     return filtered_patterns
 
+def background_scan_worker(project_paths, all_prefixes, is_single_path, non_excluded_stats, expected_hash, cache_key):
+    try:
+        all_excluded = []
+        non_excluded_set = set(s['path'] for s in non_excluded_stats)
+        
+        for i, p_path in enumerate(project_paths):
+            if os.path.isdir(p_path):
+                prefix = None
+                if not is_single_path:
+                    prefix = all_prefixes[i]
+                
+                project_excluded = scan_excluded_files_background(p_path, non_excluded_set, path_prefix=prefix)
+                all_excluded.extend(project_excluded)
+                
+        # Update cache if the exclusion hash has not changed
+        if cache_key in STATS_CACHE and STATS_CACHE[cache_key]['exclude_hash'] == expected_hash:
+            STATS_CACHE[cache_key]['excluded_stats'] = all_excluded
+            STATS_CACHE[cache_key]['status'] = 'done'
+            print(f"Background scan completed for project {cache_key}. Found {len(all_excluded)} excluded files.")
+    except Exception as e:
+        print(f"Error in background scan worker: {e}")
+        traceback.print_exc()
+        if cache_key in STATS_CACHE and STATS_CACHE[cache_key]['exclude_hash'] == expected_hash:
+            STATS_CACHE[cache_key]['status'] = 'error'
 
 def get_context():
     action = request.args.get('action', '')
@@ -56,6 +89,10 @@ def get_context():
     project_paths = [os.path.abspath(p.strip()) for p in paths if p.strip()]
     is_single_path = len(project_paths) == 1
 
+    # Invalidate cache if this is a standard context retrieval (to keep it fresh)
+    if action != 'get_all_file_stats':
+        invalidate_stats_cache(project_paths)
+
     all_prefixes = []
     if not is_single_path:
         for i, p_path in enumerate(project_paths):
@@ -69,20 +106,67 @@ def get_context():
         if len(all_prefixes) != len(set(all_prefixes)):
              return Response("Error: Multiple project paths result in the same name. Enable 'Name by order number' in profile settings.", status=400)
 
-
     exclude_patterns = [p.strip() for p in exclude_str.split(',') if p.strip()]
     include_patterns = [p.strip() for p in include_str.split(',') if p.strip()]
 
     try:
         if action == 'get_all_file_stats':
-            all_stats = []
+            # Generate patterns hash
+            raw_hash_data = f"{exclude_str}||{include_str}||{use_numeric_prefixes}"
+            current_hash = hashlib.md5(raw_hash_data.encode('utf-8')).hexdigest()
+            
+            cache_key = get_project_id(project_paths)
+            
+            # Check cache
+            if cache_key in STATS_CACHE:
+                cache_entry = STATS_CACHE[cache_key]
+                if cache_entry.get('exclude_hash') == current_hash:
+                    if cache_entry.get('status') == 'done':
+                        combined_stats = cache_entry['non_excluded_stats'] + cache_entry['excluded_stats']
+                        return Response(json.dumps(combined_stats), mimetype='application/json')
+                    elif cache_entry.get('status') == 'scanning':
+                        return Response(json.dumps(cache_entry['non_excluded_stats']), mimetype='application/json')
+
+            # Initialize cache entry with status 'scanning'
+            STATS_CACHE[cache_key] = {
+                'non_excluded_stats': [],
+                'excluded_stats': [],
+                'status': 'scanning',
+                'exclude_hash': current_hash
+            }
+
+            # Fast scan (non-excluded files)
+            non_excluded_stats = []
             for i, p_path in enumerate(project_paths):
                 if os.path.isdir(p_path):
                     prefix = None
                     if not is_single_path:
                         prefix = all_prefixes[i]
-                    all_stats.extend(get_all_file_stats(p_path, path_prefix=prefix))
-            return Response(json.dumps(all_stats), mimetype='application/json')
+                    
+                    local_exclude_patterns = _filter_patterns(exclude_patterns, prefix, all_prefixes)
+                    local_include_patterns = _filter_patterns(include_patterns, prefix, all_prefixes)
+                    
+                    project_stats = get_all_file_stats_filtered(
+                        p_path, 
+                        local_include_patterns, 
+                        local_exclude_patterns, 
+                        path_prefix=prefix
+                    )
+                    non_excluded_stats.extend(project_stats)
+            
+            # Save fast results to cache
+            STATS_CACHE[cache_key]['non_excluded_stats'] = non_excluded_stats
+
+            # Start background thread to scan the rest (excluded files)
+            t = threading.Thread(
+                target=background_scan_worker,
+                args=(project_paths, all_prefixes, is_single_path, non_excluded_stats, current_hash, cache_key),
+                daemon=True
+            )
+            t.start()
+
+            # Return fast results immediately
+            return Response(json.dumps(non_excluded_stats), mimetype='application/json')
 
         all_trees_with_counts = []
         all_trees_for_context = []

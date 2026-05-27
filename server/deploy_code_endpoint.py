@@ -6,7 +6,7 @@ import stat
 import time
 import subprocess
 from flask import request, Response
-from .tools.utils import is_safe_path, here_doc_value
+from .tools.utils import is_safe_path, here_doc_value, invalidate_stats_cache
 from .tools.script_executor import execute_script, resolve_path
 from .tools.history_manager import get_history_dir, clear_stack, get_sorted_stack_timestamps
 
@@ -25,8 +25,9 @@ def deploy_code():
         return Response("Error: 'path' parameter is missing.", status=400, mimetype='text/plain')
     
     project_paths = [os.path.abspath(p.strip()) for p in paths if p.strip()]
+    invalidate_stats_cache(project_paths)
 
-    # (Skipping validation boilerplate for brevity, same as before) ...
+    # Validate boilerplate
     for p_path in project_paths:
         if not os.path.exists(p_path):
             return Response(f"Error: Provided path '{p_path}' is not a valid directory or file.", status=400, mimetype='text/plain')
@@ -114,7 +115,7 @@ def deploy_code():
     except (ValueError, PermissionError, OSError) as e:
         return Response(f"Error during undo script generation: {str(e)}", status=500, mimetype='text/plain')
 
-    # ... (Rest of history logic matches previous implementation, just passing args) ...
+    # History logic
     clear_stack(project_paths, 'redo')
     timestamp = str(int(time.time() * 1000))
     undo_stack_dir = get_history_dir(project_paths, 'undo')
@@ -148,7 +149,6 @@ def deploy_code():
             deployment_message += "\n--- LOG ---\n" + "\n".join(output_log)
 
         if run_script_on_deploy and post_deploy_script:
-            # (Post script logic unchanged)
             main_project_path = project_paths[0]
             if os.path.isfile(main_project_path): main_project_path = os.path.dirname(main_project_path)
             try:

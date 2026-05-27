@@ -4,6 +4,7 @@ import traceback
 from flask import request, Response
 from .tools.history_manager import get_sorted_stack_timestamps, get_history_dir
 from .tools.script_executor import execute_script
+from .tools.utils import invalidate_stats_cache
 
 def redo():
     paths = request.args.getlist('path')
@@ -11,6 +12,8 @@ def redo():
         return Response("Error: 'path' parameter is missing.", status=400, mimetype='text/plain')
     
     project_paths = [os.path.abspath(p.strip()) for p in paths if p.strip()]
+    invalidate_stats_cache(project_paths)
+
     for p_path in project_paths:
         if not os.path.exists(p_path):
             return Response(f"Error: Provided path '{p_path}' is not a valid directory or file.", status=400, mimetype='text/plain')
