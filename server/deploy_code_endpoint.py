@@ -35,6 +35,11 @@ def deploy_code():
     script_content = request.get_data(as_text=True)
     if not script_content:
         return Response("Error: No deploy script provided in the request body.", status=400, mimetype='text/plain')
+        
+    # Auto-detect delimiter from the script to ensure robust execution against pasted scripts
+    detected_match = re.search(r"cat >\s+(?:'[^']+'|\"[^\"]+\"|[^\s]+)\s+<<\s+'([^']+)'", script_content)
+    if detected_match:
+        delimiter = detected_match.group(1)
     
     # --- Pass 1: Generate Undo Script (Updated with delimiter) ---
     rollback_commands = []

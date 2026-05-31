@@ -157,7 +157,7 @@ export function getProjectAliasRules(profile, isJsMode) {
     const paths = isJsMode ? profile.jsProjectFolderNames : profile.projectPaths;
     const aliases = isJsMode ? profile.jsProjectAliases : profile.projectAliases;
 
-    if (!paths || paths.length === 0) return null;
+    if (!paths || paths.length <= 1) return null;
     if (!aliases || aliases.length === 0) return null;
 
     let rules = [];
@@ -179,12 +179,70 @@ export function getProjectAliasRules(profile, isJsMode) {
         }
 
         const alias = aliases[i];
-        if (alias && alias.trim() !== '' && alias !== originalPrefix) {
-            rules.push(`./${originalPrefix}/|./${alias}/`);
-            rules.push(`├── ${originalPrefix}/|├── ${alias}/`);
-            rules.push(`└── ${originalPrefix}/|└── ${alias}/`);
-            rules.push(`./${originalPrefix} |./${alias} `); // For server-side single-line root folder syntax
+        if (alias && typeof alias === 'string') {
+            const cleanAlias = alias.replace(/[/\\]$/, '').trim();
+            if (cleanAlias !== '' && cleanAlias !== originalPrefix) {
+                // Formatting for Context Tree
+                rules.push(`├── ${originalPrefix}/|├── ${cleanAlias}/`);
+                rules.push(`└── ${originalPrefix}/|└── ${cleanAlias}/`);
+                rules.push(`./${originalPrefix} |./${cleanAlias} `); 
+                
+                // Formatting for Deploy Script (catching missing ./ or quotes)
+                rules.push(`./${originalPrefix}/|./${cleanAlias}/`);
+                rules.push(` ${originalPrefix}/| ${cleanAlias}/`);
+                rules.push(`'${originalPrefix}/|'${cleanAlias}/`);
+                rules.push(`"${originalPrefix}/|"${cleanAlias}/`);
+                rules.push(`\n${originalPrefix}/|\n${cleanAlias}/`);
+                rules.push(`>${originalPrefix}/|>${cleanAlias}/`);
+                rules.push(`> ${originalPrefix}/|> ${cleanAlias}/`);
+            }
         }
     }
     return rules.length > 0 ? rules.join('\n') : null;
+}
+
+/**
+ * Translates Exclude/Include patterns from aliased names back to the real filesystem prefixes.
+ */
+export function translatePatternsToOriginal(patternsStr, profile, isJsMode) {
+    if (!patternsStr) return '';
+    const paths = isJsMode ? profile.jsProjectFolderNames : profile.projectPaths;
+    const aliases = isJsMode ? profile.jsProjectAliases : profile.projectAliases;
+
+    if (!paths || paths.length <= 1 || !aliases || aliases.length === 0) return patternsStr;
+
+    // Build a map of alias -> original
+    const aliasToOriginal = {};
+    for (let i = 0; i < paths.length; i++) {
+        const alias = aliases[i];
+        if (!alias || typeof alias !== 'string') continue;
+        
+        const cleanAlias = alias.replace(/[/\\]$/, '').trim();
+        if (cleanAlias === '') continue;
+
+        let originalPrefix;
+        if (profile.useNumericPrefixesForMultiProject) {
+            originalPrefix = String(i);
+        } else {
+            if (isJsMode) {
+                originalPrefix = paths[i];
+            } else {
+                const cleanPath = paths[i].replace(/[/\\]$/, '');
+                const parts = cleanPath.split(/[/\\]/);
+                originalPrefix = parts[parts.length - 1];
+            }
+        }
+        aliasToOriginal[cleanAlias] = originalPrefix;
+    }
+
+    // Split by comma, process each pattern, and join back
+    return patternsStr.split(',').map(p => {
+        let modified = p;
+        for (const [alias, original] of Object.entries(aliasToOriginal)) {
+            // Match alias at the start, or preceded by an asterisk, and followed by a slash or end of string.
+            const regex = new RegExp(`(^|\\*)\\s*${escapeRegExp(alias)}(/|$)`, 'g');
+            modified = modified.replace(regex, `$1${original}$2`);
+        }
+        return modified;
+    }).join(',');
 }

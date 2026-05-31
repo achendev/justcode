@@ -2,8 +2,11 @@ import { isMatch, scanDirectory } from '../context_builder/file_scanner.js';
 import { loadData, saveData } from '../storage.js';
 import { getHandles, verifyPermission } from '../file_system_manager.js';
 import { expandWindow } from '../popup/view.js';
+import { translatePatternsToOriginal } from '../utils/two_way_sync.js';
 
-let currentProfileId = null;
+let currentProfile = null;
+let isJsMode = true;
+let aliasMap = {};
 let currentContextSizeLimit = 3000000;
 let currentCharsPerToken = 3.75;
 let isInitialized = false;
@@ -28,6 +31,23 @@ function fastMatch(str, compiledRegexes) {
         if (regex.test(str)) return true;
     }
     return false;
+}
+
+function buildAliasMap(profile, isJsMode) {
+    const map = {};
+    const paths = isJsMode ? profile.jsProjectFolderNames : profile.projectPaths;
+    const aliases = isJsMode ? profile.jsProjectAliases : profile.projectAliases;
+    if (!paths || paths.length <= 1 || !aliases) return map;
+
+    for (let i = 0; i < paths.length; i++) {
+        if (!paths[i]) continue;
+        let originalPrefix = profile.useNumericPrefixesForMultiProject ? String(i) : 
+            (isJsMode ? paths[i] : paths[i].replace(/[/\\]$/, '').split(/[/\\]/).pop());
+        if (aliases[i]) {
+            map[originalPrefix] = aliases[i];
+        }
+    }
+    return map;
 }
 
 function buildTreeData(stats) {
@@ -72,11 +92,17 @@ function renderTreeNode(node, depth = 0) {
     if (depth !== 0) {
         const padding = (depth - 1) * 15;
         const chevronVisibility = node.isDir && childrenKeys.length > 0 ? 'visible' : 'hidden';
+        
+        let displayName = node.name;
+        if (depth === 1 && aliasMap[node.name]) {
+            displayName = `${node.name} <span class="text-primary">[${aliasMap[node.name]}]</span>`;
+        }
+
         html += `
         <div class="tree-item" data-path="${node.path}" data-chars="${node.chars}" data-lines="${node.lines}" style="padding-left: ${padding}px;">
             <i class="bi bi-chevron-right toggle-collapse" style="cursor: pointer; width: 16px; display: inline-block; text-align: center; visibility: ${chevronVisibility};"></i>
             <input type="checkbox" class="form-check-input node-check m-0 me-2" data-path="${node.path}" data-isdir="${node.isDir}">
-            <span class="fw-bold me-2">${node.name}${node.isDir ? '/' : ''}</span>
+            <span class="fw-bold me-2">${displayName}${node.isDir ? '/' : ''}</span>
             <span class="node-stats text-muted" style="font-size: 0.75rem;">(~${tokens.toLocaleString()} t, ${node.chars.toLocaleString()} c, ${node.lines.toLocaleString()} l)</span>
         </div>
         <div class="tree-children" style="display: none;">`;
@@ -96,8 +122,11 @@ function renderTreeNode(node, depth = 0) {
 }
 
 export function evaluateTreeUI(excludeStr, includeStr) {
-    const excludes = excludeStr.split(',').map(s=>s.trim()).filter(Boolean);
-    const includes = includeStr.split(',').map(s=>s.trim()).filter(Boolean);
+    const translatedExclude = translatePatternsToOriginal(excludeStr, currentProfile, isJsMode);
+    const translatedInclude = translatePatternsToOriginal(includeStr, currentProfile, isJsMode);
+
+    const excludes = translatedExclude.split(',').map(s=>s.trim()).filter(Boolean);
+    const includes = translatedInclude.split(',').map(s=>s.trim()).filter(Boolean);
 
     const compiledExcludes = compilePatterns(excludes);
     const compiledIncludes = compilePatterns(includes);
@@ -284,8 +313,8 @@ function initListeners() {
         const inVal = inInput.value;
         
         // Update main UI instantly without dispatching 'change' events to avoid async data races
-        const mainEx = document.getElementById(`excludePatterns-${currentProfileId}`);
-        const mainIn = document.getElementById(`includePatterns-${currentProfileId}`);
+        const mainEx = document.getElementById(`excludePatterns-${currentProfile.id}`);
+        const mainIn = document.getElementById(`includePatterns-${currentProfile.id}`);
         if (mainEx) mainEx.value = exVal;
         if (mainIn) mainIn.value = inVal;
 
@@ -293,7 +322,7 @@ function initListeners() {
 
         // Immediate save on input event to prevent data loss on sudden popup closure
         loadData((profiles, activeProfileId, archivedProfiles) => {
-            const profile = profiles.find(p => p.id === currentProfileId);
+            const profile = profiles.find(p => p.id === currentProfile.id);
             if (profile) {
                 profile.excludePatterns = exVal;
                 profile.includePatterns = inVal;
@@ -312,7 +341,7 @@ function initListeners() {
         e.target.value = val;
         
         loadData((profiles, activeProfileId, archivedProfiles) => {
-            const profile = profiles.find(p => p.id === currentProfileId);
+            const profile = profiles.find(p => p.id === currentProfile.id);
             if (profile) {
                 profile.charsPerToken = val;
                 saveData(profiles, activeProfileId, archivedProfiles);
@@ -408,7 +437,7 @@ function initListeners() {
 
     document.getElementById('cmRefresh').addEventListener('click', () => {
         loadData(profiles => {
-            const profile = profiles.find(p => p.id === currentProfileId);
+            const profile = profiles.find(p => p.id === currentProfile.id);
             if (profile) loadTree(profile);
         });
     });
@@ -421,8 +450,8 @@ async function fetchStatsServer(profile) {
     const serverUrl = profile.serverUrl.endsWith('/') ? profile.serverUrl.slice(0, -1) : profile.serverUrl;
     const pathParams = paths.map(p => `path=${encodeURIComponent(p)}`).join('&');
     
-    const excludePatterns = profile.excludePatterns || '';
-    const includePatterns = profile.includePatterns || '';
+    const excludePatterns = translatePatternsToOriginal(profile.excludePatterns || '', profile, false);
+    const includePatterns = translatePatternsToOriginal(profile.includePatterns || '', profile, false);
     
     let endpoint = `${serverUrl}/getcontext?${pathParams}&action=get_all_file_stats` +
                    `&exclude=${encodeURIComponent(excludePatterns)}` +
@@ -473,7 +502,7 @@ async function loadTree(profile) {
 
 export function openContextManager(event) {
     initListeners();
-    currentProfileId = parseInt(event.currentTarget.dataset.id);
+    const profileId = parseInt(event.currentTarget.dataset.id);
     lastCheckedNode = null; // Track the last clicked checkbox for Shift-Click tracker on open
     
     expandWindow();
@@ -484,14 +513,17 @@ export function openContextManager(event) {
     document.getElementById('appSettingsView').style.display = 'none';
 
     loadData(profiles => {
-        const profile = profiles.find(p => p.id === currentProfileId);
-        if (profile) {
-            currentContextSizeLimit = profile.contextSizeLimit || 3000000;
-            currentCharsPerToken = profile.charsPerToken || 3.75;
+        currentProfile = profiles.find(p => p.id === profileId);
+        if (currentProfile) {
+            isJsMode = !currentProfile.useServerBackend;
+            aliasMap = buildAliasMap(currentProfile, isJsMode);
+
+            currentContextSizeLimit = currentProfile.contextSizeLimit || 3000000;
+            currentCharsPerToken = currentProfile.charsPerToken || 3.75;
             document.getElementById('cmCharsPerToken').value = currentCharsPerToken;
-            document.getElementById('cmExcludeInput').value = profile.excludePatterns || '';
-            document.getElementById('cmIncludeInput').value = profile.includePatterns || '';
-            loadTree(profile);
+            document.getElementById('cmExcludeInput').value = currentProfile.excludePatterns || '';
+            document.getElementById('cmIncludeInput').value = currentProfile.includePatterns || '';
+            loadTree(currentProfile);
         }
     });
 }
