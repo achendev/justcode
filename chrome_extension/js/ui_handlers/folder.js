@@ -47,6 +47,7 @@ export function handleAddJsProjectFolder(event, reRenderCallback) {
         const profile = profiles.find(p => p.id === id);
         if (profile) {
             profile.jsProjectFolderNames.push('');
+            if (profile.jsProjectAliases) profile.jsProjectAliases.push('');
             saveData(profiles, activeProfileId, archivedProfiles, () => {
                 reRenderCallback(profiles, activeProfileId, archivedProfiles);
             });
@@ -68,6 +69,8 @@ export async function handleRemoveJsProjectFolder(event, reRenderCallback) {
             
             // Remove the folder name and handle at the specified index
             profile.jsProjectFolderNames.splice(indexToRemove, 1);
+            if (profile.jsProjectAliases) profile.jsProjectAliases.splice(indexToRemove, 1);
+            
             await forgetHandle(id, indexToRemove);
 
             // Shift subsequent handles down
@@ -85,6 +88,60 @@ export async function handleRemoveJsProjectFolder(event, reRenderCallback) {
             saveData(profiles, activeProfileId, archivedProfiles, () => {
                 reRenderCallback(profiles, activeProfileId, archivedProfiles);
             });
+        }
+    });
+}
+
+export function handleToggleJsAlias(event) {
+    const id = parseInt(event.currentTarget.dataset.id);
+    const index = parseInt(event.currentTarget.dataset.index);
+    const aliasInput = document.getElementById(`jsProjectAlias-${id}-${index}`);
+    const folderBtn = document.getElementById(`selectProjectFolder-${id}-${index}`);
+    
+    if (aliasInput) {
+        if (aliasInput.classList.contains('d-none')) {
+            aliasInput.classList.remove('d-none');
+            if (folderBtn) folderBtn.style.maxWidth = '50%';
+            
+            // Set default alias to basename
+            loadData((profiles, activeProfileId, archivedProfiles) => {
+                const profile = profiles.find(p => p.id === id);
+                if (profile && profile.jsProjectFolderNames[index]) {
+                    const folderName = profile.jsProjectFolderNames[index];
+                    aliasInput.value = folderName;
+                    if (!profile.jsProjectAliases) profile.jsProjectAliases = [];
+                    profile.jsProjectAliases[index] = folderName;
+                    saveData(profiles, activeProfileId, archivedProfiles);
+                }
+            });
+            aliasInput.focus();
+        } else {
+            aliasInput.classList.add('d-none');
+            if (folderBtn) folderBtn.style.maxWidth = '';
+            aliasInput.value = '';
+            
+            loadData((profiles, activeProfileId, archivedProfiles) => {
+                const profile = profiles.find(p => p.id === id);
+                if (profile && profile.jsProjectAliases) {
+                    profile.jsProjectAliases[index] = '';
+                    saveData(profiles, activeProfileId, archivedProfiles);
+                }
+            });
+        }
+    }
+}
+
+export function handleJsAliasInput(event) {
+    const id = parseInt(event.target.dataset.id);
+    const index = parseInt(event.target.dataset.index);
+    const newValue = event.target.value.trim();
+
+    loadData((profiles, activeProfileId, archivedProfiles) => {
+        const profile = profiles.find(p => p.id === id);
+        if (profile) {
+            if (!profile.jsProjectAliases) profile.jsProjectAliases = [];
+            profile.jsProjectAliases[index] = newValue;
+            saveData(profiles, activeProfileId, archivedProfiles);
         }
     });
 }

@@ -3,7 +3,7 @@ import { handleServerDeployment } from './deploy_code/server_deployment_strategy
 import { handleServerError } from './ui_handlers/server_error_handler.js';
 import { extractCodeWithFallback } from './deploy_code/robust_fallback.js';
 import { executeAgentCommand, reportAgentResults } from './deploy_code/agent_strategy.js';
-import { applyReplacements, applyOneWayReplacements } from './utils/two_way_sync.js';
+import { applyReplacements, applyOneWayReplacements, getProjectAliasRules } from './utils/two_way_sync.js';
 import { unmaskIPs } from './utils/ip_masking.js';
 import { unmaskEmails } from './utils/email_masking.js';
 import { unmaskFQDNs } from './utils/fqdn_masking.js';
@@ -49,6 +49,11 @@ export async function deployCode(profile, fromShortcut = false, hostname = null,
         }
         if (profile.isTwoWaySyncEnabled && profile.twoWaySyncRules) {
             codeToDeploy = applyReplacements(codeToDeploy, profile.twoWaySyncRules, 'incoming');
+        }
+        
+        const aliasRules = getProjectAliasRules(profile, !profile.useServerBackend);
+        if (aliasRules) {
+            codeToDeploy = applyReplacements(codeToDeploy, aliasRules, 'incoming');
         }
 
         if (!profile.useServerBackend) {

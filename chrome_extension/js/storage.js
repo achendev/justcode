@@ -39,7 +39,9 @@ function migrateProfile(profile) {
     if (profile.deployFromFullAnswer === undefined) { profile.deployFromFullAnswer = false; changed = true; }
     if (profile.useServerBackend === undefined) { profile.useServerBackend = false; changed = true; }
     if (profile.jsProjectFolderNames === undefined) { profile.jsProjectFolderNames = []; changed = true; }
+    if (profile.jsProjectAliases === undefined) { profile.jsProjectAliases = []; changed = true; }
     if (profile.projectPaths === undefined) { profile.projectPaths = ['']; changed = true; }
+    if (profile.projectAliases === undefined) { profile.projectAliases = []; changed = true; }
     if (profile.serverUrl === undefined) { profile.serverUrl = defaultServerUrl; changed = true; }
     if (profile.isAuthEnabled === undefined) { profile.isAuthEnabled = false; changed = true; }
     if (profile.username === undefined) { profile.username = ''; changed = true; }
@@ -115,8 +117,10 @@ export function loadData(callback) {
                 useServerBackend: false,
                 // JS-specific fields
                 jsProjectFolderNames: [],
+                jsProjectAliases: [],
                 // Server-specific fields
                 projectPaths: [''],
+                projectAliases: [],
                 serverUrl: 'http://127.0.0.1:5010',
                 isAuthEnabled: false,
                 username: '',

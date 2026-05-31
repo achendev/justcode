@@ -5,7 +5,7 @@ import { pasteIntoLLM, uploadContextAsFile, uploadInstructionsAsFile } from '../
 import { formatContextPrompt, buildFileContentString, getInstructionsBlock } from '../context_builder/prompt_formatter.js';
 import { formatExclusionPrompt } from '../exclusion_prompt.js';
 import { writeToClipboard } from '../utils/clipboard.js';
-import { applyReplacements, applyOneWayReplacements } from '../utils/two_way_sync.js';
+import { applyReplacements, applyOneWayReplacements, getProjectAliasRules } from '../utils/two_way_sync.js';
 import { splitContextPayload } from './utils.js';
 import { maskIPs } from '../utils/ip_masking.js';
 import { maskEmails } from '../utils/email_masking.js';
@@ -69,10 +69,10 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
     }
 
     const isMultiProject = handles.length > 1;
-    if (isMultiProject && !profile.useNumericPrefixesForMultiProject) {
+    if (isMultiProject && !profile.useNumericPrefixesForMultiProject && (!profile.jsProjectAliases || profile.jsProjectAliases.length < 2)) {
         const handleNames = handles.map(h => h.name);
         if (new Set(handleNames).size !== handleNames.length) {
-            return { text: 'Error: Multiple project folders have the same name. Please enable "Name by order number" in profile settings to resolve ambiguity.', type: 'error' };
+            return { text: 'Error: Multiple project folders have the same name. Please enable "Name by order number" or use the Rename/Alias feature to resolve ambiguity.', type: 'error' };
         }
     }
 
@@ -128,6 +128,12 @@ export async function getContextFromJS(profile, fromShortcut, hostname) {
         // --- PROCESS FUNCTION (OUTGOING) ---
         const process = async (text) => {
             let processed = text;
+            
+            const aliasRules = getProjectAliasRules(profile, true);
+            if (aliasRules) {
+                processed = applyReplacements(processed, aliasRules, 'outgoing');
+            }
+
             if (profile.isOutgoingSyncEnabled && profile.outgoingSyncRules) {
                 processed = applyOneWayReplacements(processed, profile.outgoingSyncRules);
             }
@@ -242,10 +248,10 @@ export async function getExclusionSuggestionFromJS(profile, fromShortcut = false
     }
     
     const isMultiProject = handles.length > 1;
-    if (isMultiProject && !profile.useNumericPrefixesForMultiProject) {
+    if (isMultiProject && !profile.useNumericPrefixesForMultiProject && (!profile.jsProjectAliases || profile.jsProjectAliases.length < 2)) {
         const handleNames = handles.map(h => h.name);
         if (new Set(handleNames).size !== handleNames.length) {
-            return { text: 'Error: Multiple project folders have the same name. Enable "Name by order number" in profile settings.', type: 'error' };
+            return { text: 'Error: Multiple project folders have the same name. Enable "Name by order number" or Alias in profile settings.', type: 'error' };
         }
     }
 
@@ -276,6 +282,9 @@ export async function getExclusionSuggestionFromJS(profile, fromShortcut = false
     let prompt = formatExclusionPrompt({ treeString, totalChars, profile });
     
     // Process Outgoing: Replacements -> Email -> IP -> FQDN
+    const aliasRules = getProjectAliasRules(profile, true);
+    if (aliasRules) prompt = applyReplacements(prompt, aliasRules, 'outgoing');
+
     if (profile.isOutgoingSyncEnabled && profile.outgoingSyncRules) {
         prompt = applyOneWayReplacements(prompt, profile.outgoingSyncRules);
     }

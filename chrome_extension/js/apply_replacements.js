@@ -1,5 +1,5 @@
 import { readFromClipboard, writeToClipboard } from './utils/clipboard.js';
-import { applyReplacements, applyOneWayReplacements } from './utils/two_way_sync.js';
+import { applyReplacements, applyOneWayReplacements, getProjectAliasRules } from './utils/two_way_sync.js';
 import { pasteIntoLLM } from './context_builder/llm_interface.js';
 import { maskIPs, unmaskIPs } from './utils/ip_masking.js';
 import { maskEmails, unmaskEmails } from './utils/email_masking.js';
@@ -18,8 +18,9 @@ export async function applyReplacementsAndPaste(profile, fromShortcut = false, i
     const hasIncoming = profile.isIncomingSyncEnabled && profile.incomingSyncRules;
     const hasOutgoing = profile.isOutgoingSyncEnabled && profile.outgoingSyncRules;
     const hasAutoMask = profile.autoMaskIPs || profile.autoMaskEmails || profile.autoMaskFQDNs;
+    const aliasRules = getProjectAliasRules(profile, !profile.useServerBackend);
 
-    if (!hasTwoWay && !hasIncoming && !hasOutgoing && !hasAutoMask) {
+    if (!hasTwoWay && !hasIncoming && !hasOutgoing && !hasAutoMask && !aliasRules) {
         return { text: "Error: No replacements or masking enabled.", type: 'error' };
     }
     
@@ -49,6 +50,9 @@ export async function applyReplacementsAndPaste(profile, fromShortcut = false, i
             if (hasTwoWay) {
                 processedText = applyReplacements(processedText, profile.twoWaySyncRules, 'incoming');
             }
+            if (aliasRules) {
+                processedText = applyReplacements(processedText, aliasRules, 'incoming');
+            }
 
             await writeToClipboard(processedText);
             return { text: "Reversed replacements and copied to clipboard.", type: 'success' };
@@ -60,6 +64,9 @@ export async function applyReplacementsAndPaste(profile, fromShortcut = false, i
             }
             if (hasTwoWay) {
                 processedText = applyReplacements(processedText, profile.twoWaySyncRules, 'outgoing');
+            }
+            if (aliasRules) {
+                processedText = applyReplacements(processedText, aliasRules, 'outgoing');
             }
 
             // CRITICAL: Masking Order (Specific to General)

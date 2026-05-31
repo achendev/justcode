@@ -1,6 +1,6 @@
 export function getMainViewHTML(profile) {
     const message = profile.lastMessage || { text: '', type: 'info' };
-    const showApplyBtn = profile.isTwoWaySyncEnabled || profile.autoMaskIPs || profile.autoMaskEmails || profile.autoMaskFQDNs;
+    const showApplyBtn = profile.isTwoWaySyncEnabled || profile.autoMaskIPs || profile.autoMaskEmails || profile.autoMaskFQDNs || (profile.projectAliases && profile.projectAliases.length > 0) || (profile.jsProjectAliases && profile.jsProjectAliases.length > 0);
     
     let agentBtnClass = 'btn-outline-secondary';
     let agentBtnIcon = 'bi-robot';
@@ -41,19 +41,23 @@ export function getMainViewHTML(profile) {
                 <div id="jsProjectFoldersContainer-${profile.id}" class="d-flex flex-column gap-1">
                     ${(profile.jsProjectFolderNames && profile.jsProjectFolderNames.length > 0 ? profile.jsProjectFolderNames : ['']).map((folderName, index) => {
                         const isCompact = (profile.jsProjectFolderNames || []).length > 3 && index > 0;
+                        const hasAlias = profile.jsProjectAliases && profile.jsProjectAliases[index];
                         return `
                         <div class="input-group input-group-sm ${isCompact ? 'input-group-compact' : ''}">
                             ${index === 0 ? `
                                 <button class="btn btn-outline-secondary add-js-project-folder" type="button" data-id="${profile.id}" title="Add another project folder"><i class="bi bi-plus-lg"></i></button>
                             ` : `<span class="input-group-text">${index}</span>`}
                             
-                            <button class="btn btn-outline-primary flex-grow-1 select-project-folder" id="selectProjectFolder-${profile.id}-${index}" data-id="${profile.id}" data-index="${index}" title="Select Project Folder">
+                            <button class="btn btn-outline-primary flex-grow-1 select-project-folder" style="${hasAlias ? 'max-width: 50%;' : ''}" id="selectProjectFolder-${profile.id}-${index}" data-id="${profile.id}" data-index="${index}" title="Select Project Folder">
                                 <span class="folder-name" id="selectedProjectName-${profile.id}-${index}">${folderName || 'No Folder Selected'}</span>
                             </button>
                             
+                            <input type="text" class="form-control js-project-alias ${hasAlias ? '' : 'd-none'}" id="jsProjectAlias-${profile.id}-${index}" data-id="${profile.id}" data-index="${index}" placeholder="Alias" value="${profile.jsProjectAliases?.[index] || ''}">
+
                             <button class="btn btn-outline-secondary forget-project-folder" id="forgetProjectFolder-${profile.id}-${index}" data-id="${profile.id}" data-index="${index}" title="Forget this folder" style="${folderName ? 'display: inline-block;' : 'display: none;'}"><i class="bi bi-x-lg"></i></button>
                             
                             ${(profile.jsProjectFolderNames || []).length > 1 ? `
+                                <button class="btn btn-outline-secondary toggle-js-alias" type="button" data-id="${profile.id}" data-index="${index}" title="Rename/Alias"><i class="bi bi-input-cursor-text"></i></button>
                                 <button class="btn btn-outline-secondary remove-js-project-folder" type="button" data-id="${profile.id}" data-index="${index}" title="Remove Folder"><i class="bi bi-dash-lg"></i></button>
                             ` : ''}
 
@@ -71,13 +75,19 @@ export function getMainViewHTML(profile) {
                 <div id="projectPathsContainer-${profile.id}" class="d-flex flex-column gap-1">
                     ${(profile.projectPaths || ['']).map((path, index) => {
                         const isCompact = (profile.projectPaths || []).length > 3 && index > 0;
+                        const hasAlias = profile.projectAliases && profile.projectAliases[index];
                         return `
                         <div class="input-group input-group-sm ${isCompact ? 'input-group-compact' : ''}">
                             ${index === 0 ? `
                                 <button class="btn btn-outline-secondary add-project-path" type="button" data-id="${profile.id}" title="Add another project path"><i class="bi bi-plus-lg"></i></button>
                             ` : `<span class="input-group-text">${index}</span>`}
-                            <input type="text" class="form-control project-path" data-id="${profile.id}" data-index="${index}" placeholder="/path/to/project" value="${path}">
+                            
+                            <input type="text" class="form-control project-path" id="projectPath-${profile.id}-${index}" data-id="${profile.id}" data-index="${index}" placeholder="/path/to/project" value="${path}">
+                            
+                            <input type="text" class="form-control project-alias ${hasAlias ? '' : 'd-none'}" id="projectAlias-${profile.id}-${index}" data-id="${profile.id}" data-index="${index}" placeholder="Alias" value="${profile.projectAliases?.[index] || ''}">
+
                             ${profile.projectPaths.length > 1 ? `
+                                <button class="btn btn-outline-secondary toggle-server-alias" type="button" data-id="${profile.id}" data-index="${index}" title="Rename/Alias"><i class="bi bi-input-cursor-text"></i></button>
                                 <button class="btn btn-outline-secondary remove-project-path" type="button" data-id="${profile.id}" data-index="${index}" title="Remove Path"><i class="bi bi-dash-lg"></i></button>
                             ` : ''}
                             

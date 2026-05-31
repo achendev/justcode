@@ -149,3 +149,42 @@ export function applyReplacements(text, rulesString, direction) {
     }
     return processedText;
 }
+
+/**
+ * Dynamically builds Two-Way Sync rules to alias project directories in the output tree and headers.
+ */
+export function getProjectAliasRules(profile, isJsMode) {
+    const paths = isJsMode ? profile.jsProjectFolderNames : profile.projectPaths;
+    const aliases = isJsMode ? profile.jsProjectAliases : profile.projectAliases;
+
+    if (!paths || paths.length === 0) return null;
+    if (!aliases || aliases.length === 0) return null;
+
+    let rules = [];
+    for (let i = 0; i < paths.length; i++) {
+        const pathStr = paths[i];
+        if (!pathStr) continue;
+
+        let originalPrefix;
+        if (profile.useNumericPrefixesForMultiProject) {
+            originalPrefix = String(i);
+        } else {
+            if (isJsMode) {
+                originalPrefix = pathStr;
+            } else {
+                const cleanPath = pathStr.replace(/[/\\]$/, '');
+                const parts = cleanPath.split(/[/\\]/);
+                originalPrefix = parts[parts.length - 1];
+            }
+        }
+
+        const alias = aliases[i];
+        if (alias && alias.trim() !== '' && alias !== originalPrefix) {
+            rules.push(`./${originalPrefix}/|./${alias}/`);
+            rules.push(`├── ${originalPrefix}/|├── ${alias}/`);
+            rules.push(`└── ${originalPrefix}/|└── ${alias}/`);
+            rules.push(`./${originalPrefix} |./${alias} `); // For server-side single-line root folder syntax
+        }
+    }
+    return rules.length > 0 ? rules.join('\n') : null;
+}

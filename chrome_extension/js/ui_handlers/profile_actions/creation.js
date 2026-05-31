@@ -31,6 +31,7 @@ export async function handleAddProfile(reRenderCallback) {
                     // IMPORTANT: For security and functionality, reset file system access.
                     // The user MUST re-select the folder for this new profile.
                     newProfile.jsProjectFolderNames = [];
+                    newProfile.jsProjectAliases = [];
                     forgetAllHandlesForProfile(newProfile.id);
 
                     profiles.push(newProfile);
@@ -68,8 +69,10 @@ export async function handleAddProfile(reRenderCallback) {
             useServerBackend: false,
             // JS-specific fields
             jsProjectFolderNames: [],
+            jsProjectAliases: [],
             // Server-specific fields
             projectPaths: [''],
+            projectAliases: [],
             serverUrl: 'http://127.0.0.1:5010',
             isAuthEnabled: false,
             username: '',
@@ -141,6 +144,7 @@ export function handleCopyProfile(event, reRenderCallback) {
         
         // Don't copy the folder handle, user must select it again for the new profile
         newProfile.jsProjectFolderNames = [];
+        newProfile.jsProjectAliases = [];
         forgetAllHandlesForProfile(newProfile.id);
 
         const originalIndex = profiles.findIndex(p => p.id === id);

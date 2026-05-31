@@ -1,5 +1,5 @@
 import { pasteIntoLLM } from '../context_builder/llm_interface.js';
-import { applyReplacements, applyOneWayReplacements } from '../utils/two_way_sync.js';
+import { applyReplacements, applyOneWayReplacements, getProjectAliasRules } from '../utils/two_way_sync.js';
 import { maskIPs } from '../utils/ip_masking.js';
 import { maskEmails } from '../utils/email_masking.js';
 import { maskFQDNs } from '../utils/fqdn_masking.js';
@@ -38,6 +38,11 @@ export async function executeAgentCommand(profile, command, delimiter) {
         // --- PROCESSING OUTPUT (Privacy & Sync) ---
         // This is OUTGOING to the LLM (Result) -> Order: Email -> IP -> FQDN
         
+        const aliasRules = getProjectAliasRules(profile, false);
+        if (aliasRules) {
+            resultText = applyReplacements(resultText, aliasRules, 'outgoing');
+        }
+
         // 1. Process the result from the server (e.g. mask 'admin' -> 'someuser')
         if (profile.isOutgoingSyncEnabled && profile.outgoingSyncRules) {
             resultText = applyOneWayReplacements(resultText, profile.outgoingSyncRules);
@@ -61,6 +66,9 @@ export async function executeAgentCommand(profile, command, delimiter) {
         // This is OUTGOING to the LLM (Command Echo) -> Order: Email -> IP -> FQDN
         let displayCommand = command;
         
+        if (aliasRules) {
+            displayCommand = applyReplacements(displayCommand, aliasRules, 'outgoing');
+        }
         if (profile.isOutgoingSyncEnabled && profile.outgoingSyncRules) {
             displayCommand = applyOneWayReplacements(displayCommand, profile.outgoingSyncRules);
         }

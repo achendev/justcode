@@ -15,6 +15,12 @@ export function attachInputEventListeners(reRenderCallback) {
     document.querySelectorAll('.remove-js-project-folder').forEach(button => {
         button.addEventListener('click', (e) => folderHandlers.handleRemoveJsProjectFolder(e, reRenderCallback));
     });
+    document.querySelectorAll('.toggle-js-alias').forEach(button => {
+        button.addEventListener('click', (e) => folderHandlers.handleToggleJsAlias(e));
+    });
+    document.querySelectorAll('.js-project-alias').forEach(input => {
+        input.addEventListener('input', (e) => folderHandlers.handleJsAliasInput(e));
+    });
 
     // --- Server Mode ---
      document.querySelectorAll('.project-path').forEach(input => {
@@ -26,6 +32,12 @@ export function attachInputEventListeners(reRenderCallback) {
     });
     document.querySelectorAll('.remove-project-path').forEach(button => {
         button.addEventListener('click', (e) => inputHandlers.handleRemoveProjectPath(e, reRenderCallback));
+    });
+    document.querySelectorAll('.toggle-server-alias').forEach(button => {
+        button.addEventListener('click', (e) => inputHandlers.handleToggleServerAlias(e));
+    });
+    document.querySelectorAll('.project-alias').forEach(input => {
+        input.addEventListener('input', (e) => inputHandlers.handleServerAliasInput(e));
     });
 
     // --- Common ---

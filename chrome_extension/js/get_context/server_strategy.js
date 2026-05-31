@@ -4,7 +4,7 @@ import { getInstructionsBlock } from '../context_builder/prompt_formatter.js';
 import { formatExclusionPrompt } from '../exclusion_prompt.js';
 import { handleServerError } from '../ui_handlers/server_error_handler.js';
 import { writeToClipboard } from '../utils/clipboard.js';
-import { applyReplacements, applyOneWayReplacements } from '../utils/two_way_sync.js';
+import { applyReplacements, applyOneWayReplacements, getProjectAliasRules } from '../utils/two_way_sync.js';
 import { splitContextPayload } from './utils.js';
 import { maskIPs } from '../utils/ip_masking.js';
 import { maskEmails } from '../utils/email_masking.js';
@@ -104,6 +104,12 @@ export async function getContextFromServer(profile, fromShortcut, hostname) {
         // --- PROCESS FUNCTION (OUTGOING) ---
         const process = async (text) => {
             let processed = text;
+
+            const aliasRules = getProjectAliasRules(profile, false);
+            if (aliasRules) {
+                processed = applyReplacements(processed, aliasRules, 'outgoing');
+            }
+            
             if (profile.isOutgoingSyncEnabled && profile.outgoingSyncRules) {
                 processed = applyOneWayReplacements(processed, profile.outgoingSyncRules);
             }
@@ -275,6 +281,9 @@ export async function getExclusionSuggestionFromServer(profile, fromShortcut = f
         });
         
         // Process Outgoing: Replacements -> Email -> IP -> FQDN
+        const aliasRules = getProjectAliasRules(profile, false);
+        if (aliasRules) prompt = applyReplacements(prompt, aliasRules, 'outgoing');
+
         if (profile.isOutgoingSyncEnabled && profile.outgoingSyncRules) {
             prompt = applyOneWayReplacements(prompt, profile.outgoingSyncRules);
         }
