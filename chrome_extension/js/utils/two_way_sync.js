@@ -7,8 +7,6 @@ function escapeRegExp(string) {
 
 /**
  * Parses the rules string from the textarea into a structured array.
- * @param {string} rulesString The raw string from the textarea.
- * @returns {Array<{local: string, placeholder: string}>} An array of rule objects.
  */
 function parseRules(rulesString) {
     if (!rulesString) return [];
@@ -20,7 +18,7 @@ function parseRules(rulesString) {
             const parts = line.split('|');
             return {
                 local: parts[0].trim(),
-                placeholder: parts.slice(1).join('|').trim() // Handle '|' in placeholder
+                placeholder: parts.slice(1).join('|').trim()
             };
         })
         .filter(rule => rule.local && rule.placeholder);
@@ -28,25 +26,16 @@ function parseRules(rulesString) {
 
 /**
  * Transfers casing from the matched string to the target string.
- * Supports ALL CAPS, TitleCase, and specific index-based casing.
- * @param {string} match The string found in the text (e.g., "MyProject" or "MYPROJECT").
- * @param {string} target The replacement string definition (e.g., "someproject").
- * @returns {string} The target string with the casing applied (e.g., "SoMeproject" or "SOMEPROJECT").
  */
 function transferCasing(match, target) {
-    // 1. ALL CAPS check
     if (match === match.toUpperCase() && match !== match.toLowerCase()) {
         return target.toUpperCase();
     }
-
-    // 2. Character-by-character casing transfer
     let result = '';
     for (let i = 0; i < target.length; i++) {
         const char = target[i];
-        
         if (i < match.length) {
             const matchChar = match[i];
-            // Check if the match character is Upper Case
             if (matchChar === matchChar.toUpperCase() && matchChar !== matchChar.toLowerCase()) {
                 result += char.toUpperCase();
             } else {
@@ -59,35 +48,27 @@ function transferCasing(match, target) {
     return result;
 }
 
-/**
- * Applies ONE-WAY replacements to a given text based on provided rules.
- * 
- * @param {string} text The text to process.
- * @param {string} rulesString The raw string of rules.
- * @returns {string} The processed text.
- */
-export function applyOneWayReplacements(text, rulesString) {
-    const rules = parseRules(rulesString);
+export function applyOneWayReplacements(text, rulesInput) {
+    let rules = [];
+    if (typeof rulesInput === 'string') {
+        rules = parseRules(rulesInput);
+    } else if (Array.isArray(rulesInput)) {
+        rules = rulesInput;
+    }
     if (rules.length === 0) return text;
 
     let processedText = text;
-    
-    // Sort rules by length of the target to find (descending) to avoid partial replacements
     const sortedRules = [...rules].sort((a, b) => b.local.length - a.local.length);
 
     for (const rule of sortedRules) {
         const from = rule.local;
         const to = rule.placeholder;
-        
-        // CHECK BOTH SIDES: If either side has uppercase, use strict mode.
         const isStrictRule = (from !== from.toLowerCase()) || (to !== to.toLowerCase());
 
         if (isStrictRule) {
-            // Strict replacement: Case-Sensitive, Exact Replace
             const regex = new RegExp(escapeRegExp(from), 'g');
             processedText = processedText.replace(regex, to);
         } else {
-            // Smart replacement: Case-Insensitive, Smart Casing
             const regex = new RegExp(escapeRegExp(from), 'gi');
             processedText = processedText.replace(regex, (match) => {
                 return transferCasing(match, to);
@@ -97,29 +78,16 @@ export function applyOneWayReplacements(text, rulesString) {
     return processedText;
 }
 
-/**
- * Applies TWO-WAY replacements to a given text based on the provided rules and direction.
- * 
- * Logic:
- * 1. If a rule (either local OR placeholder) contains any uppercase letters, it is treated as STRICT.
- *    - Case-Sensitive Matching.
- *    - Exact Replacement (No smart casing).
- * 2. If a rule is entirely lowercase on both sides, it is treated as SMART.
- *    - Case-Insensitive Matching.
- *    - Smart Casing Transfer (e.g., myproject -> someproject, MyProject -> SomeProject).
- * 
- * @param {string} text The text to process.
- * @param {string} rulesString The raw string of rules.
- * @param {'outgoing' | 'incoming'} direction 'outgoing' for local->placeholder, 'incoming' for placeholder->local.
- * @returns {string} The processed text.
- */
-export function applyReplacements(text, rulesString, direction) {
-    const rules = parseRules(rulesString);
+export function applyReplacements(text, rulesInput, direction) {
+    let rules = [];
+    if (typeof rulesInput === 'string') {
+        rules = parseRules(rulesInput);
+    } else if (Array.isArray(rulesInput)) {
+        rules = rulesInput;
+    }
     if (rules.length === 0) return text;
 
     let processedText = text;
-    
-    // Sort rules by length (descending) to avoid partial replacements
     const sortedRules = [...rules].sort((a, b) => {
         const fromA = direction === 'outgoing' ? a.local : a.placeholder;
         const fromB = direction === 'outgoing' ? b.local : b.placeholder;
@@ -130,17 +98,13 @@ export function applyReplacements(text, rulesString, direction) {
         const from = direction === 'outgoing' ? rule.local : rule.placeholder;
         const to = direction === 'outgoing' ? rule.placeholder : rule.local;
         
-        // CHECK BOTH SIDES: If either side has uppercase, use strict mode.
-        // This ensures PassWord|password works strictly in both directions.
         const isStrictRule = (rule.local !== rule.local.toLowerCase()) || 
                              (rule.placeholder !== rule.placeholder.toLowerCase());
 
         if (isStrictRule) {
-            // Strict replacement: Case-Sensitive, Exact Replace
             const regex = new RegExp(escapeRegExp(from), 'g');
             processedText = processedText.replace(regex, to);
         } else {
-            // Smart replacement: Case-Insensitive, Smart Casing
             const regex = new RegExp(escapeRegExp(from), 'gi');
             processedText = processedText.replace(regex, (match) => {
                 return transferCasing(match, to);
@@ -152,6 +116,7 @@ export function applyReplacements(text, rulesString, direction) {
 
 /**
  * Dynamically builds Two-Way Sync rules to alias project directories in the output tree and headers.
+ * Returns an array of objects to bypass string-parsing trim() logic, preserving crucial spacing.
  */
 export function getProjectAliasRules(profile, isJsMode) {
     const paths = isJsMode ? profile.jsProjectFolderNames : profile.projectPaths;
@@ -182,23 +147,20 @@ export function getProjectAliasRules(profile, isJsMode) {
         if (alias && typeof alias === 'string') {
             const cleanAlias = alias.replace(/[/\\]$/, '').trim();
             if (cleanAlias !== '' && cleanAlias !== originalPrefix) {
-                // Formatting for Context Tree
-                rules.push(`├── ${originalPrefix}/|├── ${cleanAlias}/`);
-                rules.push(`└── ${originalPrefix}/|└── ${cleanAlias}/`);
-                rules.push(`./${originalPrefix} |./${cleanAlias} `); 
-                
-                // Formatting for Deploy Script (catching missing ./ or quotes)
-                rules.push(`./${originalPrefix}/|./${cleanAlias}/`);
-                rules.push(` ${originalPrefix}/| ${cleanAlias}/`);
-                rules.push(`'${originalPrefix}/|'${cleanAlias}/`);
-                rules.push(`"${originalPrefix}/|"${cleanAlias}/`);
-                rules.push(`\n${originalPrefix}/|\n${cleanAlias}/`);
-                rules.push(`>${originalPrefix}/|>${cleanAlias}/`);
-                rules.push(`> ${originalPrefix}/|> ${cleanAlias}/`);
+                rules.push({ local: `├── ${originalPrefix}/`, placeholder: `├── ${cleanAlias}/` });
+                rules.push({ local: `└── ${originalPrefix}/`, placeholder: `└── ${cleanAlias}/` });
+                rules.push({ local: `./${originalPrefix} `, placeholder: `./${cleanAlias} ` });
+                rules.push({ local: `./${originalPrefix}/`, placeholder: `./${cleanAlias}/` });
+                rules.push({ local: ` ${originalPrefix}/`, placeholder: ` ${cleanAlias}/` });
+                rules.push({ local: `'${originalPrefix}/`, placeholder: `'${cleanAlias}/` });
+                rules.push({ local: `"${originalPrefix}/`, placeholder: `"${cleanAlias}/` });
+                rules.push({ local: `\n${originalPrefix}/`, placeholder: `\n${cleanAlias}/` });
+                rules.push({ local: `>${originalPrefix}/`, placeholder: `>${cleanAlias}/` });
+                rules.push({ local: `> ${originalPrefix}/`, placeholder: `> ${cleanAlias}/` });
             }
         }
     }
-    return rules.length > 0 ? rules.join('\n') : null;
+    return rules.length > 0 ? rules : null;
 }
 
 /**
@@ -211,7 +173,6 @@ export function translatePatternsToOriginal(patternsStr, profile, isJsMode) {
 
     if (!paths || paths.length <= 1 || !aliases || aliases.length === 0) return patternsStr;
 
-    // Build a map of alias -> original
     const aliasToOriginal = {};
     for (let i = 0; i < paths.length; i++) {
         const alias = aliases[i];
@@ -235,11 +196,9 @@ export function translatePatternsToOriginal(patternsStr, profile, isJsMode) {
         aliasToOriginal[cleanAlias] = originalPrefix;
     }
 
-    // Split by comma, process each pattern, and join back
     return patternsStr.split(',').map(p => {
         let modified = p;
         for (const [alias, original] of Object.entries(aliasToOriginal)) {
-            // Match alias at the start, or preceded by an asterisk, and followed by a slash or end of string.
             const regex = new RegExp(`(^|\\*)\\s*${escapeRegExp(alias)}(/|$)`, 'g');
             modified = modified.replace(regex, `$1${original}$2`);
         }
