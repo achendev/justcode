@@ -41,35 +41,36 @@ def deploy_code():
     if detected_match:
         delimiter = detected_match.group(1)
     
-    # --- Pass 1: Generate Undo Script (Updated with delimiter) ---
+    # --- Pass 1: Generate Undo Script ---
+    # Fix: try/except blocks are now scoped inside the loop.
+    # An unresolvable path (like a shell redirect) will no longer abort the entire deployment.
     rollback_commands = []
     lines = script_content.splitlines()
     i = 0
     
     delim_pattern = re.escape(delimiter)
     
-    try:
-        while i < len(lines):
-            line = lines[i].strip()
-            i += 1
-            if not line: continue
+    while i < len(lines):
+        line = lines[i].strip()
+        i += 1
+        if not line: continue
 
-            def check_safety_and_get_path(raw_path):
-                full_path, owning_path = resolve_path(raw_path, project_paths, use_numeric_prefixes)
-                base_dir = os.path.dirname(owning_path) if os.path.isfile(owning_path) else owning_path
-                if not os.path.abspath(full_path).startswith(os.path.abspath(base_dir)):
-                    raise PermissionError(f"Path traversal attempt detected: {raw_path}")
-                return full_path
+        def check_safety_and_get_path(raw_path):
+            full_path, owning_path = resolve_path(raw_path, project_paths, use_numeric_prefixes)
+            base_dir = os.path.dirname(owning_path) if os.path.isfile(owning_path) else owning_path
+            if not os.path.abspath(full_path).startswith(os.path.abspath(base_dir)):
+                raise PermissionError(f"Path traversal attempt detected: {raw_path}")
+            return full_path
 
-            if line.startswith('cat >'):
-                match = re.match(r"cat >\s+(?P<path>.*?)\s+<<\s+'" + delim_pattern + r"'", line)
-                if not match: 
-                    # If mismatch, skip it (will be caught in execute pass if invalid)
-                    continue 
-                
-                raw_path = match.group('path').strip("'\"")
+        if line.startswith('cat >'):
+            match = re.match(r"cat >\s+(?P<path>.*?)\s+<<\s+'" + delim_pattern + r"'", line)
+            if not match: 
+                continue 
+            
+            raw_path = match.group('path').strip("'\"")
+            
+            try:
                 full_path = check_safety_and_get_path(raw_path)
-
                 quoted_rel_path = shlex.quote(raw_path)
                 if os.path.isfile(full_path):
                     with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
@@ -78,20 +79,23 @@ def deploy_code():
                 else:
                     rollback_cmd = f"rm -f {quoted_rel_path}"
                 rollback_commands.insert(0, rollback_cmd)
+            except (ValueError, PermissionError, OSError) as e:
+                print(f"Warning: Undo generation skipped for file {raw_path}: {e}")
 
-                while i < len(lines) and not lines[i].startswith(delimiter):
-                    i += 1
-                if i < len(lines):
-                    i += 1
-                continue
+            while i < len(lines) and not lines[i].startswith(delimiter):
+                i += 1
+            if i < len(lines):
+                i += 1
+            continue
 
-            try:
-                parts = shlex.split(line)
-            except ValueError: continue # Skip malformed lines
+        try:
+            parts = shlex.split(line)
+        except ValueError: continue # Skip malformed lines
 
-            if not parts: continue
-            command, args = parts[0], parts[1:]
+        if not parts: continue
+        command, args = parts[0], parts[1:]
 
+        try:
             if command == 'mkdir':
                 paths_to_create = [arg for arg in args if arg != '-p']
                 for arg in paths_to_create:
@@ -116,11 +120,11 @@ def deploy_code():
                 if len(args) == 2:
                     src, dest = args[0], args[1]
                     rollback_commands.insert(0, f"mv {shlex.quote(dest)} {shlex.quote(src)}")
-            
-    except (ValueError, PermissionError, OSError) as e:
-        return Response(f"Error during undo script generation: {str(e)}", status=500, mimetype='text/plain')
+        except (ValueError, PermissionError, OSError) as e:
+            print(f"Warning: Undo generation skipped for command '{line}': {e}")
+            continue
 
-    # History logic
+    # --- History Management ---
     clear_stack(project_paths, 'redo')
     timestamp = str(int(time.time() * 1000))
     undo_stack_dir = get_history_dir(project_paths, 'undo')
