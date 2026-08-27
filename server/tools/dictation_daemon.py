@@ -25,11 +25,18 @@ class DictationDaemon:
         """Retrieves the name/ID of the frontmost application before dictation begins."""
         system = platform.system()
         if system == 'Darwin':
-            script = 'tell application "System Events" to get name of first process whose frontmost is true'
+            script = '''
+            tell application "System Events"
+                set frontApp to first application process whose frontmost is true
+                return name of frontApp
+            end tell
+            '''
             try:
                 res = subprocess.run(['osascript', '-e', script], capture_output=True, text=True, timeout=1)
                 if res.returncode == 0:
-                    return res.stdout.strip()
+                    appName = res.stdout.strip()
+                    if appName and appName != "Google Chrome":
+                        return appName
             except Exception as e:
                 print(f"[Dictation] Failed to get frontmost app on macOS: {e}")
         return None
@@ -50,10 +57,16 @@ class DictationDaemon:
                 script = f'''
                 tell application "{self.saved_frontmost_app}" to activate
                 delay 0.08
-                tell application "System Events" to keystroke "v" using command down
+                tell application "System Events"
+                    keystroke "v" using command down
+                end tell
                 '''
             else:
-                script = 'tell application "System Events" to keystroke "v" using command down'
+                script = '''
+                tell application "System Events"
+                    keystroke "v" using command down
+                end tell
+                '''
             
             try:
                 subprocess.run(['osascript', '-e', script], capture_output=True, text=True, timeout=2)
@@ -64,8 +77,7 @@ class DictationDaemon:
             try:
                 from pynput.keyboard import Controller, Key
                 kb = Controller()
-                modifier = Key.ctrl
-                with kb.pressed(modifier):
+                with kb.pressed(Key.ctrl):
                     kb.press('v')
                     kb.release('v')
             except Exception as e:
@@ -117,7 +129,7 @@ class DictationDaemon:
 
     def handle_transcript_result(self, text):
         """Called when the Chrome extension sends back the final transcript."""
-        print(f"[Dictation] Transcript received ({len(text)} chars): {text}")
+        print(f"[Dictation] Transcript received ({len(text)} chars): \"{text}\" -> Pasting into {self.saved_frontmost_app or 'active window'}")
         self.restore_and_paste(text)
 
     def start(self):

@@ -1,125 +1,141 @@
-// Driver for ChatGPT Web Dictation (Voice Input)
+// Driver for ChatGPT Web Dictation (Voice Input) targeting #prompt-textarea
 (function() {
     'use strict';
 
     if (window.justCodeChatGPTDictation) return;
 
-    let isDictating = false;
     let initialTextBeforeDictation = '';
 
-    function getPromptTextarea() {
-        return document.querySelector('div#prompt-textarea, textarea#prompt-textarea, [contenteditable="true"]#prompt-textarea, textarea[data-id="root"]');
+    function getPromptContainer() {
+        return document.querySelector('#prompt-textarea');
     }
 
-    function getTextContent(el) {
-        if (!el) return '';
-        if (el.tagName.toLowerCase() === 'textarea' || el.tagName.toLowerCase() === 'input') {
-            return el.value || '';
+    function extractTextFromPrompt() {
+        const container = getPromptContainer();
+        if (!container) return '';
+
+        // Check for <p> elements inside #prompt-textarea
+        const paragraphs = Array.from(container.querySelectorAll('p'));
+        if (paragraphs.length > 0) {
+            const pText = paragraphs
+                .map(p => (p.innerText || p.textContent || '').trim())
+                .filter(t => t.length > 0)
+                .join('\n');
+            if (pText) return pText;
         }
-        return el.innerText || el.textContent || '';
+
+        if (container.tagName.toLowerCase() === 'textarea' || container.tagName.toLowerCase() === 'input') {
+            return (container.value || '').trim();
+        }
+
+        return (container.innerText || container.textContent || '').trim();
     }
 
-    function clearPromptTextarea(el) {
-        if (!el) return;
-        if (el.tagName.toLowerCase() === 'textarea' || el.tagName.toLowerCase() === 'input') {
-            el.value = '';
+    function clearPrompt() {
+        const container = getPromptContainer();
+        if (!container) return;
+
+        if (container.tagName.toLowerCase() === 'textarea' || container.tagName.toLowerCase() === 'input') {
+            container.value = '';
         } else {
-            el.innerHTML = '<p><br></p>';
+            container.innerHTML = '<p><br></p>';
         }
-        el.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
-        el.dispatchEvent(new Event('change', { bubbles: true }));
+
+        container.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+        container.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
-    function findDictationButton() {
-        // Priority 1: Specific aria-labels / data-testids for voice & dictation
-        const candidates = Array.from(document.querySelectorAll('button[aria-label*="voice" i], button[aria-label*="dictat" i], button[aria-label*="record" i], button[aria-label*="microphone" i], button[data-testid*="dictat" i], button[data-testid*="voice" i]'));
+    function findDictateButton() {
+        // Look for ChatGPT voice / dictate button
+        const candidates = Array.from(document.querySelectorAll('button[data-testid="dictation-button"], button[data-testid*="voice" i], button[aria-label*="Dictat" i], button[aria-label*="voice" i], button[aria-label*="Record" i], button[aria-label*="microphone" i]'));
         if (candidates.length > 0) return candidates[0];
 
-        // Priority 2: Audio/Mic SVG icon buttons within prompt composer
-        const composerForm = document.querySelector('form, [class*="composer"], [class*="prompt"]');
-        if (composerForm) {
-            const buttons = composerForm.querySelectorAll('button');
+        // Search within the prompt form area
+        const form = document.querySelector('form');
+        if (form) {
+            const buttons = form.querySelectorAll('button');
             for (const btn of buttons) {
                 const label = (btn.getAttribute('aria-label') || '').toLowerCase();
-                if (label.includes('attach') || label.includes('send') || label.includes('stop generating')) continue;
-                const svgs = btn.querySelectorAll('svg');
-                if (svgs.length > 0) return btn;
+                if (label.includes('attach') || label.includes('send') || label.includes('stop')) continue;
+                if (btn.querySelector('svg')) return btn;
             }
         }
         return null;
     }
 
     function findStopButton() {
-        // Look for glowing stop button or stop aria-label inside voice container
-        const candidates = Array.from(document.querySelectorAll('button[aria-label*="stop" i], button[aria-label*="done" i], button[data-testid*="stop-voice" i], button.bg-black[aria-label*="stop" i]'));
+        // Stop or Done buttons when voice dictation is active
+        const candidates = Array.from(document.querySelectorAll('button[aria-label*="Stop" i], button[aria-label*="Done" i], button[data-testid*="stop-voice" i], button[data-testid="dictation-stop-button"], button.bg-black[aria-label*="Stop" i]'));
         if (candidates.length > 0) return candidates[0];
         
-        // Secondary: Find pulsating/recording indicators
-        const pulseButton = document.querySelector('button:has([class*="animate-pulse"]), button[class*="recording"], button[class*="active-voice"]');
-        if (pulseButton) return pulseButton;
+        const pulse = document.querySelector('button:has([class*="animate-pulse"]), button:has(svg rect)');
+        if (pulse) return pulse;
 
         return null;
     }
 
     window.justCodeChatGPTDictation = {
         start: async function() {
-            const textarea = getPromptTextarea();
-            initialTextBeforeDictation = textarea ? getTextContent(textarea) : '';
+            initialTextBeforeDictation = extractTextFromPrompt();
 
-            const btn = findDictationButton();
+            const btn = findDictateButton();
             if (!btn) {
-                console.warn("JustCode Dictation: Dictation button not found in ChatGPT DOM.");
+                console.warn("JustCode Dictation: Dictation button not found in ChatGPT UI.");
                 return { success: false, error: "Dictation button not found" };
             }
 
-            console.log("JustCode Dictation: Clicking dictation button to start recording...");
+            console.log("JustCode Dictation: Activating microphone...");
             btn.focus();
             btn.click();
-            isDictating = true;
             return { success: true };
         },
 
         stop: function() {
             return new Promise((resolve) => {
-                const textarea = getPromptTextarea();
-                const stopBtn = findStopButton() || findDictationButton();
-
+                const stopBtn = findStopButton() || findDictateButton();
                 if (stopBtn) {
-                    console.log("JustCode Dictation: Clicking stop button...");
+                    console.log("JustCode Dictation: Stopping recording...");
                     stopBtn.click();
-                } else {
-                    console.warn("JustCode Dictation: Stop button not found, awaiting natural transcript input...");
                 }
 
-                // Poll for transcription completion (wait until text changes or stabilizes)
+                // Poll for Whisper text to appear and settle in #prompt-textarea/p
                 let attempts = 0;
-                const maxAttempts = 60; // Up to 6 seconds
+                let lastSeenText = '';
+                let stableCount = 0;
+                const maxAttempts = 80; // Up to 8 seconds
 
-                const checkInterval = setInterval(() => {
+                const interval = setInterval(() => {
                     attempts++;
-                    const currentText = textarea ? getTextContent(textarea).trim() : '';
+                    const currentText = extractTextFromPrompt();
 
-                    // Check if new transcript has populated
-                    const isNewTextAvailable = currentText.length > initialTextBeforeDictation.trim().length;
-                    const stopButtonGone = !findStopButton();
-
-                    if ((isNewTextAvailable && stopButtonGone) || attempts >= maxAttempts) {
-                        clearInterval(checkInterval);
-                        isDictating = false;
-
-                        // Calculate difference (the newly dictated portion)
-                        let transcript = currentText;
-                        if (initialTextBeforeDictation && currentText.startsWith(initialTextBeforeDictation)) {
-                            transcript = currentText.substring(initialTextBeforeDictation.length).trim();
+                    if (currentText.length > 0) {
+                        if (currentText === lastSeenText) {
+                            stableCount++;
+                        } else {
+                            stableCount = 0;
+                            lastSeenText = currentText;
                         }
 
-                        // Clear the textarea for the next dictation
-                        if (textarea) {
-                            clearPromptTextarea(textarea);
-                        }
+                        // Text is stable for at least 300ms and stop button has vanished
+                        const isStopButtonGone = !findStopButton();
+                        if ((stableCount >= 3 && isStopButtonGone) || attempts >= maxAttempts) {
+                            clearInterval(interval);
 
-                        console.log("JustCode Dictation: Finished. Result:", transcript);
-                        resolve({ success: true, text: transcript });
+                            // Calculate the new portion
+                            let finalTranscript = currentText;
+                            if (initialTextBeforeDictation && currentText.startsWith(initialTextBeforeDictation)) {
+                                finalTranscript = currentText.substring(initialTextBeforeDictation.length).trim();
+                            }
+
+                            // Cut / clean the input area
+                            clearPrompt();
+
+                            console.log("JustCode Dictation: Transcription complete ->", finalTranscript);
+                            resolve({ success: true, text: finalTranscript });
+                        }
+                    } else if (attempts >= maxAttempts) {
+                        clearInterval(interval);
+                        resolve({ success: false, text: "" });
                     }
                 }, 100);
             });

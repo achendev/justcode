@@ -60,7 +60,7 @@ async function ensureContentScript(tabId) {
 
         await chrome.scripting.executeScript({
             target: { tabId: tabId },
-            files:[
+            files: [
                 "js/content_script/notification_dom.js",
                 "js/content_script/notification_manager.js",
                 "js/content_script/notification_timer.js",
@@ -95,36 +95,52 @@ function notifyActiveTab(text, type = 'info', spinner = false) {
     });
 }
 
-// --- WebSocket / MCP & Dictation Bridge Logic ---
+// --- WebSocket / MCP Logic ---
 let mcpSocket = null;
+let keepAliveInterval = null;
 
 function connectMcpSocket(serverUrl, profileId) {
     if (mcpSocket) {
         mcpSocket.close();
         mcpSocket = null;
     }
+    if (keepAliveInterval) {
+        clearInterval(keepAliveInterval);
+        keepAliveInterval = null;
+    }
 
     const wsUrl = serverUrl.replace('http', 'ws') + '/ws';
-    console.log(`MCP/Bridge: Connecting to ${wsUrl}...`);
+    console.log(`MCP: Connecting to ${wsUrl}...`);
 
     try {
         mcpSocket = new WebSocket(wsUrl);
 
         mcpSocket.onopen = () => {
-            console.log("MCP/Bridge: WebSocket Connected.");
+            console.log("MCP: WebSocket Connected.");
             if (profileId) {
                 updateProfileStatus(profileId, "MCP Connected", "success");
             }
+            // Send ping every 15 seconds to keep WebSocket and Chrome MV3 Service Worker alive
+            keepAliveInterval = setInterval(() => {
+                if (mcpSocket && mcpSocket.readyState === WebSocket.OPEN) {
+                    mcpSocket.send(JSON.stringify({ type: 'ping' }));
+                }
+            }, 15000);
         };
 
         mcpSocket.onmessage = async (event) => {
             try {
                 const msg = JSON.parse(event.data);
                 
-                // 1. Handle MCP Request
+                // Handle pong heartbeat
+                if (msg.type === 'pong') {
+                    return;
+                }
+
                 if (msg.type === 'mcp_request') {
                     console.log("MCP: Received request", msg.id);
                     
+                    // Fetch profile again to be safe
                     loadData(async (profiles, activeProfileId) => {
                         const targetId = profileId || activeProfileId;
                         const profile = profiles.find(p => p.id === targetId);
@@ -150,17 +166,17 @@ function connectMcpSocket(serverUrl, profileId) {
                         }
                     });
                 }
-                
-                // 2. Handle Dictation Start (Hotkey Pressed)
+
+                // Handle Dictation Start (Hotkey Down)
                 else if (msg.type === 'dictation_start') {
                     handleDictationStart((text, type, spin) => notifyActiveTab(text, type, spin));
                 }
 
-                // 3. Handle Dictation Stop (Hotkey Released)
+                // Handle Dictation Stop (Hotkey Up)
                 else if (msg.type === 'dictation_stop') {
                     handleDictationStop(
                         (transcript) => {
-                            if (mcpSocket) {
+                            if (mcpSocket && mcpSocket.readyState === WebSocket.OPEN) {
                                 mcpSocket.send(JSON.stringify({
                                     type: 'dictation_result',
                                     text: transcript
@@ -170,34 +186,50 @@ function connectMcpSocket(serverUrl, profileId) {
                         (text, type, spin) => notifyActiveTab(text, type, spin)
                     );
                 }
-
             } catch (e) {
-                console.error("MCP/Bridge: Error processing message", e);
+                console.error("MCP: Error processing message", e);
             }
         };
 
         mcpSocket.onclose = () => {
-            console.log("MCP/Bridge: WebSocket Closed.");
+            console.log("MCP: WebSocket Closed.");
+            if (keepAliveInterval) {
+                clearInterval(keepAliveInterval);
+                keepAliveInterval = null;
+            }
             mcpSocket = null;
+
+            // Reconnect automatically to ensure Dictation bridge is always active
+            setTimeout(() => {
+                loadData((profiles, activeProfileId) => {
+                    const activeProfile = profiles.find(p => p.id === activeProfileId);
+                    const targetUrl = activeProfile?.serverUrl || 'http://127.0.0.1:5010';
+                    connectMcpSocket(targetUrl, activeProfile?.id);
+                });
+            }, 3000);
         };
 
         mcpSocket.onerror = (e) => {
-            console.error("MCP/Bridge: WebSocket Error", e);
+            console.error("MCP: WebSocket Error", e);
         };
 
     } catch (e) {
-        console.error("MCP/Bridge: Connection failed", e);
+        console.error("MCP: Connection failed", e);
     }
 }
 
 function disconnectMcpSocket() {
+    if (keepAliveInterval) {
+        clearInterval(keepAliveInterval);
+        keepAliveInterval = null;
+    }
     if (mcpSocket) {
         mcpSocket.close();
         mcpSocket = null;
     }
 }
 
-// Auto-connect bridge to active server on startup
+// Connect WebSocket on extension load
 loadData((profiles, activeProfileId) => {
     const activeProfile = profiles.find(p => p.id === activeProfileId);
     const url = activeProfile?.serverUrl || 'http://127.0.0.1:5010';
@@ -455,7 +487,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             chrome.tabs.sendMessage(tab.id, { type: 'showNotificationOnPage', notificationId, text: progressText, messageType: 'info', showSpinner: true }).catch(()=>{});
 
             try {
-                // Profile resolution logic
+                // Profile resolution logic...
                 const settings = await chrome.storage.local.get({ rememberTabProfile: true });
                 const data = await chrome.storage.local.get(['profiles', 'activeProfileId', 'archivedProfiles', 'tabProfileMap']);
                 

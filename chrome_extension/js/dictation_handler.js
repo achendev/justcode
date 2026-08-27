@@ -1,17 +1,12 @@
-// Extension background handler for coordinating ChatGPT Dictation tabs
+// Background coordinator for ChatGPT Dictation
 let dedicatedDictationTabId = null;
 
 export function setDedicatedDictationTab(tabId) {
     dedicatedDictationTabId = tabId;
-    console.log(`JustCode: Set dedicated ChatGPT dictation tab to ID ${tabId}`);
-}
-
-export function getDedicatedDictationTab() {
-    return dedicatedDictationTabId;
+    console.log(`JustCode: Dedicated ChatGPT dictation tab set to ID ${tabId}`);
 }
 
 export async function resolveDictationTab() {
-    // 1. Check if dedicated tab exists and is still valid
     if (dedicatedDictationTabId) {
         try {
             const tab = await chrome.tabs.get(dedicatedDictationTabId);
@@ -23,7 +18,6 @@ export async function resolveDictationTab() {
         }
     }
 
-    // 2. Query any open ChatGPT tab
     const tabs = await chrome.tabs.query({ url: "*://*.chatgpt.com/*" });
     if (tabs.length > 0) {
         dedicatedDictationTabId = tabs[0].id;
@@ -47,8 +41,7 @@ export async function ensureDictationScriptInjected(tabId) {
 export async function handleDictationStart(sendNotification) {
     const tab = await resolveDictationTab();
     if (!tab) {
-        console.warn("JustCode Dictation: No ChatGPT tab open.");
-        sendNotification("Dictation: No ChatGPT tab found. Open chatgpt.com first.", "error");
+        sendNotification("Dictation: No ChatGPT tab found. Please open chatgpt.com.", "error");
         return;
     }
 
@@ -67,6 +60,8 @@ export async function handleDictationStart(sendNotification) {
         const res = results[0]?.result;
         if (res && res.success) {
             sendNotification("🎙️ Listening...", "info", true);
+        } else if (res && res.error) {
+            sendNotification("Dictation error: " + res.error, "error", false);
         }
     } catch (e) {
         console.error("JustCode Dictation Start Error:", e);
@@ -94,10 +89,11 @@ export async function handleDictationStop(sendResultToWs, sendNotification) {
         const transcript = res?.text || "";
 
         if (transcript) {
-            sendNotification(`✓ Dictated: "${transcript.substring(0, 45)}${transcript.length > 45 ? '...' : ''}"`, "success", false);
+            const preview = transcript.length > 40 ? transcript.substring(0, 40) + "..." : transcript;
+            sendNotification(`✓ Transcribed: "${preview}"`, "success", false);
             sendResultToWs(transcript);
         } else {
-            sendNotification("Dictation finished (no text captured).", "info", false);
+            sendNotification("Dictation: No speech captured.", "info", false);
         }
     } catch (e) {
         console.error("JustCode Dictation Stop Error:", e);
