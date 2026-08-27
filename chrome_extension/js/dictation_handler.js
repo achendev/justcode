@@ -1,5 +1,7 @@
 // Background coordinator for ChatGPT Dictation
 let dedicatedDictationTabId = null;
+let previousActiveTabId = null;
+let previousActiveWindowId = null;
 
 export function setDedicatedDictationTab(tabId) {
     dedicatedDictationTabId = tabId;
@@ -39,22 +41,33 @@ export async function ensureDictationScriptInjected(tabId) {
 }
 
 export async function handleDictationStart(sendNotification) {
-    const tab = await resolveDictationTab();
-    if (!tab) {
+    const targetTab = await resolveDictationTab();
+    if (!targetTab) {
         sendNotification("Dictation: No ChatGPT tab found. Please open chatgpt.com.", "error");
         return;
     }
 
-    // Activate tab inside its Chrome window without stealing OS window focus
+    // Save whichever Chrome tab was active prior to dictation
     try {
-        await chrome.tabs.update(tab.id, { active: true });
-    } catch (e) {}
+        const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+        if (activeTab && activeTab.id !== targetTab.id) {
+            previousActiveTabId = activeTab.id;
+            previousActiveWindowId = activeTab.windowId;
+        } else {
+            previousActiveTabId = null;
+            previousActiveWindowId = null;
+        }
+    } catch (e) {
+        previousActiveTabId = null;
+        previousActiveWindowId = null;
+    }
 
-    await ensureDictationScriptInjected(tab.id);
+    // Do NOT switch active tab on start; user remains on their current tab/app while holding hotkey
+    await ensureDictationScriptInjected(targetTab.id);
 
     try {
         const results = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
+            target: { tabId: targetTab.id },
             func: async () => {
                 if (window.justCodeChatGPTDictation) {
                     return await window.justCodeChatGPTDictation.start();
@@ -74,19 +87,20 @@ export async function handleDictationStart(sendNotification) {
 }
 
 export async function handleDictationStop(sendResultToWs, sendNotification) {
-    const tab = await resolveDictationTab();
-    if (!tab) return;
+    const targetTab = await resolveDictationTab();
+    if (!targetTab) return;
 
-    // Bring Chrome window into focus upon release to unthrottle transcription & DOM event dispatch
+    // Bring ChatGPT tab to active focus only upon release to unthrottle transcription & DOM event dispatch
     try {
-        if (tab.windowId) {
-            await chrome.windows.update(tab.windowId, { focused: true });
+        await chrome.tabs.update(targetTab.id, { active: true });
+        if (targetTab.windowId) {
+            await chrome.windows.update(targetTab.windowId, { focused: true });
         }
     } catch (e) {}
 
     try {
         const results = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
+            target: { tabId: targetTab.id },
             func: async () => {
                 if (window.justCodeChatGPTDictation) {
                     return await window.justCodeChatGPTDictation.stop();
@@ -98,10 +112,29 @@ export async function handleDictationStop(sendResultToWs, sendNotification) {
         const res = results[0]?.result;
         const transcript = res?.text || "";
 
+        // Restore the original Chrome tab (e.g. Google or any other site) if dictation began on another tab
+        if (previousActiveTabId) {
+            try {
+                await chrome.tabs.update(previousActiveTabId, { active: true });
+                if (previousActiveWindowId) {
+                    await chrome.windows.update(previousActiveWindowId, { focused: true });
+                }
+            } catch (e) {}
+            previousActiveTabId = null;
+            previousActiveWindowId = null;
+        }
+
         if (transcript) {
             sendResultToWs(transcript);
         }
     } catch (e) {
         console.error("JustCode Dictation Stop Error:", e);
+        if (previousActiveTabId) {
+            try {
+                await chrome.tabs.update(previousActiveTabId, { active: true });
+            } catch (err) {}
+            previousActiveTabId = null;
+            previousActiveWindowId = null;
+        }
     }
 }

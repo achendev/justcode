@@ -44,7 +44,7 @@ class DictationDaemon:
                     appName = parts[0].strip()
                     appBundle = parts[1].strip() if len(parts) > 1 else ""
                     
-                    if appName and "Chrome" not in appName:
+                    if appName:
                         return appName, (appBundle if appBundle else None)
             except Exception as e:
                 print(f"[Dictation] Failed to get frontmost app: {e}")

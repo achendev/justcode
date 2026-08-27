@@ -31,19 +31,20 @@ export function attachActionEventListeners() {
         button.addEventListener('click', (e) => openContextManager(e));
     });
 
-    // --- Set Dedicated Dictation Tab Button ---
-    document.querySelectorAll('.set-dictation-tab-btn').forEach(button => {
-        button.addEventListener('click', async () => {
+    // --- Top Menu Dictation Worker Button ---
+    const dictationBtn = document.getElementById('dictationTabButton');
+    if (dictationBtn) {
+        dictationBtn.addEventListener('click', async () => {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (tab && tab.id) {
                 chrome.runtime.sendMessage({ type: 'set_dictation_tab', tabId: tab.id });
-                button.classList.remove('btn-outline-secondary');
-                button.classList.add('btn-success');
+                dictationBtn.classList.remove('btn-outline-secondary');
+                dictationBtn.classList.add('btn-success');
                 setTimeout(() => {
-                    button.classList.remove('btn-success');
-                    button.classList.add('btn-outline-secondary');
+                    dictationBtn.classList.remove('btn-success');
+                    dictationBtn.classList.add('btn-outline-secondary');
                 }, 1200);
             }
         });
-    });
+    }
 }
