@@ -80,17 +80,19 @@ async function initializeAllTabs() {
     }
 }
 
-// --- Notification Helper ---
-function notifyActiveTab(text, type = 'info', spinner = false) {
-    chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
-        if (tabs && tabs[0] && tabs[0].id) {
-            chrome.tabs.sendMessage(tabs[0].id, {
-                type: 'showNotificationOnPage',
-                notificationId: 'justcode-dictation-notify',
-                text: text,
-                messageType: type,
-                showSpinner: spinner
-            }).catch(() => {});
+// Broadcasts dictation notification update to all web tabs to prevent hanging preloaders
+function notifyDictationStatus(text, type = 'info', spinner = false) {
+    chrome.tabs.query({ url: ["http://*/*", "https://*/*"] }, (tabs) => {
+        for (const tab of tabs) {
+            if (tab.id) {
+                chrome.tabs.sendMessage(tab.id, {
+                    type: 'showNotificationOnPage',
+                    notificationId: 'justcode-dictation-notify',
+                    text: text,
+                    messageType: type,
+                    showSpinner: spinner
+                }).catch(() => {});
+            }
         }
     });
 }
@@ -169,7 +171,7 @@ function connectMcpSocket(serverUrl, profileId) {
 
                 // Handle Dictation Start (Hotkey Down)
                 else if (msg.type === 'dictation_start') {
-                    handleDictationStart((text, type, spin) => notifyActiveTab(text, type, spin));
+                    handleDictationStart((text, type, spin) => notifyDictationStatus(text, type, spin));
                 }
 
                 // Handle Dictation Stop (Hotkey Up)
@@ -183,7 +185,7 @@ function connectMcpSocket(serverUrl, profileId) {
                                 }));
                             }
                         },
-                        (text, type, spin) => notifyActiveTab(text, type, spin)
+                        (text, type, spin) => notifyDictationStatus(text, type, spin)
                     );
                 }
             } catch (e) {
@@ -356,7 +358,7 @@ async function handleAutoDeployTrigger(sender) {
         notify(msg, "success", false);
         return;
     }
-    // -------------------------------------------------
+    // ------------------------------------
 
     if (activeProfile.agentReviewPolicy === 'always') {
         // DIRECT EXECUTION

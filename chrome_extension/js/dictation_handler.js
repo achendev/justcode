@@ -43,7 +43,7 @@ export async function ensureDictationScriptInjected(tabId) {
 export async function handleDictationStart(sendNotification) {
     const targetTab = await resolveDictationTab();
     if (!targetTab) {
-        sendNotification("Dictation: No ChatGPT tab found. Please open chatgpt.com.", "error");
+        sendNotification("Dictation: No ChatGPT tab found. Please open chatgpt.com.", "error", false);
         return;
     }
 
@@ -98,6 +98,9 @@ export async function handleDictationStop(sendResultToWs, sendNotification) {
         }
     } catch (e) {}
 
+    // Allow 40ms for window focus event to settle in ChatGPT
+    await new Promise(r => setTimeout(r, 40));
+
     try {
         const results = await chrome.scripting.executeScript({
             target: { tabId: targetTab.id },
@@ -125,7 +128,10 @@ export async function handleDictationStop(sendResultToWs, sendNotification) {
         }
 
         if (transcript) {
+            sendNotification("✓ Dictated", "success", false);
             sendResultToWs(transcript);
+        } else {
+            sendNotification("Dictation: No speech captured.", "info", false);
         }
     } catch (e) {
         console.error("JustCode Dictation Stop Error:", e);
@@ -136,5 +142,6 @@ export async function handleDictationStop(sendResultToWs, sendNotification) {
             previousActiveTabId = null;
             previousActiveWindowId = null;
         }
+        sendNotification("Dictation error: " + e.message, "error", false);
     }
 }

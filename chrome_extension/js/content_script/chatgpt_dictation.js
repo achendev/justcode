@@ -4,6 +4,17 @@
 
     if (window.justCodeChatGPTDictation) return;
 
+    function simulateClick(element) {
+        if (!element) return;
+        element.focus();
+        const eventOptions = { bubbles: true, cancelable: true, view: window };
+        element.dispatchEvent(new PointerEvent('pointerdown', eventOptions));
+        element.dispatchEvent(new MouseEvent('mousedown', eventOptions));
+        element.dispatchEvent(new PointerEvent('pointerup', eventOptions));
+        element.dispatchEvent(new MouseEvent('mouseup', eventOptions));
+        element.dispatchEvent(new MouseEvent('click', eventOptions));
+    }
+
     function getPromptContainer() {
         return document.querySelector('#prompt-textarea');
     }
@@ -62,7 +73,7 @@
     }
 
     function findStopButton() {
-        const candidates = Array.from(document.querySelectorAll('button[data-testid="dictation-stop-button"], button[data-testid*="stop-voice" i], button[aria-label="Stop dictation"], button[aria-label="Stop recording"], button.bg-black[aria-label*="Stop" i]'));
+        const candidates = Array.from(document.querySelectorAll('button[data-testid="dictation-stop-button"], button[data-testid*="stop-voice" i], button[aria-label="Stop dictation"], button[aria-label="Stop recording"], button[aria-label*="Stop" i], button[aria-label*="Done" i], button.bg-black[aria-label*="Stop" i], [role="dialog"] button:has(svg), button:has(svg rect)'));
         if (candidates.length > 0) return candidates[0];
 
         const pulse = document.querySelector('button:has([class*="animate-pulse"])');
@@ -73,7 +84,6 @@
 
     window.justCodeChatGPTDictation = {
         start: async function() {
-            // Clean composer first so transcript is 100% fresh
             clearPrompt();
 
             const btn = findDictateButton();
@@ -83,8 +93,7 @@
             }
 
             console.log("JustCode Dictation: Activating microphone...");
-            btn.focus();
-            btn.click();
+            simulateClick(btn);
             return { success: true };
         },
 
@@ -93,8 +102,12 @@
                 const stopBtn = findStopButton() || findDictateButton();
                 if (stopBtn) {
                     console.log("JustCode Dictation: Stopping recording...");
-                    stopBtn.click();
+                    simulateClick(stopBtn);
                 }
+
+                // Also ensure prompt container is focused
+                const container = getPromptContainer();
+                if (container) container.focus();
 
                 let isResolved = false;
                 let debounceTimer = null;
@@ -133,8 +146,7 @@
                         if (currentText !== lastSeenText) {
                             lastSeenText = currentText;
                             if (debounceTimer) clearTimeout(debounceTimer);
-                            // 50ms buffer to catch any multi-paragraph node insertion
-                            debounceTimer = setTimeout(finishExtraction, 50);
+                            debounceTimer = setTimeout(finishExtraction, 40);
                         }
                     }
                 };
