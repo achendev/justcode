@@ -8,55 +8,71 @@ import pyperclip
 from pynput import keyboard
 
 class DictationDaemon:
+    _started = False
+
     def __init__(self, ws_broadcast_func):
         self.ws_broadcast = ws_broadcast_func
         self.is_recording = False
-        self.saved_frontmost_app = None
+        self.saved_app_name = None
+        self.saved_bundle_id = None
         self.listener = None
         self.lock = threading.Lock()
         
         # Configuration
         # Default hotkey: Key.cmd_r (Right Command) on macOS, Key.ctrl_r on Windows/Linux
-        # Configurable via environment variable DICTATION_HOTKEY (e.g., cmd_r, ctrl_r, alt_r, f20)
         self.hotkey_name = os.getenv('DICTATION_HOTKEY', 'cmd_r' if platform.system() == 'Darwin' else 'ctrl_r').lower()
         self.enabled = os.getenv('ENABLE_DICTATION', 'true').lower() == 'true'
 
-    def get_frontmost_app(self):
-        """Retrieves the name/ID of the frontmost application before dictation begins."""
-        system = platform.system()
-        if system == 'Darwin':
+    def get_frontmost_app_info(self):
+        """Retrieves both process name and unique bundle ID of the frontmost application on macOS."""
+        if platform.system() == 'Darwin':
             script = '''
             tell application "System Events"
                 set frontApp to first application process whose frontmost is true
-                return name of frontApp
+                set appName to name of frontApp
+                set appBundle to ""
+                try
+                    set appBundle to bundle identifier of frontApp
+                end try
+                return appName & "|||" & appBundle
             end tell
             '''
             try:
                 res = subprocess.run(['osascript', '-e', script], capture_output=True, text=True, timeout=1)
-                if res.returncode == 0:
-                    appName = res.stdout.strip()
-                    if appName and appName != "Google Chrome":
-                        return appName
+                if res.returncode == 0 and '|||' in res.stdout:
+                    parts = res.stdout.strip().split('|||', 1)
+                    appName = parts[0].strip()
+                    appBundle = parts[1].strip() if len(parts) > 1 else ""
+                    
+                    if appName and "Chrome" not in appName:
+                        return appName, (appBundle if appBundle else None)
             except Exception as e:
-                print(f"[Dictation] Failed to get frontmost app on macOS: {e}")
-        return None
+                print(f"[Dictation] Failed to get frontmost app: {e}")
+        return None, None
 
     def restore_and_paste(self, text):
         """Restores the original application window and pastes the transcribed text."""
         if not text:
             return
 
-        # 1. Set text to clipboard
+        # 1. Copy transcript to system clipboard
         pyperclip.copy(text)
-        time.sleep(0.05)
+        time.sleep(0.01)
 
         system = platform.system()
         if system == 'Darwin':
-            # Reactivate original app & send Command+V
-            if self.saved_frontmost_app:
+            if self.saved_bundle_id:
                 script = f'''
-                tell application "{self.saved_frontmost_app}" to activate
-                delay 0.08
+                tell application id "{self.saved_bundle_id}" to activate
+                delay 0.02
+                tell application "System Events"
+                    keystroke "v" using command down
+                end tell
+                '''
+            elif self.saved_app_name:
+                script = f'''
+                tell application "{self.saved_app_name}" to activate
+                delay 0.02
                 tell application "System Events"
                     keystroke "v" using command down
                 end tell
@@ -69,11 +85,10 @@ class DictationDaemon:
                 '''
             
             try:
-                subprocess.run(['osascript', '-e', script], capture_output=True, text=True, timeout=2)
+                subprocess.run(['osascript', '-e', script], capture_output=True, text=True, timeout=1.5)
             except Exception as e:
                 print(f"[Dictation] Failed to paste via AppleScript: {e}")
         else:
-            # Fallback for Linux / Windows using pynput controller
             try:
                 from pynput.keyboard import Controller, Key
                 kb = Controller()
@@ -91,8 +106,7 @@ class DictationDaemon:
             elif isinstance(key, keyboard.KeyCode):
                 if key.char:
                     return key.char.lower() == self.hotkey_name
-                # Check for special virtual key codes like F20
-                if self.hotkey_name == 'f20' and key.vk in (90, 80): # macOS F20 / alias
+                if self.hotkey_name == 'f20' and key.vk in (90, 80):
                     return True
         except Exception:
             pass
@@ -106,8 +120,9 @@ class DictationDaemon:
             with self.lock:
                 if not self.is_recording:
                     self.is_recording = True
-                    self.saved_frontmost_app = self.get_frontmost_app()
-                    print(f"[Dictation] Hotkey DOWN (App: {self.saved_frontmost_app}). Starting dictation...")
+                    self.saved_app_name, self.saved_bundle_id = self.get_frontmost_app_info()
+                    active_display = self.saved_app_name or self.saved_bundle_id or "Current"
+                    print(f"[Dictation] Hotkey DOWN (Active app: {active_display}). Starting dictation...")
                     self.ws_broadcast({
                         'type': 'dictation_start',
                         'timestamp': time.time()
@@ -129,7 +144,8 @@ class DictationDaemon:
 
     def handle_transcript_result(self, text):
         """Called when the Chrome extension sends back the final transcript."""
-        print(f"[Dictation] Transcript received ({len(text)} chars): \"{text}\" -> Pasting into {self.saved_frontmost_app or 'active window'}")
+        target_display = self.saved_app_name or self.saved_bundle_id or "active app"
+        print(f"[Dictation] Transcript received ({len(text)} chars): \"{text}\" -> Pasting into {target_display}")
         self.restore_and_paste(text)
 
     def start(self):
@@ -137,6 +153,10 @@ class DictationDaemon:
         if not self.enabled:
             print("[Dictation] Dictation daemon disabled via config.")
             return
+
+        if DictationDaemon._started:
+            return
+        DictationDaemon._started = True
 
         def run_listener():
             print(f"[Dictation] Daemon active. Hold [{self.hotkey_name.upper()}] to dictate.")

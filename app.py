@@ -48,9 +48,11 @@ def ws_broadcast_json(payload_dict):
             if ws in ws_connections:
                 ws_connections.remove(ws)
 
-# Start Dictation Background Daemon
+# Start Dictation Background Daemon (guard against Werkzeug supervisor process duplicate)
 dictation_daemon = DictationDaemon(ws_broadcast_func=ws_broadcast_json)
-dictation_daemon.start()
+if os.environ.get('WERKZEUG_RUN_MAIN') == 'true' or 'WERKZEUG_RUN_MAIN' not in os.environ:
+    dictation_daemon.start()
+
 register_dictation_handlers(app, dictation_daemon)
 
 @sock.route('/ws')

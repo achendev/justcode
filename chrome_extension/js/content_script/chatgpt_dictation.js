@@ -4,8 +4,6 @@
 
     if (window.justCodeChatGPTDictation) return;
 
-    let initialTextBeforeDictation = '';
-
     function getPromptContainer() {
         return document.querySelector('#prompt-textarea');
     }
@@ -56,7 +54,7 @@
             const buttons = form.querySelectorAll('button');
             for (const btn of buttons) {
                 const label = (btn.getAttribute('aria-label') || '').toLowerCase();
-                if (label.includes('attach') || label.includes('send') || label.includes('stop')) continue;
+                if (label.includes('attach') || label.includes('send') || label.includes('stop generating')) continue;
                 if (btn.querySelector('svg')) return btn;
             }
         }
@@ -64,11 +62,10 @@
     }
 
     function findStopButton() {
-        // Stop or Done buttons when voice dictation is active
-        const candidates = Array.from(document.querySelectorAll('button[aria-label*="Stop" i], button[aria-label*="Done" i], button[data-testid*="stop-voice" i], button[data-testid="dictation-stop-button"], button.bg-black[aria-label*="Stop" i]'));
+        const candidates = Array.from(document.querySelectorAll('button[data-testid="dictation-stop-button"], button[data-testid*="stop-voice" i], button[aria-label="Stop dictation"], button[aria-label="Stop recording"], button.bg-black[aria-label*="Stop" i]'));
         if (candidates.length > 0) return candidates[0];
-        
-        const pulse = document.querySelector('button:has([class*="animate-pulse"]), button:has(svg rect)');
+
+        const pulse = document.querySelector('button:has([class*="animate-pulse"])');
         if (pulse) return pulse;
 
         return null;
@@ -76,7 +73,8 @@
 
     window.justCodeChatGPTDictation = {
         start: async function() {
-            initialTextBeforeDictation = extractTextFromPrompt();
+            // Clean composer first so transcript is 100% fresh
+            clearPrompt();
 
             const btn = findDictateButton();
             if (!btn) {
@@ -98,46 +96,73 @@
                     stopBtn.click();
                 }
 
-                // Poll for Whisper text to appear and settle in #prompt-textarea/p
-                let attempts = 0;
+                let isResolved = false;
+                let debounceTimer = null;
+                let observer = null;
+                let safetyTimeout = null;
+                let pollInterval = null;
                 let lastSeenText = '';
-                let stableCount = 0;
-                const maxAttempts = 80; // Up to 8 seconds
 
-                const interval = setInterval(() => {
-                    attempts++;
+                const finishExtraction = () => {
+                    if (isResolved) return;
+                    isResolved = true;
+
+                    if (observer) {
+                        observer.disconnect();
+                        observer = null;
+                    }
+                    if (debounceTimer) clearTimeout(debounceTimer);
+                    if (safetyTimeout) clearTimeout(safetyTimeout);
+                    if (pollInterval) clearInterval(pollInterval);
+
+                    const finalTranscript = extractTextFromPrompt();
+
+                    // Cut/clear the prompt text area
+                    clearPrompt();
+
+                    console.log("JustCode Dictation: Instant transcription complete ->", finalTranscript);
+                    resolve({ success: finalTranscript.length > 0, text: finalTranscript });
+                };
+
+                const checkState = () => {
+                    if (isResolved) return;
                     const currentText = extractTextFromPrompt();
 
+                    // Instant grab: As soon as text appears in #prompt-textarea, extract it immediately!
                     if (currentText.length > 0) {
-                        if (currentText === lastSeenText) {
-                            stableCount++;
-                        } else {
-                            stableCount = 0;
+                        if (currentText !== lastSeenText) {
                             lastSeenText = currentText;
+                            if (debounceTimer) clearTimeout(debounceTimer);
+                            // 50ms buffer to catch any multi-paragraph node insertion
+                            debounceTimer = setTimeout(finishExtraction, 50);
                         }
-
-                        // Text is stable for at least 300ms and stop button has vanished
-                        const isStopButtonGone = !findStopButton();
-                        if ((stableCount >= 3 && isStopButtonGone) || attempts >= maxAttempts) {
-                            clearInterval(interval);
-
-                            // Calculate the new portion
-                            let finalTranscript = currentText;
-                            if (initialTextBeforeDictation && currentText.startsWith(initialTextBeforeDictation)) {
-                                finalTranscript = currentText.substring(initialTextBeforeDictation.length).trim();
-                            }
-
-                            // Cut / clean the input area
-                            clearPrompt();
-
-                            console.log("JustCode Dictation: Transcription complete ->", finalTranscript);
-                            resolve({ success: true, text: finalTranscript });
-                        }
-                    } else if (attempts >= maxAttempts) {
-                        clearInterval(interval);
-                        resolve({ success: false, text: "" });
                     }
-                }, 100);
+                };
+
+                // 1. MutationObserver on #prompt-textarea and composer form
+                const targetNode = document.querySelector('form') || document.querySelector('#prompt-textarea') || document.body;
+                observer = new MutationObserver(() => {
+                    checkState();
+                });
+
+                observer.observe(targetNode, {
+                    childList: true,
+                    subtree: true,
+                    characterData: true
+                });
+
+                // 2. High-frequency 25ms polling interval fallback
+                pollInterval = setInterval(() => {
+                    checkState();
+                }, 25);
+
+                // Initial immediate check
+                checkState();
+
+                // 3. Safety timeout (max 3.5s if no speech was detected)
+                safetyTimeout = setTimeout(() => {
+                    finishExtraction();
+                }, 3500);
             });
         }
     };

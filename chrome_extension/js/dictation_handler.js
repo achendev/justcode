@@ -45,6 +45,11 @@ export async function handleDictationStart(sendNotification) {
         return;
     }
 
+    // Activate tab inside its Chrome window without stealing OS window focus
+    try {
+        await chrome.tabs.update(tab.id, { active: true });
+    } catch (e) {}
+
     await ensureDictationScriptInjected(tab.id);
 
     try {
@@ -72,7 +77,12 @@ export async function handleDictationStop(sendResultToWs, sendNotification) {
     const tab = await resolveDictationTab();
     if (!tab) return;
 
-    sendNotification("⏳ Transcribing...", "info", true);
+    // Bring Chrome window into focus upon release to unthrottle transcription & DOM event dispatch
+    try {
+        if (tab.windowId) {
+            await chrome.windows.update(tab.windowId, { focused: true });
+        }
+    } catch (e) {}
 
     try {
         const results = await chrome.scripting.executeScript({
@@ -89,14 +99,9 @@ export async function handleDictationStop(sendResultToWs, sendNotification) {
         const transcript = res?.text || "";
 
         if (transcript) {
-            const preview = transcript.length > 40 ? transcript.substring(0, 40) + "..." : transcript;
-            sendNotification(`✓ Transcribed: "${preview}"`, "success", false);
             sendResultToWs(transcript);
-        } else {
-            sendNotification("Dictation: No speech captured.", "info", false);
         }
     } catch (e) {
         console.error("JustCode Dictation Stop Error:", e);
-        sendNotification("Dictation error: " + e.message, "error", false);
     }
 }
