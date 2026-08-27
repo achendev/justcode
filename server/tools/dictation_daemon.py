@@ -57,35 +57,38 @@ class DictationDaemon:
 
         # 1. Copy transcript to system clipboard
         pyperclip.copy(text)
-        time.sleep(0.01)
+        time.sleep(0.04)
 
         system = platform.system()
         if system == 'Darwin':
+            # Use 'key code 9' (hardware keycode for V) instead of 'keystroke "v"'
+            # to guarantee Cmd+V triggers in Telegram (Qt), Electron, and non-US layouts.
             if self.saved_bundle_id:
                 script = f'''
                 tell application id "{self.saved_bundle_id}" to activate
-                delay 0.02
+                delay 0.08
                 tell application "System Events"
-                    keystroke "v" using command down
+                    key code 9 using command down
                 end tell
                 '''
             elif self.saved_app_name:
                 script = f'''
                 tell application "{self.saved_app_name}" to activate
-                delay 0.02
+                delay 0.08
                 tell application "System Events"
-                    keystroke "v" using command down
+                    key code 9 using command down
                 end tell
                 '''
             else:
                 script = '''
+                delay 0.08
                 tell application "System Events"
-                    keystroke "v" using command down
+                    key code 9 using command down
                 end tell
                 '''
             
             try:
-                subprocess.run(['osascript', '-e', script], capture_output=True, text=True, timeout=1.5)
+                subprocess.run(['osascript', '-e', script], capture_output=True, text=True, timeout=2.0)
             except Exception as e:
                 print(f"[Dictation] Failed to paste via AppleScript: {e}")
         else:
