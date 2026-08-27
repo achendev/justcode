@@ -10,7 +10,7 @@ export function getMainViewHTML(profile) {
         agentBtnClass = 'btn-outline-warning';
         agentBtnTitle = 'Mode: Agent (Auto-Deploy Enabled)';
     } else if (profile.mode === 'mcp') {
-        agentBtnClass = 'btn-success'; // Green for connected/active
+        agentBtnClass = 'btn-success';
         agentBtnIcon = 'bi-lightning-charge-fill';
         agentBtnTitle = 'Mode: MCP (API Access Enabled)';
     }
@@ -22,6 +22,7 @@ export function getMainViewHTML(profile) {
             <div class="input-group flex-grow-1">
                 <button class="btn btn-outline-secondary btn-sm settings-button" type="button" data-id="${profile.id}" title="Profile Settings"><i class="bi bi-gear-wide-connected"></i></button>
                 <input type="text" class="form-control form-control-sm profile-name-input" value="${profile.name}" data-id="${profile.id}">
+                <button class="btn btn-outline-secondary btn-sm set-dictation-tab-btn" type="button" title="Set Current Tab as ChatGPT Dictation Worker"><i class="bi bi-mic"></i></button>
                 <button class="btn btn-outline-secondary btn-sm update-app-button server-mode-item" type="button" data-id="${profile.id}" title="Update JustCode Server"><i class="bi bi-download"></i></button>
                 <button class="btn btn-outline-secondary btn-sm copy-profile" type="button" data-id="${profile.id}" title="Copy Profile"><i class="bi bi-copy"></i></button>
             </div>

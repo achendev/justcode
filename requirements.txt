@@ -5,3 +5,5 @@ watchdog==6.0.0
 flask-sock==0.7.0
 mcp==1.2.0
 requests==2.32.3
+pynput==1.7.7
+pyperclip==1.9.0

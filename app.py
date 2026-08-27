@@ -13,6 +13,8 @@ from server.undo_endpoint import undo
 from server.redo_endpoint import redo
 from server.update_endpoint import update_app
 from server.agent_endpoint import agent_execute
+from server.dictation_endpoint import register_dictation_handlers
+from server.tools.dictation_daemon import DictationDaemon
 
 # Load environment variables from .env file
 load_dotenv()
@@ -29,12 +31,27 @@ app.add_url_rule('/redo', 'redo', redo, methods=['GET', 'POST'])
 app.add_url_rule('/update', 'update_app', update_app, methods=['POST'])
 app.add_url_rule('/agent/execute', 'agent_execute', agent_execute, methods=['POST'])
 
-# --- MCP / WebSocket Bridge Logic ---
+# --- MCP & Dictation / WebSocket Bridge Logic ---
 
-# Store active WebSocket connections (usually just one, the chrome extension)
+# Store active WebSocket connections
 ws_connections = []
 # Store pending requests: { request_id: { 'event': threading.Event(), 'response': None } }
 pending_requests = {}
+
+def ws_broadcast_json(payload_dict):
+    """Broadcasts a JSON payload to active extension clients."""
+    payload_str = json.dumps(payload_dict)
+    for ws in list(ws_connections):
+        try:
+            ws.send(payload_str)
+        except Exception:
+            if ws in ws_connections:
+                ws_connections.remove(ws)
+
+# Start Dictation Background Daemon
+dictation_daemon = DictationDaemon(ws_broadcast_func=ws_broadcast_json)
+dictation_daemon.start()
+register_dictation_handlers(app, dictation_daemon)
 
 @sock.route('/ws')
 def websocket_handler(ws):
@@ -42,27 +59,35 @@ def websocket_handler(ws):
     WebSocket endpoint for the Chrome Extension to connect to.
     """
     ws_connections.append(ws)
-    print(f"MCP: Extension connected. Total clients: {len(ws_connections)}")
+    print(f"WS Bridge: Extension client connected. Total clients: {len(ws_connections)}")
     try:
         while True:
             data = ws.receive()
             if data:
                 try:
                     msg = json.loads(data)
-                    # Handle response from Extension
-                    if msg.get('type') == 'mcp_response':
+                    msg_type = msg.get('type')
+
+                    # 1. MCP Response
+                    if msg_type == 'mcp_response':
                         req_id = msg.get('id')
                         if req_id in pending_requests:
                             pending_requests[req_id]['response'] = msg.get('text')
                             pending_requests[req_id]['event'].set()
+
+                    # 2. Dictation Transcript Result
+                    elif msg_type == 'dictation_result':
+                        transcript_text = msg.get('text', '')
+                        dictation_daemon.handle_transcript_result(transcript_text)
+
                 except Exception as e:
-                    print(f"MCP: Error parsing WS message: {e}")
+                    print(f"WS Bridge: Error parsing message: {e}")
     except Exception:
         pass
     finally:
         if ws in ws_connections:
             ws_connections.remove(ws)
-        print("MCP: Extension disconnected.")
+        print("WS Bridge: Extension client disconnected.")
 
 @app.route('/mcp/prompt', methods=['POST'])
 def mcp_prompt_endpoint():

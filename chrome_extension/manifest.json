@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "JustCode",
-    "version": "1.3",
+    "version": "1.4",
     "description": "AI-powered pair programmer, right in your browser",
     "icons": {
         "16": "icons/icon16.png",
@@ -17,7 +17,8 @@
         "clipboardWrite",
         "clipboardRead",
         "activeTab",
-        "scripting"
+        "scripting",
+        "tabs"
     ],
     "action": {
         "default_popup": "popup.html",
@@ -45,6 +46,13 @@
                 "js/content_script.js"
             ],
             "run_at": "document_idle"
+        },
+        {
+            "matches": ["*://*.chatgpt.com/*"],
+            "js": [
+                "js/content_script/chatgpt_dictation.js"
+            ],
+            "run_at": "document_idle"
         }
     ],
     "web_accessible_resources": [
@@ -54,7 +62,8 @@
                 "welcome/welcome.html",
                 "welcome/welcome.css",
                 "welcome/welcome.js",
-                "icons/icon128.png"
+                "icons/icon128.png",
+                "js/content_script/chatgpt_dictation.js"
             ],
             "matches": ["<all_urls>"]
         }
