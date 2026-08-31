@@ -13,15 +13,34 @@ class DictationDaemon:
     def __init__(self, ws_broadcast_func):
         self.ws_broadcast = ws_broadcast_func
         self.is_recording = False
+        self.active_mode = None
         self.saved_app_name = None
         self.saved_bundle_id = None
         self.listener = None
         self.lock = threading.Lock()
         
-        # Configuration
-        # Default hotkey: Key.cmd_r (Right Command) on macOS, Key.ctrl_r on Windows/Linux
-        self.hotkey_name = os.getenv('DICTATION_HOTKEY', 'cmd_r' if platform.system() == 'Darwin' else 'ctrl_r').lower()
+        # Configuration:
+        # 1. Background / Stay-in-app mode (default: cmd_r)
+        self.hotkey_background = self.normalize_key_name(
+            os.getenv('DICTATION_HOTKEY_BACKGROUND', os.getenv('DICTATION_HOTKEY', 'cmd_r'))
+        )
+        # 2. Foreground / Switch-to-ChatGPT mode (default: alt_r)
+        self.hotkey_foreground = self.normalize_key_name(
+            os.getenv('DICTATION_HOTKEY_FOREGROUND', 'alt_r')
+        )
         self.enabled = os.getenv('ENABLE_DICTATION', 'true').lower() == 'true'
+
+    def normalize_key_name(self, name):
+        if not name:
+            return ""
+        n = str(name).lower().strip()
+        if n in ("alt_r", "option_r", "opt_r", "right_alt", "right_option", "altgr"):
+            return "alt_r"
+        if n in ("cmd_r", "command_r", "right_cmd", "right_command"):
+            return "cmd_r"
+        if n in ("ctrl_r", "control_r", "right_ctrl", "right_control"):
+            return "ctrl_r"
+        return n
 
     def get_frontmost_app_info(self):
         """Retrieves both process name and unique bundle ID of the frontmost application on macOS."""
@@ -43,7 +62,6 @@ class DictationDaemon:
                     parts = res.stdout.strip().split('|||', 1)
                     appName = parts[0].strip()
                     appBundle = parts[1].strip() if len(parts) > 1 else ""
-                    
                     if appName:
                         return appName, (appBundle if appBundle else None)
             except Exception as e:
@@ -57,16 +75,14 @@ class DictationDaemon:
 
         # 1. Copy transcript to system clipboard
         pyperclip.copy(text)
-        time.sleep(0.04)
+        time.sleep(0.01)
 
         system = platform.system()
         if system == 'Darwin':
-            # Use 'key code 9' (hardware keycode for V) instead of 'keystroke "v"'
-            # to guarantee Cmd+V triggers in Telegram (Qt), Electron, and non-US layouts.
             if self.saved_bundle_id:
                 script = f'''
                 tell application id "{self.saved_bundle_id}" to activate
-                delay 0.08
+                delay 0.03
                 tell application "System Events"
                     key code 9 using command down
                 end tell
@@ -74,21 +90,20 @@ class DictationDaemon:
             elif self.saved_app_name:
                 script = f'''
                 tell application "{self.saved_app_name}" to activate
-                delay 0.08
+                delay 0.03
                 tell application "System Events"
                     key code 9 using command down
                 end tell
                 '''
             else:
                 script = '''
-                delay 0.08
                 tell application "System Events"
                     key code 9 using command down
                 end tell
                 '''
             
             try:
-                subprocess.run(['osascript', '-e', script], capture_output=True, text=True, timeout=2.0)
+                subprocess.run(['osascript', '-e', script], capture_output=True, text=True, timeout=1.5)
             except Exception as e:
                 print(f"[Dictation] Failed to paste via AppleScript: {e}")
         else:
@@ -101,15 +116,17 @@ class DictationDaemon:
             except Exception as e:
                 print(f"[Dictation] Fallback paste failed: {e}")
 
-    def matches_hotkey(self, key):
-        """Checks if the pressed key matches the configured dictation hotkey."""
+    def matches_hotkey(self, key, target_name):
+        """Checks if the event key matches a given target key name."""
         try:
+            target = self.normalize_key_name(target_name)
             if isinstance(key, keyboard.Key):
-                return key.name.lower() == self.hotkey_name
+                key_name = self.normalize_key_name(key.name)
+                return key_name == target
             elif isinstance(key, keyboard.KeyCode):
                 if key.char:
-                    return key.char.lower() == self.hotkey_name
-                if self.hotkey_name == 'f20' and key.vk in (90, 80):
+                    return self.normalize_key_name(key.char) == target
+                if target == 'f20' and key.vk in (90, 80):
                     return True
         except Exception:
             pass
@@ -119,31 +136,54 @@ class DictationDaemon:
         if not self.enabled:
             return
 
-        if self.matches_hotkey(key):
-            with self.lock:
-                if not self.is_recording:
-                    self.is_recording = True
-                    self.saved_app_name, self.saved_bundle_id = self.get_frontmost_app_info()
-                    active_display = self.saved_app_name or self.saved_bundle_id or "Current"
-                    print(f"[Dictation] Hotkey DOWN (Active app: {active_display}). Starting dictation...")
-                    self.ws_broadcast({
-                        'type': 'dictation_start',
-                        'timestamp': time.time()
-                    })
+        with self.lock:
+            if self.is_recording:
+                return
+
+            mode = None
+            if self.matches_hotkey(key, self.hotkey_background):
+                mode = 'background'
+            elif self.matches_hotkey(key, self.hotkey_foreground):
+                mode = 'foreground'
+
+            if mode:
+                self.is_recording = True
+                self.active_mode = mode
+                self.saved_app_name, self.saved_bundle_id = self.get_frontmost_app_info()
+                active_display = self.saved_app_name or self.saved_bundle_id or "Current"
+                
+                mode_label = "Background Mode (Stay in app)" if mode == 'background' else "Foreground Mode (Switch to ChatGPT)"
+                print(f"[Dictation] Hotkey DOWN [{mode_label}] (Active app: {active_display}). Starting dictation...")
+                
+                self.ws_broadcast({
+                    'type': 'dictation_start',
+                    'mode': mode,
+                    'switchOnStart': (mode == 'foreground'),
+                    'timestamp': time.time()
+                })
 
     def on_release(self, key):
         if not self.enabled:
             return
 
-        if self.matches_hotkey(key):
-            with self.lock:
-                if self.is_recording:
-                    self.is_recording = False
-                    print("[Dictation] Hotkey UP. Stopping dictation...")
-                    self.ws_broadcast({
-                        'type': 'dictation_stop',
-                        'timestamp': time.time()
-                    })
+        with self.lock:
+            if not self.is_recording:
+                return
+
+            should_stop = False
+            if self.active_mode == 'background' and self.matches_hotkey(key, self.hotkey_background):
+                should_stop = True
+            elif self.active_mode == 'foreground' and self.matches_hotkey(key, self.hotkey_foreground):
+                should_stop = True
+
+            if should_stop:
+                self.is_recording = False
+                self.active_mode = None
+                print("[Dictation] Hotkey UP. Stopping dictation...")
+                self.ws_broadcast({
+                    'type': 'dictation_stop',
+                    'timestamp': time.time()
+                })
 
     def handle_transcript_result(self, text):
         """Called when the Chrome extension sends back the final transcript."""
@@ -162,7 +202,9 @@ class DictationDaemon:
         DictationDaemon._started = True
 
         def run_listener():
-            print(f"[Dictation] Daemon active. Hold [{self.hotkey_name.upper()}] to dictate.")
+            print(f"[Dictation] Daemon active.")
+            print(f"  • Stay-in-app (Background): Hold [{self.hotkey_background.upper()}]")
+            print(f"  • View-screen (Foreground): Hold [{self.hotkey_foreground.upper()}]")
             try:
                 with keyboard.Listener(on_press=self.on_press, on_release=self.on_release) as listener:
                     self.listener = listener

@@ -169,9 +169,12 @@ function connectMcpSocket(serverUrl, profileId) {
                     });
                 }
 
-                // Handle Dictation Start (Hotkey Down)
+                // Handle Dictation Start (Hotkey Down - supports background and foreground modes)
                 else if (msg.type === 'dictation_start') {
-                    handleDictationStart((text, type, spin) => notifyDictationStatus(text, type, spin));
+                    const options = {
+                        switchOnStart: msg.switchOnStart === true || msg.mode === 'foreground'
+                    };
+                    handleDictationStart((text, type, spin) => notifyDictationStatus(text, type, spin), options);
                 }
 
                 // Handle Dictation Stop (Hotkey Up)

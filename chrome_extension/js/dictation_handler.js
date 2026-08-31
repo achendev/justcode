@@ -40,7 +40,7 @@ export async function ensureDictationScriptInjected(tabId) {
     }
 }
 
-export async function handleDictationStart(sendNotification) {
+export async function handleDictationStart(sendNotification, options = {}) {
     const targetTab = await resolveDictationTab();
     if (!targetTab) {
         sendNotification("Dictation: No ChatGPT tab found. Please open chatgpt.com.", "error", false);
@@ -62,7 +62,16 @@ export async function handleDictationStart(sendNotification) {
         previousActiveWindowId = null;
     }
 
-    // Do NOT switch active tab on start; user remains on their current tab/app while holding hotkey
+    // If Foreground Mode: Switch to ChatGPT tab and focus window immediately on start
+    if (options.switchOnStart) {
+        try {
+            await chrome.tabs.update(targetTab.id, { active: true });
+            if (targetTab.windowId) {
+                await chrome.windows.update(targetTab.windowId, { focused: true });
+            }
+        } catch (e) {}
+    }
+
     await ensureDictationScriptInjected(targetTab.id);
 
     try {
@@ -90,7 +99,7 @@ export async function handleDictationStop(sendResultToWs, sendNotification) {
     const targetTab = await resolveDictationTab();
     if (!targetTab) return;
 
-    // Bring ChatGPT tab to active focus only upon release to unthrottle transcription & DOM event dispatch
+    // Bring ChatGPT tab to active focus on release to unthrottle transcription & DOM event dispatch
     try {
         await chrome.tabs.update(targetTab.id, { active: true });
         if (targetTab.windowId) {
