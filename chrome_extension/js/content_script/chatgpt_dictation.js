@@ -105,7 +105,7 @@
                     simulateClick(stopBtn);
                 }
 
-                // Also ensure prompt container is focused
+                // Ensure prompt container is focused
                 const container = getPromptContainer();
                 if (container) container.focus();
 
@@ -133,7 +133,7 @@
                     // Cut/clear the prompt text area
                     clearPrompt();
 
-                    console.log("JustCode Dictation: Instant transcription complete ->", finalTranscript);
+                    console.log("JustCode Dictation: Final transcript extracted ->", finalTranscript);
                     resolve({ success: finalTranscript.length > 0, text: finalTranscript });
                 };
 
@@ -141,12 +141,13 @@
                     if (isResolved) return;
                     const currentText = extractTextFromPrompt();
 
-                    // Instant grab: As soon as text appears in #prompt-textarea, extract it immediately!
+                    // Instantly trigger when text arrives from Whisper
                     if (currentText.length > 0) {
                         if (currentText !== lastSeenText) {
                             lastSeenText = currentText;
                             if (debounceTimer) clearTimeout(debounceTimer);
-                            debounceTimer = setTimeout(finishExtraction, 40);
+                            // 80ms buffer to allow full paragraph streams to settle
+                            debounceTimer = setTimeout(finishExtraction, 80);
                         }
                     }
                 };
@@ -163,7 +164,7 @@
                     characterData: true
                 });
 
-                // 2. High-frequency 25ms polling interval fallback
+                // 2. High-frequency 25ms polling fallback
                 pollInterval = setInterval(() => {
                     checkState();
                 }, 25);
@@ -171,10 +172,11 @@
                 // Initial immediate check
                 checkState();
 
-                // 3. Safety timeout (max 3.5s if no speech was detected)
+                // 3. Generous 45s safety timeout so long dictations are never abandoned
                 safetyTimeout = setTimeout(() => {
+                    console.log("JustCode Dictation: Safety timeout reached (45s). Finalizing extraction...");
                     finishExtraction();
-                }, 3500);
+                }, 45000);
             });
         }
     };

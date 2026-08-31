@@ -48,9 +48,10 @@ def ws_broadcast_json(payload_dict):
             if ws in ws_connections:
                 ws_connections.remove(ws)
 
-# Start Dictation Background Daemon (guard against Werkzeug supervisor process duplicate)
+# Start Dictation Background Daemon strictly in the active Flask worker process
+# This prevents the Werkzeug supervisor process from spawning a duplicate hotkey listener
 dictation_daemon = DictationDaemon(ws_broadcast_func=ws_broadcast_json)
-if os.environ.get('WERKZEUG_RUN_MAIN') == 'true' or 'WERKZEUG_RUN_MAIN' not in os.environ:
+if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
     dictation_daemon.start()
 
 register_dictation_handlers(app, dictation_daemon)
