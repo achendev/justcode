@@ -4,8 +4,18 @@ import time
 import threading
 import subprocess
 import platform
-import pyperclip
-from pynput import keyboard
+
+# Safely import pyperclip for headless / non-GUI environments
+try:
+    import pyperclip
+except Exception:
+    pyperclip = None
+
+# Safely import pynput keyboard listener; on headless Linux without $DISPLAY it will fail gracefully
+try:
+    from pynput import keyboard
+except Exception:
+    keyboard = None
 
 class DictationDaemon:
     _started = False
@@ -28,7 +38,11 @@ class DictationDaemon:
         self.hotkey_foreground = self.normalize_key_name(
             os.getenv('DICTATION_HOTKEY_FOREGROUND', 'alt_r')
         )
-        self.enabled = os.getenv('ENABLE_DICTATION', 'true').lower() == 'true'
+        self.hotkey_name = self.hotkey_background
+        
+        # Only enable if requested and the platform supports keyboard interception
+        is_config_enabled = os.getenv('ENABLE_DICTATION', 'true').lower() == 'true'
+        self.enabled = is_config_enabled and (keyboard is not None)
 
     def normalize_key_name(self, name):
         if not name:
@@ -74,8 +88,12 @@ class DictationDaemon:
             return
 
         # 1. Copy transcript to system clipboard
-        pyperclip.copy(text)
-        time.sleep(0.01)
+        if pyperclip is not None:
+            try:
+                pyperclip.copy(text)
+                time.sleep(0.01)
+            except Exception as e:
+                print(f"[Dictation] Clipboard copy failed: {e}")
 
         system = platform.system()
         if system == 'Darwin':
@@ -108,32 +126,35 @@ class DictationDaemon:
                 print(f"[Dictation] Failed to paste via AppleScript: {e}")
         else:
             try:
-                from pynput.keyboard import Controller, Key
-                kb = Controller()
-                with kb.pressed(Key.ctrl):
-                    kb.press('v')
-                    kb.release('v')
+                if keyboard is not None:
+                    from pynput.keyboard import Controller, Key
+                    kb = Controller()
+                    with kb.pressed(Key.ctrl):
+                        kb.press('v')
+                        kb.release('v')
             except Exception as e:
                 print(f"[Dictation] Fallback paste failed: {e}")
 
     def matches_hotkey(self, key, target_name):
         """Checks if the event key matches a given target key name."""
+        if keyboard is None:
+            return False
         try:
             target = self.normalize_key_name(target_name)
-            if isinstance(key, keyboard.Key):
+            if hasattr(keyboard, 'Key') and isinstance(key, keyboard.Key):
                 key_name = self.normalize_key_name(key.name)
                 return key_name == target
-            elif isinstance(key, keyboard.KeyCode):
+            elif hasattr(keyboard, 'KeyCode') and isinstance(key, keyboard.KeyCode):
                 if key.char:
                     return self.normalize_key_name(key.char) == target
-                if target == 'f20' and key.vk in (90, 80):
+                if target == 'f20' and getattr(key, 'vk', None) in (90, 80):
                     return True
         except Exception:
             pass
         return False
 
     def on_press(self, key):
-        if not self.enabled:
+        if not self.enabled or keyboard is None:
             return
 
         with self.lock:
@@ -163,7 +184,7 @@ class DictationDaemon:
                 })
 
     def on_release(self, key):
-        if not self.enabled:
+        if not self.enabled or keyboard is None:
             return
 
         with self.lock:
@@ -194,7 +215,11 @@ class DictationDaemon:
     def start(self):
         """Starts the background keyboard listener thread."""
         if not self.enabled:
-            print("[Dictation] Dictation daemon disabled via config.")
+            return
+
+        if keyboard is None:
+            print("[Dictation] Notice: pynput keyboard listener unavailable in this environment (headless/no GUI display). Dictation daemon disabled.")
+            self.enabled = False
             return
 
         if DictationDaemon._started:

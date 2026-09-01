@@ -2,22 +2,25 @@ import json
 from flask import request, Response
 
 def register_dictation_handlers(app, dictation_daemon):
-    @app.route('/dictation/status', methods= ['GET'])
+    @app.route('/dictation/status', methods=['GET'])
     def dictation_status():
         return Response(json.dumps({
             'enabled': dictation_daemon.enabled,
-            'hotkey': dictation_daemon.hotkey_name,
+            'hotkey': getattr(dictation_daemon, 'hotkey_name', getattr(dictation_daemon, 'hotkey_background', '')),
+            'hotkey_background': getattr(dictation_daemon, 'hotkey_background', ''),
+            'hotkey_foreground': getattr(dictation_daemon, 'hotkey_foreground', ''),
             'is_recording': dictation_daemon.is_recording
         }), mimetype='application/json')
 
-    @app.route('/dictation/trigger', methods= ['POST'])
+    @app.route('/dictation/trigger', methods=['POST'])
     def dictation_trigger():
         """Allows triggering start/stop dictation via HTTP/CLI if desired."""
         data = request.get_json(force=True, silent=True) or {}
         action = data.get('action')
         
         if action == 'start':
-            dictation_daemon.saved_frontmost_app = dictation_daemon.get_frontmost_app()
+            if hasattr(dictation_daemon, 'get_frontmost_app_info'):
+                dictation_daemon.saved_app_name, dictation_daemon.saved_bundle_id = dictation_daemon.get_frontmost_app_info()
             dictation_daemon.ws_broadcast({'type': 'dictation_start'})
             return Response("Dictation started", mimetype='text/plain')
         elif action == 'stop':
