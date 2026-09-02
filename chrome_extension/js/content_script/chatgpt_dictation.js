@@ -2,7 +2,7 @@
 (function() {
     'use strict';
 
-    const DRIVER_VERSION = 3;
+    const DRIVER_VERSION = 4;
     if (window.justCodeChatGPTDictation?.version === DRIVER_VERSION) return;
 
     let recordingState = 'idle';
@@ -126,6 +126,77 @@
             }
         }
         return null;
+    }
+
+    function isVisible(element) {
+        return Boolean(
+            element &&
+            !element.disabled &&
+            element.getClientRects().length > 0
+        );
+    }
+
+    function findIdleDictateButton() {
+        // Keep this deliberately stricter than findDictateButton(). Its broad
+        // SVG fallback is useful for starting, but cannot prove that ChatGPT
+        // has returned to the idle dictation state.
+        const candidates = Array.from(document.querySelectorAll([
+            'button[data-testid="dictation-button"]',
+            'button[data-testid*="dictation" i][aria-label]',
+            'button[aria-label="Dictate"]',
+            'button[aria-label*="Start dictation" i]',
+            'button[aria-label*="voice input" i]',
+            'button[aria-label*="microphone" i]'
+        ].join(', ')));
+        return candidates.find(isVisible) || null;
+    }
+
+    function findActiveDictationIndicator() {
+        const activityPattern = /\b(listening|transcribing|processing|recording)\b/i;
+        const candidates = Array.from(document.querySelectorAll([
+            '[role="status"]',
+            '[role="alert"]',
+            '[aria-live="polite"]',
+            '[aria-live="assertive"]',
+            '[data-sonner-toast]',
+            '[data-radix-toast-viewport] > *',
+            '[aria-label*="listening" i]',
+            '[aria-label*="transcrib" i]',
+            '[aria-label*="processing" i]'
+        ].join(', ')));
+
+        return candidates.find(element => {
+            if (!isVisible(element)) return false;
+            const description = [
+                element.getAttribute('aria-label') || '',
+                element.getAttribute('title') || '',
+                element.innerText || element.textContent || ''
+            ].join(' ');
+            const hasSpinner = Boolean(element.querySelector?.(
+                '[class*="animate-spin"], [class*="animate-pulse"], [aria-busy="true"], [data-loading="true"]'
+            ));
+            return activityPattern.test(description) || hasSpinner;
+        }) || null;
+    }
+
+    function readPostStopUiState() {
+        const prompt = getPromptContainer();
+        const recordingControlVisible = Boolean(findStopButton() || findCancelButton());
+        const processingIndicatorVisible = Boolean(
+            findActiveDictationIndicator() ||
+            prompt?.closest('form')?.querySelector('[aria-busy="true"]')
+        );
+        const idleDictateButtonVisible = Boolean(findIdleDictateButton());
+        return {
+            recordingControlVisible,
+            processingIndicatorVisible,
+            idleDictateButtonVisible,
+            terminalEmpty: (
+                !recordingControlVisible &&
+                !processingIndicatorVisible &&
+                idleDictateButtonVisible
+            )
+        };
     }
 
     function findStopButton() {
@@ -307,6 +378,8 @@
                 let safetyTimeout = null;
                 let pollInterval = null;
                 let lastSeenText = '';
+                let emptyIdleSince = null;
+                let lastUiStateSignature = null;
 
                 const finishExtraction = (superseded = false, reason = 'text') => {
                     if (isResolved) return;
@@ -359,12 +432,36 @@
 
                     // Instantly trigger when text arrives from Whisper
                     if (currentText.length > 0) {
+                        emptyIdleSince = null;
                         if (currentText !== lastSeenText) {
                             lastSeenText = currentText;
                             if (debounceTimer) clearTimeout(debounceTimer);
                             // 80ms buffer to allow full paragraph streams to settle
                             debounceTimer = setTimeout(() => finishExtraction(false, 'text'), 80);
                         }
+                        return;
+                    }
+
+                    // ChatGPT can finish a silent recording immediately. In
+                    // that case no prompt mutation ever arrives, but the UI
+                    // returns to a stable idle state: recording/processing
+                    // controls disappear and the dictate button comes back.
+                    const uiState = readPostStopUiState();
+                    const uiStateSignature = JSON.stringify(uiState);
+                    if (uiStateSignature !== lastUiStateSignature) {
+                        lastUiStateSignature = uiStateSignature;
+                        trace('driver_post_stop_ui_state', sessionId, uiState);
+                    }
+
+                    if (uiState.terminalEmpty) {
+                        if (emptyIdleSince === null) emptyIdleSince = Date.now();
+                        // Require stability to avoid completing during the
+                        // brief transition from recording to transcription.
+                        if (Date.now() - emptyIdleSince >= 175) {
+                            finishExtraction(false, 'idle_empty');
+                        }
+                    } else {
+                        emptyIdleSince = null;
                     }
                 };
 
@@ -385,11 +482,9 @@
                     checkState();
                 }, 25);
 
-                // Initial immediate check
-                checkState();
-
                 // 3. Bound transcript extraction. Short, silent holds settle
-                // quickly instead of blocking a later intentional session.
+                // quickly when the DOM signal above is available; this timer
+                // is only a fallback for unknown future ChatGPT UI states.
                 const transcriptTimeoutMs = durationMs <= 1200
                     ? 3000
                     : durationMs <= 3000
@@ -399,6 +494,9 @@
                     console.log("JustCode Dictation: Transcript timeout reached. Finalizing extraction...");
                     finishExtraction(false, 'timeout');
                 }, transcriptTimeoutMs);
+
+                // Initial immediate check after every cleanup handle exists.
+                checkState();
             });
         }
     };
