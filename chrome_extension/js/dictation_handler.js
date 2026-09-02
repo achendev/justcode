@@ -1,7 +1,5 @@
 // Background coordinator for ChatGPT Dictation
 let dedicatedDictationTabId = null;
-let previousActiveTabId = null;
-let previousActiveWindowId = null;
 
 export function setDedicatedDictationTab(tabId) {
     dedicatedDictationTabId = tabId;
@@ -40,27 +38,58 @@ export async function ensureDictationScriptInjected(tabId) {
     }
 }
 
-export async function handleDictationStart(sendNotification, options = {}) {
+export async function handleDictationStart(options = {}) {
+    const debug = options.debug || (() => {});
+    const focusContext = options.focusContext || {};
+    debug('handler_start_entered');
     const targetTab = await resolveDictationTab();
     if (!targetTab) {
-        sendNotification("Dictation: No ChatGPT tab found. Please open chatgpt.com.", "error", false);
-        return;
+        debug('handler_start_no_chatgpt_tab');
+        console.warn("JustCode Dictation: No ChatGPT tab found.");
+        return false;
+    }
+    focusContext.targetTabId = targetTab.id;
+    focusContext.targetWindowId = targetTab.windowId;
+    debug('handler_target_resolved', { tabId: targetTab.id, windowId: targetTab.windowId });
+
+    // Do not perform any ChatGPT DOM or focus action for an accidental tap.
+    // Both modes must survive the hold threshold before activation begins.
+    const activationDelayMs = options.activationDelayMs || 0;
+    const elapsedSinceKeyDown = options.startedAt
+        ? Math.max(0, Date.now() - options.startedAt)
+        : 0;
+    const remainingDelayMs = Math.max(0, activationDelayMs - elapsedSinceKeyDown);
+    if (remainingDelayMs > 0) {
+        await new Promise(resolve => setTimeout(resolve, remainingDelayMs));
+    }
+    if (options.isSessionActive && !options.isSessionActive()) {
+        debug('handler_start_cancelled_before_focus');
+        return false;
     }
 
-    // Save whichever Chrome tab was active prior to dictation
+    // Save a Chrome tab only when Chrome itself is the foreground app. When
+    // dictation starts in Ghostty/VS Code, the Python daemon owns restoration.
     try {
-        const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+        const chromeWindow = await chrome.windows.getLastFocused();
+        const [activeTab] = chromeWindow?.focused
+            ? await chrome.tabs.query({ active: true, windowId: chromeWindow.id })
+            : [];
         if (activeTab && activeTab.id !== targetTab.id) {
-            previousActiveTabId = activeTab.id;
-            previousActiveWindowId = activeTab.windowId;
+            focusContext.previousActiveTabId = activeTab.id;
+            focusContext.previousActiveWindowId = activeTab.windowId;
         } else {
-            previousActiveTabId = null;
-            previousActiveWindowId = null;
+            focusContext.previousActiveTabId = null;
+            focusContext.previousActiveWindowId = null;
         }
     } catch (e) {
-        previousActiveTabId = null;
-        previousActiveWindowId = null;
+        focusContext.previousActiveTabId = null;
+        focusContext.previousActiveWindowId = null;
+        debug('handler_origin_capture_failed', { error: String(e) });
     }
+    debug('handler_origin_captured', {
+        previousActiveTabId: focusContext.previousActiveTabId ?? null,
+        previousActiveWindowId: focusContext.previousActiveWindowId ?? null
+    });
 
     // If Foreground Mode: Switch to ChatGPT tab and focus window immediately on start
     if (options.switchOnStart) {
@@ -69,88 +98,145 @@ export async function handleDictationStart(sendNotification, options = {}) {
             if (targetTab.windowId) {
                 await chrome.windows.update(targetTab.windowId, { focused: true });
             }
-        } catch (e) {}
+            debug('handler_chatgpt_focused_on_start');
+        } catch (e) {
+            debug('handler_start_focus_failed', { error: String(e) });
+        }
     }
 
     await ensureDictationScriptInjected(targetTab.id);
+    if (options.isSessionActive && !options.isSessionActive()) {
+        debug('handler_start_cancelled_after_injection');
+        return false;
+    }
 
     try {
         const results = await chrome.scripting.executeScript({
             target: { tabId: targetTab.id },
-            func: async () => {
+            func: async (sessionId) => {
                 if (window.justCodeChatGPTDictation) {
-                    return await window.justCodeChatGPTDictation.start();
+                    return await window.justCodeChatGPTDictation.start(sessionId);
                 }
                 return { success: false, error: "Script not loaded" };
-            }
+            },
+            args: [options.sessionId ?? null]
         });
         const res = results[0]?.result;
+        const sessionIsActive = !options.isSessionActive || options.isSessionActive();
+        debug('handler_driver_start_returned', {
+            success: res?.success === true,
+            error: res?.error || null,
+            sessionStillActive: sessionIsActive
+        });
         if (res && res.success) {
-            sendNotification("🎙️ Listening...", "info", true);
-        } else if (res && res.error) {
-            sendNotification("Dictation error: " + res.error, "error", false);
+            return true;
+        } else if (res && res.error && sessionIsActive) {
+            console.warn("JustCode Dictation:", res.error);
         }
     } catch (e) {
+        debug('handler_driver_start_failed', { error: String(e) });
         console.error("JustCode Dictation Start Error:", e);
     }
+    return false;
 }
 
-export async function handleDictationStop(sendResultToWs, sendNotification) {
+export async function handleDictationStop(sendResultToWs, options = {}) {
+    const debug = options.debug || (() => {});
+    const focusContext = options.focusContext || {};
+    let resultSent = false;
+    const sendResultOnce = (text, result = {}) => {
+        if (resultSent) return;
+        resultSent = true;
+        sendResultToWs(text, result);
+    };
+    debug('handler_stop_entered', { cancel: options.cancel === true, durationMs: options.durationMs || 0 });
     const targetTab = await resolveDictationTab();
-    if (!targetTab) return;
+    if (!targetTab) {
+        debug('handler_stop_no_chatgpt_tab');
+        sendResultOnce('', { success: false, error: 'No ChatGPT tab' });
+        return;
+    }
 
-    // Bring ChatGPT tab to active focus on release to unthrottle transcription & DOM event dispatch
-    try {
-        await chrome.tabs.update(targetTab.id, { active: true });
-        if (targetTab.windowId) {
-            await chrome.windows.update(targetTab.windowId, { focused: true });
+    // A very fast release may cancel before the start path injected the
+    // current driver, so stop must independently guarantee the latest driver.
+    await ensureDictationScriptInjected(targetTab.id);
+    debug('handler_stop_driver_injected');
+
+    if (options.focusOnStop !== false) {
+        // Bring ChatGPT forward to unthrottle transcription and DOM events.
+        try {
+            await chrome.tabs.update(targetTab.id, { active: true });
+            if (targetTab.windowId) {
+                await chrome.windows.update(targetTab.windowId, { focused: true });
+            }
+            debug('handler_chatgpt_focused_on_stop');
+        } catch (e) {
+            debug('handler_stop_focus_failed', { error: String(e) });
         }
-    } catch (e) {}
 
-    // Allow 40ms for window focus event to settle in ChatGPT
-    await new Promise(r => setTimeout(r, 40));
+        // Allow the window focus event to settle in ChatGPT.
+        await new Promise(r => setTimeout(r, 40));
+    }
 
     try {
         const results = await chrome.scripting.executeScript({
             target: { tabId: targetTab.id },
-            func: async () => {
+            func: async (stopOptions) => {
                 if (window.justCodeChatGPTDictation) {
-                    return await window.justCodeChatGPTDictation.stop();
+                    return await window.justCodeChatGPTDictation.stop(stopOptions);
                 }
                 return { success: false, text: "" };
-            }
+            },
+            args: [{
+                cancel: options.cancel === true,
+                durationMs: options.durationMs || 0,
+                sessionId: options.sessionId ?? null
+            }]
         });
 
         const res = results[0]?.result;
         const transcript = res?.text || "";
+        debug('handler_driver_stop_returned', {
+            success: res?.success === true,
+            cancelled: res?.cancelled === true,
+            superseded: res?.superseded === true,
+            textLength: transcript.length,
+            error: res?.error || null
+        });
 
         // Restore the original Chrome tab (e.g. Google or any other site) if dictation began on another tab
-        if (previousActiveTabId) {
+        if (focusContext.previousActiveTabId) {
             try {
-                await chrome.tabs.update(previousActiveTabId, { active: true });
-                if (previousActiveWindowId) {
-                    await chrome.windows.update(previousActiveWindowId, { focused: true });
+                await chrome.tabs.update(focusContext.previousActiveTabId, { active: true });
+                if (focusContext.previousActiveWindowId) {
+                    await chrome.windows.update(focusContext.previousActiveWindowId, { focused: true });
                 }
-            } catch (e) {}
-            previousActiveTabId = null;
-            previousActiveWindowId = null;
+                debug('handler_chrome_origin_restored');
+            } catch (e) {
+                debug('handler_chrome_restore_failed', { error: String(e) });
+            }
+            focusContext.previousActiveTabId = null;
+            focusContext.previousActiveWindowId = null;
         }
 
-        if (transcript) {
-            sendNotification("✓ Dictated", "success", false);
-            sendResultToWs(transcript);
-        } else {
-            sendNotification("Dictation: No speech captured.", "info", false);
-        }
+        // Always acknowledge completion so the daemon can release this
+        // session's captured paste target, including cancel/no-speech cases.
+        sendResultOnce(options.cancel ? '' : transcript, res || {});
     } catch (e) {
+        debug('handler_driver_stop_failed', { error: String(e) });
         console.error("JustCode Dictation Stop Error:", e);
-        if (previousActiveTabId) {
+        if (focusContext.previousActiveTabId) {
             try {
-                await chrome.tabs.update(previousActiveTabId, { active: true });
+                await chrome.tabs.update(focusContext.previousActiveTabId, { active: true });
+                if (focusContext.previousActiveWindowId) {
+                    await chrome.windows.update(focusContext.previousActiveWindowId, { focused: true });
+                }
             } catch (err) {}
-            previousActiveTabId = null;
-            previousActiveWindowId = null;
+            focusContext.previousActiveTabId = null;
+            focusContext.previousActiveWindowId = null;
         }
-        sendNotification("Dictation error: " + e.message, "error", false);
+        // The daemon must always receive a terminal result so it can restore
+        // the non-Chrome application even when ChatGPT DOM handling fails.
+        sendResultOnce('', { success: false, error: String(e) });
     }
 }

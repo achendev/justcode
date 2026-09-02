@@ -50,3 +50,10 @@
 ## 9. Symptom: `/dictation/status` is blocked with `local` versus `loopback`
 *   **Cause:** `127.0.0.1` belongs to the `loopback` address space. Declaring `targetAddressSpace: "local"` makes the browser reject the request because the declared target does not match the actual address space.
 *   **Fix:** Do not supply a target-address hint for the literal `127.0.0.1` URL; Chrome classifies it as loopback automatically.
+
+## 10. Capturing a dictation race trace
+*   Structured tracing is enabled by default and written to `dictation_debug.log` in the JustCode project directory.
+*   The log correlates Python hotkey events, WebSocket delivery, extension state, ChatGPT driver state, transcript completion, and macOS focus restoration using the server `session_id`.
+*   Follow it while reproducing a problem with `tail -f dictation_debug.log`.
+*   The file rotates at 2 MB and keeps three backups. Set `DICTATION_DEBUG_LOG=false` to disable it or `DICTATION_DEBUG_LOG_PATH` to move it.
+*   Transcript contents are not logged; only their lengths are recorded.

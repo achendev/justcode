@@ -2,7 +2,35 @@
 (function() {
     'use strict';
 
-    if (window.justCodeChatGPTDictation) return;
+    const DRIVER_VERSION = 3;
+    if (window.justCodeChatGPTDictation?.version === DRIVER_VERSION) return;
+
+    let recordingState = 'idle';
+    let recordingGeneration = 0;
+    let activeSessionId = null;
+    let cancelPendingExtraction = null;
+    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    function trace(event, sessionId = activeSessionId, details = {}) {
+        try {
+            chrome.runtime.sendMessage({
+                type: 'dictation_debug_trace',
+                event,
+                sessionId,
+                details: { recordingState, recordingGeneration, ...details }
+            }).catch(() => {});
+        } catch (error) {}
+    }
+
+    async function waitFor(getValue, timeoutMs) {
+        const deadline = Date.now() + timeoutMs;
+        let value = getValue();
+        while (!value && Date.now() < deadline) {
+            await delay(25);
+            value = getValue();
+        }
+        return value;
+    }
 
     function simulateClick(element) {
         if (!element) return;
@@ -44,13 +72,41 @@
         const container = getPromptContainer();
         if (!container) return;
 
+        container.focus();
         if (container.tagName.toLowerCase() === 'textarea' || container.tagName.toLowerCase() === 'input') {
-            container.value = '';
+            const prototype = container.tagName.toLowerCase() === 'textarea'
+                ? HTMLTextAreaElement.prototype
+                : HTMLInputElement.prototype;
+            const valueSetter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set;
+            if (valueSetter) valueSetter.call(container, '');
+            else container.value = '';
         } else {
-            container.innerHTML = '<p><br></p>';
+            // Use the browser's editing path first so React receives the same
+            // mutation it would receive from a user deleting composer text.
+            try {
+                const selection = window.getSelection();
+                const range = document.createRange();
+                range.selectNodeContents(container);
+                selection.removeAllRanges();
+                selection.addRange(range);
+                document.execCommand('delete', false);
+                selection.removeAllRanges();
+            } catch (error) {}
+            if ((container.innerText || container.textContent || '').trim()) {
+                container.innerHTML = '<p><br></p>';
+            }
         }
 
-        container.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+        try {
+            container.dispatchEvent(new InputEvent('input', {
+                bubbles: true,
+                composed: true,
+                inputType: 'deleteContentBackward',
+                data: null
+            }));
+        } catch (error) {
+            container.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+        }
         container.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
@@ -73,38 +129,174 @@
     }
 
     function findStopButton() {
-        const candidates = Array.from(document.querySelectorAll('button[data-testid="dictation-stop-button"], button[data-testid*="stop-voice" i], button[aria-label="Stop dictation"], button[aria-label="Stop recording"], button[aria-label*="Stop" i], button[aria-label*="Done" i], button.bg-black[aria-label*="Stop" i], [role="dialog"] button:has(svg), button:has(svg rect)'));
-        if (candidates.length > 0) return candidates[0];
+        const root = getPromptContainer()?.closest('form') || document;
+        const candidates = Array.from(root.querySelectorAll('button[data-testid="dictation-stop-button"], button[data-testid*="stop-voice" i], button[aria-label="Stop dictation"], button[aria-label="Stop recording"], button[aria-label*="Stop" i], button[aria-label*="Done" i], button[title*="Stop" i], button.bg-black[aria-label*="Stop" i], button:has(svg rect), [role="button"]:has(svg rect)'));
+        const visibleCandidate = candidates.find(button =>
+            !button.disabled && button.getClientRects().length > 0
+        );
+        if (visibleCandidate) return visibleCandidate;
 
         const pulse = document.querySelector('button:has([class*="animate-pulse"])');
-        if (pulse) return pulse;
+        if (pulse && !pulse.disabled && pulse.getClientRects().length > 0) return pulse;
 
         return null;
     }
 
+    function findCancelButton() {
+        const root = getPromptContainer()?.closest('form');
+        if (!root) return null;
+        const candidates = Array.from(root.querySelectorAll('button[data-testid*="cancel" i], button[aria-label*="cancel" i], button[title*="cancel" i], button[aria-label="Close"], button[title="Close"]'));
+        return candidates.find(button =>
+            !button.disabled && button.getClientRects().length > 0
+        ) || null;
+    }
+
+    async function forceRecordingStopped(timeoutMs, cancel) {
+        // Never fall back to the dictate/start button here. That old fallback
+        // could turn a fast key release into a brand-new recording.
+        const deadline = Date.now() + timeoutMs;
+        let stopButton = null;
+        while (Date.now() < deadline) {
+            const cancelButton = cancel ? findCancelButton() : null;
+            if (cancelButton) {
+                console.log("JustCode Dictation: Cancelling recording...");
+                trace('driver_cancel_control_clicked');
+                simulateClick(cancelButton);
+                return true;
+            }
+            stopButton = findStopButton();
+            if (stopButton) break;
+            await delay(25);
+        }
+        if (!stopButton) return false;
+
+        console.log("JustCode Dictation: Stopping recording...");
+        trace('driver_stop_control_clicked');
+        simulateClick(stopButton);
+
+        // ChatGPT occasionally misses the first synthetic click while its
+        // recording controls are still transitioning. Retry only if a real
+        // stop control remains; never click the microphone/start control.
+        await delay(120);
+        const remainingStopButton = findStopButton();
+        if (remainingStopButton === stopButton && stopButton.isConnected) {
+            simulateClick(stopButton);
+            await delay(120);
+        }
+        return true;
+    }
+
+    async function guardAgainstLateRecording(generation, cancel) {
+        // If ChatGPT creates its recording UI unusually late, stop it when it
+        // finally appears. A newer start invalidates this guard so it cannot
+        // cancel the user's next intentional dictation.
+        const deadline = Date.now() + 30000;
+        while (recordingGeneration === generation && Date.now() < deadline) {
+            const lateCancelButton = cancel ? findCancelButton() : null;
+            if (lateCancelButton) {
+                console.log("JustCode Dictation: Cancelling late recording UI...");
+                simulateClick(lateCancelButton);
+                return;
+            }
+            const lateStopButton = findStopButton();
+            if (lateStopButton) {
+                console.log("JustCode Dictation: Stopping late recording control...");
+                simulateClick(lateStopButton);
+                return;
+            }
+            await delay(100);
+        }
+    }
+
     window.justCodeChatGPTDictation = {
-        start: async function() {
+        version: DRIVER_VERSION,
+
+        start: async function(sessionId = null) {
+            trace('driver_start_entered', sessionId, { previousSessionId: activeSessionId });
+            if ((recordingState === 'recording' || recordingState === 'starting') &&
+                activeSessionId === sessionId) {
+                trace('driver_duplicate_start_ignored', sessionId);
+                return { success: true };
+            }
+
+            // A new hotkey session supersedes an older transcript wait. Resolve
+            // that promise immediately so it cannot occupy the extension for
+            // its 3–15 second safety timeout or clear the new session's text.
+            if (cancelPendingExtraction) {
+                cancelPendingExtraction();
+                cancelPendingExtraction = null;
+            }
+
+            const previousState = recordingState;
+            recordingGeneration += 1;
+            const generation = recordingGeneration;
+            activeSessionId = sessionId;
+            recordingState = 'starting';
+
+            // Repeated or interrupted presses can leave a real ChatGPT stop/X
+            // control behind. Remove only a verified recording control before
+            // clicking the microphone for the new generation.
+            const previousControlVisible = Boolean(findStopButton() || findCancelButton());
+            if (previousControlVisible || previousState === 'recording' || previousState === 'starting') {
+                trace('driver_start_cleaning_previous_ui', sessionId, { previousState });
+                await forceRecordingStopped(previousControlVisible ? 800 : 300, true);
+                await delay(80);
+                if (recordingGeneration !== generation) {
+                    return { success: false, superseded: true };
+                }
+            }
+
             clearPrompt();
 
-            const btn = findDictateButton();
+            const btn = await waitFor(findDictateButton, 1500);
             if (!btn) {
+                recordingState = 'idle';
+                activeSessionId = null;
+                trace('driver_dictation_button_missing', sessionId);
                 console.warn("JustCode Dictation: Dictation button not found in ChatGPT UI.");
                 return { success: false, error: "Dictation button not found" };
             }
 
             console.log("JustCode Dictation: Activating microphone...");
             simulateClick(btn);
+            recordingState = 'recording';
+            trace('driver_microphone_clicked', sessionId);
             return { success: true };
         },
 
-        stop: function() {
-            return new Promise((resolve) => {
-                const stopBtn = findStopButton() || findDictateButton();
-                if (stopBtn) {
-                    console.log("JustCode Dictation: Stopping recording...");
-                    simulateClick(stopBtn);
-                }
+        stop: async function(options = {}) {
+            const cancel = options.cancel === true;
+            const durationMs = options.durationMs || 0;
+            const sessionId = options.sessionId ?? activeSessionId;
+            trace('driver_stop_entered', sessionId, { cancel, durationMs, activeSessionId });
 
+            // A late stop from an older session must never stop the microphone
+            // belonging to a newer press.
+            if (sessionId != null && sessionId !== activeSessionId) {
+                trace('driver_stale_stop_ignored', sessionId, { activeSessionId });
+                return { success: false, text: "", cancelled: true, superseded: true };
+            }
+
+            const stoppedGeneration = recordingGeneration;
+            recordingState = 'stopping';
+            const stopped = await forceRecordingStopped(cancel ? 800 : 1500, cancel);
+            trace('driver_stop_control_result', sessionId, { stopped });
+            if (!stopped) {
+                guardAgainstLateRecording(stoppedGeneration, cancel);
+            }
+
+            if (cancel) {
+                if (recordingGeneration === stoppedGeneration) {
+                    clearPrompt();
+                    recordingState = 'idle';
+                    activeSessionId = null;
+                }
+                trace('driver_stop_cancelled', sessionId);
+                console.log("JustCode Dictation: Fast tap cancelled.");
+                return { success: false, text: "", cancelled: true };
+            }
+
+            return new Promise((resolve) => {
                 // Ensure prompt container is focused
                 const container = getPromptContainer();
                 if (container) container.focus();
@@ -116,7 +308,7 @@
                 let pollInterval = null;
                 let lastSeenText = '';
 
-                const finishExtraction = () => {
+                const finishExtraction = (superseded = false, reason = 'text') => {
                     if (isResolved) return;
                     isResolved = true;
 
@@ -127,18 +319,42 @@
                     if (debounceTimer) clearTimeout(debounceTimer);
                     if (safetyTimeout) clearTimeout(safetyTimeout);
                     if (pollInterval) clearInterval(pollInterval);
+                    if (cancelPendingExtraction === cancelThisExtraction) {
+                        cancelPendingExtraction = null;
+                    }
 
-                    const finalTranscript = extractTextFromPrompt();
+                    // Never inspect or clear the composer after a newer start;
+                    // it may already contain that newer session's audio/text.
+                    const finalTranscript = superseded ? '' : extractTextFromPrompt();
 
-                    // Cut/clear the prompt text area
-                    clearPrompt();
+                    if (!superseded && recordingGeneration === stoppedGeneration) {
+                        clearPrompt();
+                        recordingState = 'idle';
+                        activeSessionId = null;
+                    }
 
+                    trace('driver_extraction_finished', sessionId, {
+                        reason,
+                        superseded,
+                        textLength: finalTranscript.length
+                    });
                     console.log("JustCode Dictation: Final transcript extracted ->", finalTranscript);
-                    resolve({ success: finalTranscript.length > 0, text: finalTranscript });
+                    resolve({
+                        success: finalTranscript.length > 0,
+                        text: finalTranscript,
+                        superseded
+                    });
                 };
+
+                const cancelThisExtraction = () => finishExtraction(true, 'newer_session');
+                cancelPendingExtraction = cancelThisExtraction;
 
                 const checkState = () => {
                     if (isResolved) return;
+                    if (recordingGeneration !== stoppedGeneration) {
+                        finishExtraction(true, 'generation_changed');
+                        return;
+                    }
                     const currentText = extractTextFromPrompt();
 
                     // Instantly trigger when text arrives from Whisper
@@ -147,7 +363,7 @@
                             lastSeenText = currentText;
                             if (debounceTimer) clearTimeout(debounceTimer);
                             // 80ms buffer to allow full paragraph streams to settle
-                            debounceTimer = setTimeout(finishExtraction, 80);
+                            debounceTimer = setTimeout(() => finishExtraction(false, 'text'), 80);
                         }
                     }
                 };
@@ -172,11 +388,17 @@
                 // Initial immediate check
                 checkState();
 
-                // 3. Generous 45s safety timeout so long dictations are never abandoned
+                // 3. Bound transcript extraction. Short, silent holds settle
+                // quickly instead of blocking a later intentional session.
+                const transcriptTimeoutMs = durationMs <= 1200
+                    ? 3000
+                    : durationMs <= 3000
+                        ? 5000
+                        : 15000;
                 safetyTimeout = setTimeout(() => {
-                    console.log("JustCode Dictation: Safety timeout reached (45s). Finalizing extraction...");
-                    finishExtraction();
-                }, 45000);
+                    console.log("JustCode Dictation: Transcript timeout reached. Finalizing extraction...");
+                    finishExtraction(false, 'timeout');
+                }, transcriptTimeoutMs);
             });
         }
     };

@@ -11,8 +11,13 @@ def register_dictation_handlers(app, dictation_daemon, get_ws_connection_count=N
             'hotkey_background': getattr(dictation_daemon, 'hotkey_background', ''),
             'hotkey_foreground': getattr(dictation_daemon, 'hotkey_foreground', ''),
             'is_recording': dictation_daemon.is_recording,
+            'hold_threshold_ms': round(dictation_daemon.hold_threshold_seconds * 1000),
+            'pending_activation': dictation_daemon.pending_start_timer is not None,
+            'start_delivered': dictation_daemon.start_delivered,
             'bridge_connected': connected_clients > 0,
-            'connected_clients': connected_clients
+            'connected_clients': connected_clients,
+            'debug_log_enabled': getattr(dictation_daemon, 'debug_log_enabled', False),
+            'debug_log_path': getattr(dictation_daemon, 'debug_log_path', None),
         }), mimetype='application/json')
 
     @app.route('/dictation/trigger', methods=['POST'])

@@ -52,6 +52,14 @@ async function updateProfileStatus(profileId, text, type) {
 
 async function ensureContentScript(tabId) {
     try {
+        // Remove the retired dictation notification even when the rest of the
+        // content-script bundle is already present in this tab.
+        await chrome.scripting.executeScript({
+            target: { tabId: tabId },
+            func: () => document
+                .getElementById('justcode-notification-justcode-dictation-notify')
+                ?.remove()
+        });
         const results = await chrome.scripting.executeScript({
             target: { tabId: tabId },
             func: () => window.justCodeContentLoaded,
@@ -80,23 +88,6 @@ async function initializeAllTabs() {
     }
 }
 
-// Broadcasts dictation notification update to all web tabs to prevent hanging preloaders
-function notifyDictationStatus(text, type = 'info', spinner = false) {
-    chrome.tabs.query({ url: ["http://*/*", "https://*/*"] }, (tabs) => {
-        for (const tab of tabs) {
-            if (tab.id) {
-                chrome.tabs.sendMessage(tab.id, {
-                    type: 'showNotificationOnPage',
-                    notificationId: 'justcode-dictation-notify',
-                    text: text,
-                    messageType: type,
-                    showSpinner: spinner
-                }).catch(() => {});
-            }
-        }
-    });
-}
-
 // --- WebSocket bridge logic ---
 // Dictation is a global extension feature. It must never inherit a profile's
 // server URL; MCP is the only channel whose destination follows a profile.
@@ -104,7 +95,7 @@ const DICTATION_SERVER_URL = 'http://127.0.0.1:5010';
 const BRIDGE_RECONNECT_ALARM = 'justcode-bridge-reconnect';
 let dictationBridgeEnabled = false;
 
-function createWebSocketChannel(name, capability, handleMessage) {
+function createWebSocketChannel(name, capability, handleMessage, handleDisconnect = null) {
     let socket = null;
     let keepAliveInterval = null;
     let reconnectTimeout = null;
@@ -189,6 +180,11 @@ function createWebSocketChannel(name, capability, handleMessage) {
                 console.log(`${name}: WebSocket closed.`);
                 clearChannelTimers();
                 socket = null;
+                if (handleDisconnect) {
+                    Promise.resolve(handleDisconnect()).catch(error => {
+                        console.error(`${name}: Disconnect cleanup failed`, error);
+                    });
+                }
                 scheduleReconnect();
             };
 
@@ -207,17 +203,28 @@ function createWebSocketChannel(name, capability, handleMessage) {
     function disconnect() {
         reconnectEnabled = false;
         clearChannelTimers();
+        const wasConnected = Boolean(socket);
         if (socket) {
             const currentSocket = socket;
             socket = null;
             currentSocket.onclose = null;
             currentSocket.close();
         }
+        if (wasConnected && handleDisconnect) {
+            Promise.resolve(handleDisconnect()).catch(error => {
+                console.error(`${name}: Disconnect cleanup failed`, error);
+            });
+        }
     }
 
     return {
         connect,
         disconnect,
+        send: payload => {
+            if (socket?.readyState !== WebSocket.OPEN) return false;
+            socket.send(JSON.stringify(payload));
+            return true;
+        },
         isConnected: () => socket?.readyState === WebSocket.OPEN
     };
 }
@@ -254,36 +261,209 @@ async function handleMcpSocketMessage(message, socket, context) {
     });
 }
 
-async function handleDictationSocketMessage(message, socket) {
+const DICTATION_HOLD_THRESHOLD_MS = 300;
+let requestedDictationSessionId = null;
+let nextDictationSessionId = 0;
+let currentDictationSession = null;
+const dictationSessions = new Map();
+
+function retireDictationSession(session) {
+    // Keep the mapping briefly so late page-driver debug messages still map
+    // from the extension's session ID to the server's session ID.
+    setTimeout(() => {
+        if (dictationSessions.get(session.id) === session) {
+            dictationSessions.delete(session.id);
+        }
+    }, 60000);
+}
+
+function sendDictationDebug(socket, event, session = null, details = {}) {
+    if (socket?.readyState !== WebSocket.OPEN) return;
+    try {
+        socket.send(JSON.stringify({
+            type: 'dictation_debug',
+            event,
+            sessionId: session?.bridgeSessionId ?? null,
+            details
+        }));
+    } catch (error) {
+        console.debug('Dictation: Could not send debug trace', error);
+    }
+}
+
+function handleDictationSocketMessage(message, socket) {
     if (message.type === 'dictation_start') {
-        const options = {
-            switchOnStart: message.switchOnStart === true || message.mode === 'foreground'
+        const sessionId = ++nextDictationSessionId;
+        const session = {
+            id: sessionId,
+            bridgeSessionId: message.sessionId ?? sessionId,
+            startCompleted: false,
+            recordingActivated: false,
+            focusContext: {},
+            startedAt: Number.isFinite(message.timestamp)
+                ? message.timestamp * 1000
+                : Date.now()
         };
-        await handleDictationStart(
-            (text, type, spin) => notifyDictationStatus(text, type, spin),
-            options
-        );
+        requestedDictationSessionId = sessionId;
+        currentDictationSession = session;
+        dictationSessions.set(sessionId, session);
+        const options = {
+            switchOnStart: message.switchOnStart === true || message.mode === 'foreground',
+            sessionId,
+            startedAt: session.startedAt,
+            activationDelayMs: DICTATION_HOLD_THRESHOLD_MS,
+            isSessionActive: () => requestedDictationSessionId === sessionId,
+            focusContext: session.focusContext,
+            debug: (event, details = {}) => sendDictationDebug(socket, event, session, details)
+        };
+
+        sendDictationDebug(socket, 'start_received', session, {
+            mode: message.mode,
+            switchOnStart: options.switchOnStart
+        });
+
+        // Every session owns its own start promise. A transcript wait from an
+        // older session must never block a new hotkey press for 3–15 seconds.
+        session.startPromise = (async () => {
+            if (requestedDictationSessionId !== sessionId) return;
+            session.recordingActivated = await handleDictationStart(options);
+            session.startCompleted = true;
+            sendDictationDebug(socket, 'start_completed', session, {
+                recordingActivated: session.recordingActivated
+            });
+        })().catch(error => {
+            session.startCompleted = true;
+            session.recordingActivated = false;
+            sendDictationDebug(socket, 'start_failed', session, { error: String(error) });
+            console.error('Dictation: Start operation failed', error);
+        });
+        return session.startPromise;
     } else if (message.type === 'dictation_stop') {
-        await handleDictationStop(
-            transcript => {
+        const session = currentDictationSession;
+        if (!session) {
+            sendDictationDebug(socket, 'stop_ignored_no_session', null, {
+                bridgeSessionId: message.sessionId ?? null
+            });
+            return Promise.resolve();
+        }
+        if (message.sessionId != null &&
+            session.bridgeSessionId != null &&
+            message.sessionId !== session.bridgeSessionId) {
+            sendDictationDebug(socket, 'stop_ignored_stale_session', session, {
+                receivedBridgeSessionId: message.sessionId
+            });
+            console.warn('Dictation: Ignoring stop for a stale session', message.sessionId);
+            return Promise.resolve();
+        }
+
+        requestedDictationSessionId = null;
+        currentDictationSession = null;
+        const startedAt = session?.startedAt || 0;
+        const stoppedAt = Number.isFinite(message.timestamp)
+            ? message.timestamp * 1000
+            : Date.now();
+        const durationMs = startedAt > 0 ? Math.max(0, stoppedAt - startedAt) : 0;
+        const cancel = startedAt === 0 ||
+            durationMs <= DICTATION_HOLD_THRESHOLD_MS;
+
+        sendDictationDebug(socket, 'stop_received', session, { durationMs, cancel });
+        session.stopPromise = (async () => {
+            // Stop may arrive while Chrome is still locating/injecting the
+            // dictation tab. Wait only for this session's start, never for a
+            // previous session's transcript extraction.
+            await session.startPromise;
+            if (session.recordingActivated !== true) {
+                sendDictationDebug(socket, 'stop_skipped_not_activated', session);
                 if (socket.readyState === WebSocket.OPEN) {
                     socket.send(JSON.stringify({
                         type: 'dictation_result',
-                        text: transcript
+                        text: '',
+                        cancelled: true,
+                        sessionId: session.bridgeSessionId
                     }));
                 }
-            },
-            (text, type, spin) => notifyDictationStatus(text, type, spin)
-        );
+                return;
+            }
+            await handleDictationStop(
+                (transcript, result = {}) => {
+                    if (socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({
+                            type: 'dictation_result',
+                            text: cancel ? '' : transcript,
+                            cancelled: cancel,
+                            superseded: result.superseded === true,
+                            sessionId: session.bridgeSessionId
+                        }));
+                    }
+                }, {
+                    cancel,
+                    durationMs,
+                    focusOnStop: true,
+                    sessionId: session.id,
+                    focusContext: session.focusContext,
+                    debug: (event, details = {}) => sendDictationDebug(socket, event, session, details)
+                }
+            );
+        })().catch(error => {
+            sendDictationDebug(socket, 'stop_failed', session, { error: String(error) });
+            console.error('Dictation: Stop operation failed', error);
+        }).finally(() => {
+            retireDictationSession(session);
+        });
+        return session.stopPromise;
     }
+
+    return Promise.resolve();
+}
+
+function handleDictationBridgeDisconnect() {
+    const session = currentDictationSession;
+    requestedDictationSessionId = null;
+    currentDictationSession = null;
+    if (!session) return Promise.resolve();
+
+    return (async () => {
+        await session.startPromise;
+        if (session.recordingActivated !== true) return;
+        await handleDictationStop(
+            () => {},
+            {
+                cancel: true,
+                durationMs: Math.max(0, Date.now() - session.startedAt),
+                focusOnStop: true,
+                sessionId: session.id,
+                focusContext: session.focusContext
+            }
+        );
+    })().finally(() => {
+        retireDictationSession(session);
+    });
 }
 
 const mcpChannel = createWebSocketChannel('MCP', 'mcp', handleMcpSocketMessage);
 const dictationChannel = createWebSocketChannel(
     'Dictation',
     'dictation',
-    handleDictationSocketMessage
+    handleDictationSocketMessage,
+    handleDictationBridgeDisconnect
 );
+
+// The page driver reports its internal transitions through the extension so
+// the same session timeline is available in the server-side debug log.
+chrome.runtime.onMessage.addListener((message, sender) => {
+    if (message?.type !== 'dictation_debug_trace') return;
+    const session = dictationSessions.get(message.sessionId);
+    dictationChannel.send({
+        type: 'dictation_debug',
+        event: message.event,
+        sessionId: session?.bridgeSessionId ?? null,
+        details: {
+            ...(message.details || {}),
+            extensionSessionId: message.sessionId ?? null,
+            tabId: sender.tab?.id ?? null
+        }
+    });
+});
 
 function reconnectMcpSocketFromActiveProfile(force = false) {
     loadData((profiles, activeProfileId) => {

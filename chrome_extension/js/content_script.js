@@ -1,5 +1,9 @@
 (function() {
     'use strict';
+
+    // Dictation status notifications were removed in extension 1.4.8. Clear
+    // any persistent spinner left in the shared page DOM by an older worker.
+    document.getElementById('justcode-notification-justcode-dictation-notify')?.remove();
     
     if (window.justCodeContentLoaded) {
         return;

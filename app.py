@@ -128,6 +128,11 @@ def websocket_handler(ws):
                             'capabilities': sorted(capabilities)
                         }))
                         print(f"Bridge: Registered {', '.join(sorted(capabilities)) or 'no capabilities'}.")
+                        if 'dictation' in capabilities:
+                            dictation_daemon.trace(
+                                'browser_bridge_registered',
+                                connected_clients=len(get_ws_connections('dictation', include_unregistered=False)),
+                            )
 
                     # Handle response from Extension
                     elif msg_type == 'mcp_response':
@@ -139,14 +144,38 @@ def websocket_handler(ws):
                     # Handle Dictation Transcript Result
                     elif msg_type == 'dictation_result':
                         transcript_text = msg.get('text', '')
-                        dictation_daemon.handle_transcript_result(transcript_text)
+                        dictation_daemon.handle_transcript_result(
+                            transcript_text,
+                            msg.get('sessionId'),
+                            msg.get('cancelled', False),
+                            msg.get('superseded', False),
+                        )
+
+                    elif msg_type == 'dictation_debug':
+                        details = msg.get('details')
+                        if not isinstance(details, dict):
+                            details = {}
+                        safe_details = {
+                            str(key)[:80]: value
+                            for key, value in list(details.items())[:30]
+                        }
+                        dictation_daemon.trace(
+                            f"browser.{str(msg.get('event') or 'unknown')[:120]}",
+                            msg.get('sessionId'),
+                            **safe_details,
+                        )
 
                 except Exception as e:
-                    print(f"MCP: Error parsing WS message: {e}")
-    except Exception:
-        pass
+                    print(f"Bridge: Error processing WebSocket message: {e}")
+                    dictation_daemon.trace('browser_message_error', error=repr(e))
+    except Exception as e:
+        dictation_daemon.trace('browser_socket_closed', error=repr(e))
     finally:
+        with ws_connections_lock:
+            disconnected_capabilities = ws_connection_capabilities.get(id(ws))
         remove_ws_connection(ws)
+        if 'dictation' in (disconnected_capabilities or set()):
+            dictation_daemon.trace('browser_bridge_disconnected')
         print("Bridge: Extension disconnected.")
 
 @app.route('/mcp/prompt', methods=['POST'])
