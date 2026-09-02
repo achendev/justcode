@@ -38,11 +38,6 @@ except Exception:
     kCGEventFlagMaskControl = None
     kCGEventSourceStateCombinedSessionState = None
 
-try:
-    from AppKit import NSWorkspace
-except Exception:
-    NSWorkspace = None
-
 class DictationDaemon:
     _started = False
 
@@ -155,20 +150,10 @@ class DictationDaemon:
     def get_frontmost_app_info(self):
         """Retrieves both process name and unique bundle ID of the frontmost application on macOS."""
         if platform.system() == 'Darwin':
-            if NSWorkspace is not None:
-                try:
-                    front_app = NSWorkspace.sharedWorkspace().frontmostApplication()
-                    if front_app is not None:
-                        app_name = front_app.localizedName()
-                        bundle_id = front_app.bundleIdentifier()
-                        if app_name:
-                            self.trace('frontmost_app_captured', app_name=str(app_name), bundle_id=str(bundle_id) if bundle_id else None, source='AppKit')
-                            return str(app_name), (str(bundle_id) if bundle_id else None)
-                except Exception as e:
-                    print(f"[Dictation] Fast frontmost-app lookup failed: {e}")
-
-            # Compatibility fallback for environments where AppKit cannot
-            # resolve the active GUI session.
+            # System Events is authoritative here. NSWorkspace's cached
+            # frontmostApplication can be stale when queried from the hold
+            # timer thread; that caused Ghostty sessions to be saved as Chrome
+            # and pasted the transcript back into ChatGPT.
             script = '''
             tell application "System Events"
                 set frontApp to first application process whose frontmost is true
@@ -192,6 +177,7 @@ class DictationDaemon:
             except Exception as e:
                 print(f"[Dictation] Failed to get frontmost app: {e}")
                 self.trace('frontmost_app_capture_failed', error=repr(e))
+
         self.trace('frontmost_app_missing')
         return None, None
 
@@ -199,6 +185,9 @@ class DictationDaemon:
         """Restores the original application window and pastes the transcribed text."""
         target_bundle_id = saved_bundle_id or self.saved_bundle_id
         target_app_name = saved_app_name or self.saved_app_name
+        if not target_bundle_id and not target_app_name:
+            self.trace('restore_skipped_missing_target', text_length=len(text or ''))
+            return
         copied = False
 
         # Copy only when there is a transcript. Empty/cancelled sessions still
@@ -401,9 +390,17 @@ class DictationDaemon:
                 self.session_targets.pop(session_id, None)
                 return
 
-            # Capture only after the hold is confirmed. The in-process AppKit
-            # path is fast and avoids spawning work for rejected taps.
+            # Capture only after the hold is confirmed, so invoking System
+            # Events does not add any work to rejected quick taps.
             app_name, bundle_id = self.get_frontmost_app_info()
+            if not app_name and not bundle_id:
+                self.pending_start_timer = None
+                self.is_recording = False
+                self.active_mode = None
+                self.active_session_id = None
+                self.start_delivered = False
+                self.trace('activation_aborted_missing_target', session_id, mode=mode)
+                return
             if not self.is_hotkey_physically_pressed(mode):
                 self.pending_start_timer = None
                 self.is_recording = False
