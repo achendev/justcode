@@ -97,149 +97,225 @@ function notifyDictationStatus(text, type = 'info', spinner = false) {
     });
 }
 
-// --- WebSocket / MCP Logic ---
-let mcpSocket = null;
-let keepAliveInterval = null;
+// --- WebSocket bridge logic ---
+// Dictation is a global extension feature. It must never inherit a profile's
+// server URL; MCP is the only channel whose destination follows a profile.
+const DICTATION_SERVER_URL = 'http://127.0.0.1:5010';
+const BRIDGE_RECONNECT_ALARM = 'justcode-bridge-reconnect';
+let dictationBridgeEnabled = false;
 
-function connectMcpSocket(serverUrl, profileId) {
-    if (mcpSocket) {
-        mcpSocket.close();
-        mcpSocket = null;
+function createWebSocketChannel(name, capability, handleMessage) {
+    let socket = null;
+    let keepAliveInterval = null;
+    let reconnectTimeout = null;
+    let reconnectEnabled = false;
+    let lastServerUrl = null;
+    let lastContext = {};
+
+    function clearChannelTimers() {
+        if (keepAliveInterval) {
+            clearInterval(keepAliveInterval);
+            keepAliveInterval = null;
+        }
+        if (reconnectTimeout) {
+            clearTimeout(reconnectTimeout);
+            reconnectTimeout = null;
+        }
     }
-    if (keepAliveInterval) {
-        clearInterval(keepAliveInterval);
-        keepAliveInterval = null;
+
+    function scheduleReconnect() {
+        if (!reconnectEnabled || reconnectTimeout || !lastServerUrl) return;
+        reconnectTimeout = setTimeout(() => {
+            reconnectTimeout = null;
+            connect(lastServerUrl, lastContext);
+        }, 3000);
     }
 
-    const wsUrl = serverUrl.replace('http', 'ws') + '/ws';
-    console.log(`MCP: Connecting to ${wsUrl}...`);
+    function connect(serverUrl, context = {}, force = false) {
+        if (!serverUrl) return;
 
-    try {
-        mcpSocket = new WebSocket(wsUrl);
+        const normalizedServerUrl = serverUrl.replace(/\/+$/, '');
+        const wsUrl = normalizedServerUrl.replace(/^http/, 'ws') + '/ws';
+        lastServerUrl = normalizedServerUrl;
+        lastContext = context;
+        reconnectEnabled = true;
 
-        mcpSocket.onopen = () => {
-            console.log("MCP: WebSocket Connected.");
-            if (profileId) {
-                updateProfileStatus(profileId, "MCP Connected", "success");
+        if (!force && socket &&
+            (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) &&
+            socket.url === wsUrl) {
+            return;
+        }
+
+        clearChannelTimers();
+        if (socket) {
+            const previousSocket = socket;
+            socket = null;
+            previousSocket.onclose = null;
+            previousSocket.close();
+        }
+
+        console.log(`${name}: Connecting to ${wsUrl}...`);
+        try {
+            const currentSocket = new WebSocket(wsUrl);
+            socket = currentSocket;
+
+            currentSocket.onopen = () => {
+                if (socket !== currentSocket) return;
+                console.log(`${name}: WebSocket connected.`);
+                currentSocket.send(JSON.stringify({
+                    type: 'register',
+                    capabilities: [capability]
+                }));
+                keepAliveInterval = setInterval(() => {
+                    if (socket === currentSocket && currentSocket.readyState === WebSocket.OPEN) {
+                        currentSocket.send(JSON.stringify({ type: 'ping' }));
+                    }
+                }, 15000);
+            };
+
+            currentSocket.onmessage = async event => {
+                if (socket !== currentSocket) return;
+                try {
+                    const message = JSON.parse(event.data);
+                    if (message.type === 'pong' || message.type === 'registered') return;
+                    await handleMessage(message, currentSocket, context);
+                } catch (error) {
+                    console.error(`${name}: Error processing message`, error);
+                }
+            };
+
+            currentSocket.onclose = () => {
+                if (socket !== currentSocket) return;
+                console.log(`${name}: WebSocket closed.`);
+                clearChannelTimers();
+                socket = null;
+                scheduleReconnect();
+            };
+
+            currentSocket.onerror = error => {
+                if (socket === currentSocket) {
+                    console.error(`${name}: WebSocket error`, error);
+                }
+            };
+        } catch (error) {
+            socket = null;
+            console.error(`${name}: Connection failed`, error);
+            scheduleReconnect();
+        }
+    }
+
+    function disconnect() {
+        reconnectEnabled = false;
+        clearChannelTimers();
+        if (socket) {
+            const currentSocket = socket;
+            socket = null;
+            currentSocket.onclose = null;
+            currentSocket.close();
+        }
+    }
+
+    return {
+        connect,
+        disconnect,
+        isConnected: () => socket?.readyState === WebSocket.OPEN
+    };
+}
+
+async function handleMcpSocketMessage(message, socket, context) {
+    if (message.type !== 'mcp_request') return;
+
+    console.log('MCP: Received request', message.id);
+    loadData(async (profiles, activeProfileId) => {
+        const targetId = context.profileId || activeProfileId;
+        const profile = profiles.find(item => item.id === targetId);
+        if (!profile) return;
+
+        try {
+            const answer = await handleMcpRequest(profile, message.id, message.prompt);
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'mcp_response',
+                    id: message.id,
+                    text: answer
+                }));
             }
-            // Send ping every 15 seconds to keep WebSocket and Chrome MV3 Service Worker alive
-            keepAliveInterval = setInterval(() => {
-                if (mcpSocket && mcpSocket.readyState === WebSocket.OPEN) {
-                    mcpSocket.send(JSON.stringify({ type: 'ping' }));
-                }
-            }, 15000);
-        };
-
-        mcpSocket.onmessage = async (event) => {
-            try {
-                const msg = JSON.parse(event.data);
-                
-                // Handle pong heartbeat
-                if (msg.type === 'pong') {
-                    return;
-                }
-
-                if (msg.type === 'mcp_request') {
-                    console.log("MCP: Received request", msg.id);
-                    
-                    // Fetch profile again to be safe
-                    loadData(async (profiles, activeProfileId) => {
-                        const targetId = profileId || activeProfileId;
-                        const profile = profiles.find(p => p.id === targetId);
-                        if (!profile) return;
-
-                        try {
-                            const answer = await handleMcpRequest(profile, msg.id, msg.prompt);
-                            
-                            // Send response back
-                            mcpSocket.send(JSON.stringify({
-                                type: 'mcp_response',
-                                id: msg.id,
-                                text: answer
-                            }));
-                            console.log("MCP: Sent response.");
-                        } catch (err) {
-                            console.error("MCP Execution Error:", err);
-                            mcpSocket.send(JSON.stringify({
-                                type: 'mcp_response',
-                                id: msg.id,
-                                text: `Error: ${err.message}`
-                            }));
-                        }
-                    });
-                }
-
-                // Handle Dictation Start (Hotkey Down - supports background and foreground modes)
-                else if (msg.type === 'dictation_start') {
-                    const options = {
-                        switchOnStart: msg.switchOnStart === true || msg.mode === 'foreground'
-                    };
-                    handleDictationStart((text, type, spin) => notifyDictationStatus(text, type, spin), options);
-                }
-
-                // Handle Dictation Stop (Hotkey Up)
-                else if (msg.type === 'dictation_stop') {
-                    handleDictationStop(
-                        (transcript) => {
-                            if (mcpSocket && mcpSocket.readyState === WebSocket.OPEN) {
-                                mcpSocket.send(JSON.stringify({
-                                    type: 'dictation_result',
-                                    text: transcript
-                                }));
-                            }
-                        },
-                        (text, type, spin) => notifyDictationStatus(text, type, spin)
-                    );
-                }
-            } catch (e) {
-                console.error("MCP: Error processing message", e);
+            console.log('MCP: Sent response.');
+        } catch (error) {
+            console.error('MCP Execution Error:', error);
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'mcp_response',
+                    id: message.id,
+                    text: `Error: ${error.message}`
+                }));
             }
+        }
+    });
+}
+
+async function handleDictationSocketMessage(message, socket) {
+    if (message.type === 'dictation_start') {
+        const options = {
+            switchOnStart: message.switchOnStart === true || message.mode === 'foreground'
         };
-
-        mcpSocket.onclose = () => {
-            console.log("MCP: WebSocket Closed.");
-            if (keepAliveInterval) {
-                clearInterval(keepAliveInterval);
-                keepAliveInterval = null;
-            }
-            mcpSocket = null;
-
-            // Reconnect automatically to ensure Dictation bridge is always active
-            setTimeout(() => {
-                loadData((profiles, activeProfileId) => {
-                    const activeProfile = profiles.find(p => p.id === activeProfileId);
-                    const targetUrl = activeProfile?.serverUrl || 'http://127.0.0.1:5010';
-                    connectMcpSocket(targetUrl, activeProfile?.id);
-                });
-            }, 3000);
-        };
-
-        mcpSocket.onerror = (e) => {
-            console.error("MCP: WebSocket Error", e);
-        };
-
-    } catch (e) {
-        console.error("MCP: Connection failed", e);
+        await handleDictationStart(
+            (text, type, spin) => notifyDictationStatus(text, type, spin),
+            options
+        );
+    } else if (message.type === 'dictation_stop') {
+        await handleDictationStop(
+            transcript => {
+                if (socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                        type: 'dictation_result',
+                        text: transcript
+                    }));
+                }
+            },
+            (text, type, spin) => notifyDictationStatus(text, type, spin)
+        );
     }
 }
 
-function disconnectMcpSocket() {
-    if (keepAliveInterval) {
-        clearInterval(keepAliveInterval);
-        keepAliveInterval = null;
-    }
-    if (mcpSocket) {
-        mcpSocket.close();
-        mcpSocket = null;
-    }
+const mcpChannel = createWebSocketChannel('MCP', 'mcp', handleMcpSocketMessage);
+const dictationChannel = createWebSocketChannel(
+    'Dictation',
+    'dictation',
+    handleDictationSocketMessage
+);
+
+function reconnectMcpSocketFromActiveProfile(force = false) {
+    loadData((profiles, activeProfileId) => {
+        const activeProfile = profiles.find(profile => profile.id === activeProfileId);
+        if (activeProfile?.mode === 'mcp') {
+            mcpChannel.connect(activeProfile.serverUrl, { profileId: activeProfile.id }, force);
+        } else {
+            mcpChannel.disconnect();
+        }
+    });
 }
 
-// Connect WebSocket on extension load
-loadData((profiles, activeProfileId) => {
-    const activeProfile = profiles.find(p => p.id === activeProfileId);
-    const url = activeProfile?.serverUrl || 'http://127.0.0.1:5010';
-    connectMcpSocket(url, activeProfile?.id);
+function reconnectDictationSocket(force = false) {
+    if (!dictationBridgeEnabled) return;
+    dictationChannel.connect(DICTATION_SERVER_URL, {}, force);
+}
+
+// JavaScript timers disappear when Chrome suspends a Manifest V3 service
+// worker. This alarm restores either channel after suspension or server restart.
+chrome.alarms.create(BRIDGE_RECONNECT_ALARM, { periodInMinutes: 0.5 });
+chrome.alarms.onAlarm.addListener(alarm => {
+    if (alarm.name !== BRIDGE_RECONNECT_ALARM) return;
+    if (dictationBridgeEnabled && !dictationChannel.isConnected()) reconnectDictationSocket();
+    if (!mcpChannel.isConnected()) reconnectMcpSocketFromActiveProfile();
 });
+
+// Restore the user's global dictation toggle independently of profile data.
+chrome.storage.local.get({ dictationBridgeEnabled: true }).then(settings => {
+    dictationBridgeEnabled = settings.dictationBridgeEnabled;
+    reconnectDictationSocket();
+});
+reconnectMcpSocketFromActiveProfile();
 
 // --- Auto Deploy Logic ---
 
@@ -400,7 +476,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // 2. Set Dedicated Dictation Tab
     if (message.type === 'set_dictation_tab') {
         setDedicatedDictationTab(message.tabId);
+        dictationBridgeEnabled = true;
+        chrome.storage.local.set({ dictationBridgeEnabled: true });
+        if (message.reconnectBridge) {
+            reconnectDictationSocket(true);
+        }
         sendResponse({ status: 'success' });
+        return true;
+    }
+
+    if (message.type === 'disconnect_dictation_bridge') {
+        dictationBridgeEnabled = false;
+        dictationChannel.disconnect();
+        chrome.storage.local.set({ dictationBridgeEnabled: false }).then(() => {
+            sendResponse({ status: 'success' });
+        });
         return true;
     }
 
@@ -439,9 +529,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // 6. MCP Mode Toggle Signal
     if (message.type === 'mcp_mode_changed') {
         if (message.enabled) {
-            connectMcpSocket(message.serverUrl, message.profileId);
+            mcpChannel.connect(message.serverUrl, { profileId: message.profileId }, true);
         } else {
-            disconnectMcpSocket();
+            mcpChannel.disconnect();
         }
         return true;
     }

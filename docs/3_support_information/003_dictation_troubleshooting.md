@@ -41,3 +41,12 @@
 *   **Description:** When releasing the hotkey, the ChatGPT tab is brought forward but stays stuck until the user clicks the page.
 *   **Cause:** ChatGPT's web audio and pointer state requires explicit synthetic pointer events to trigger the stop action.
 *   **Fix:** `simulateClick()` in `chatgpt_dictation.js` dispatches a complete event chain (`pointerdown` → `mousedown` → `pointerup` → `mouseup` → `click`) and gives window focus 40ms to settle.
+
+## 8. Symptom: Hotkeys log correctly but Chrome does nothing after a browser restart/update
+*   **Description:** The Python console logs hotkey down/up events, while neither foreground switching nor background dictation occurs. Other JustCode HTTP actions may still work.
+*   **Cause:** Normal JustCode actions use short HTTP requests, whereas hotkey dictation requires a persistent server-to-extension WebSocket. Older builds shared that socket with MCP, inherited the current profile's server URL, and could close it when the profile left MCP mode. Manifest V3 service-worker suspension could also discard its timer-based reconnect.
+*   **Fix:** Dictation now has a dedicated channel fixed to `ws://127.0.0.1:5010/ws`; MCP retains a separate profile-controlled channel. Each channel registers its capability with the server, and a Chrome alarm restores disconnected channels after worker suspension or a server restart. The popup microphone checks the fixed loopback endpoint and visibly reports connection errors.
+
+## 9. Symptom: `/dictation/status` is blocked with `local` versus `loopback`
+*   **Cause:** `127.0.0.1` belongs to the `loopback` address space. Declaring `targetAddressSpace: "local"` makes the browser reject the request because the declared target does not match the actual address space.
+*   **Fix:** Do not supply a target-address hint for the literal `127.0.0.1` URL; Chrome classifies it as loopback automatically.

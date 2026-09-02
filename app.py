@@ -33,20 +33,51 @@ app.add_url_rule('/agent/execute', 'agent_execute', agent_execute, methods=['POS
 
 # --- MCP / WebSocket Bridge Logic ---
 
-# Store active WebSocket connections (usually just one, the chrome extension)
+# Store active WebSocket connections and their registered responsibilities.
 ws_connections = []
+ws_connection_capabilities = {}
+ws_connections_lock = threading.RLock()
 # Store pending requests: { request_id: { 'event': threading.Event(), 'response': None } }
 pending_requests = {}
+
+def get_ws_connections(capability=None, include_unregistered=True):
+    """Returns a stable snapshot, optionally filtered by client capability."""
+    with ws_connections_lock:
+        connections = list(ws_connections)
+        if capability is None:
+            return connections
+
+        filtered = []
+        for ws in connections:
+            capabilities = ws_connection_capabilities.get(id(ws))
+            if capability in (capabilities or set()):
+                filtered.append(ws)
+            elif capabilities is None and include_unregistered:
+                # Preserve compatibility with extension builds predating
+                # capability registration.
+                filtered.append(ws)
+        return filtered
+
+def remove_ws_connection(ws):
+    with ws_connections_lock:
+        if ws in ws_connections:
+            ws_connections.remove(ws)
+        ws_connection_capabilities.pop(id(ws), None)
 
 def ws_broadcast_json(payload_dict):
     """Broadcasts a JSON payload to active extension clients."""
     payload_str = json.dumps(payload_dict)
-    for ws in list(ws_connections):
+    sent_count = 0
+    capability = 'dictation' if payload_dict.get('type', '').startswith('dictation_') else None
+    for ws in get_ws_connections(capability):
         try:
             ws.send(payload_str)
+            sent_count += 1
         except Exception:
-            if ws in ws_connections:
-                ws_connections.remove(ws)
+            remove_ws_connection(ws)
+    if payload_dict.get('type', '').startswith('dictation_') and sent_count == 0:
+        print("[Dictation] Browser bridge unavailable; event was not delivered.")
+    return sent_count
 
 # Start Dictation Background Daemon strictly in the active Flask worker process
 # This prevents the Werkzeug supervisor process from spawning a duplicate hotkey listener
@@ -54,15 +85,22 @@ dictation_daemon = DictationDaemon(ws_broadcast_func=ws_broadcast_json)
 if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
     dictation_daemon.start()
 
-register_dictation_handlers(app, dictation_daemon)
+register_dictation_handlers(
+    app,
+    dictation_daemon,
+    lambda: len(get_ws_connections('dictation', include_unregistered=False))
+)
 
 @sock.route('/ws')
 def websocket_handler(ws):
     """
     WebSocket endpoint for the Chrome Extension to connect to.
     """
-    ws_connections.append(ws)
-    print(f"MCP: Extension connected. Total clients: {len(ws_connections)}")
+    with ws_connections_lock:
+        ws_connections.append(ws)
+        ws_connection_capabilities[id(ws)] = None
+        connection_count = len(ws_connections)
+    print(f"Bridge: Extension connected. Total clients: {connection_count}")
     try:
         while True:
             data = ws.receive()
@@ -74,6 +112,22 @@ def websocket_handler(ws):
                     # Handle heartbeat ping
                     if msg_type == 'ping':
                         ws.send(json.dumps({'type': 'pong'}))
+
+                    # Identify this connection so MCP and dictation cannot
+                    # consume one another's messages when both use this server.
+                    elif msg_type == 'register':
+                        requested = msg.get('capabilities', [])
+                        capabilities = {
+                            value for value in requested
+                            if isinstance(value, str) and value in {'mcp', 'dictation'}
+                        } if isinstance(requested, list) else set()
+                        with ws_connections_lock:
+                            ws_connection_capabilities[id(ws)] = capabilities
+                        ws.send(json.dumps({
+                            'type': 'registered',
+                            'capabilities': sorted(capabilities)
+                        }))
+                        print(f"Bridge: Registered {', '.join(sorted(capabilities)) or 'no capabilities'}.")
 
                     # Handle response from Extension
                     elif msg_type == 'mcp_response':
@@ -92,9 +146,8 @@ def websocket_handler(ws):
     except Exception:
         pass
     finally:
-        if ws in ws_connections:
-            ws_connections.remove(ws)
-        print("MCP: Extension disconnected.")
+        remove_ws_connection(ws)
+        print("Bridge: Extension disconnected.")
 
 @app.route('/mcp/prompt', methods=['POST'])
 def mcp_prompt_endpoint():
@@ -102,7 +155,8 @@ def mcp_prompt_endpoint():
     HTTP Endpoint for external tools (MCP Client / Curl).
     Sends prompt to Chrome, waits for answer, returns answer.
     """
-    if not ws_connections:
+    mcp_connections = get_ws_connections('mcp')
+    if not mcp_connections:
         return Response("Error: JustCode Chrome Extension is not connected via WebSocket.", status=503, mimetype='text/plain')
 
     try:
@@ -129,7 +183,7 @@ def mcp_prompt_endpoint():
         
         # Send to latest connection (most likely the active one)
         try:
-            ws_connections[-1].send(payload)
+            mcp_connections[-1].send(payload)
         except Exception as e:
             return Response(f"Error sending to extension: {str(e)}", status=500, mimetype='text/plain')
 
